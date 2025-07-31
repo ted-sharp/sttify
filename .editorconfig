@@ -1,0 +1,27 @@
+# 上位ディレクトリから .editorconfig 設定を継承する場合は、以下の行を削除します
+root = true
+
+####################
+# デフォルトの指定
+####################
+[*]
+charset = utf-8
+end_of_line = crlf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+####################
+# WEBフロントエンド開発の指定
+####################
+[*.{js,jsx,ts,tsx,json,css,scss,html,md,yml,yaml,xml}]
+end_of_line = lf
+indent_size = 2
+
+####################
+# C# の指定
+####################
+[*.{cs,xaml,cshtml,razor}]
+end_of_line = crlf
+indent_size = 4
