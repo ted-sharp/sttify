@@ -21,24 +21,53 @@ public class NotifyIconHost : IDisposable
 
     public void Initialize()
     {
-        _applicationService = _serviceProvider.GetRequiredService<ApplicationService>();
-        
-        CreateNotifyIcon();
-        SetupContextMenu();
-        
-        _notifyIcon!.Visible = true;
+        try
+        {
+            Console.WriteLine("NotifyIconHost: Starting initialization...");
+            
+            _applicationService = _serviceProvider.GetRequiredService<ApplicationService>();
+            Console.WriteLine("NotifyIconHost: ApplicationService obtained");
+            
+            CreateNotifyIcon();
+            Console.WriteLine("NotifyIconHost: NotifyIcon created");
+            
+            SetupContextMenu();
+            Console.WriteLine("NotifyIconHost: Context menu setup complete");
+            
+            _notifyIcon!.Visible = true;
+            Console.WriteLine($"NotifyIconHost: Icon visibility set to true. Actually visible: {_notifyIcon.Visible}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"NotifyIconHost initialization failed: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     private void CreateNotifyIcon()
     {
-        _notifyIcon = new NotifyIcon
+        try
         {
-            Icon = CreateMicrophoneIcon(),
-            Text = "Sttify - Speech to Text",
-            Visible = false
-        };
+            Console.WriteLine("Creating microphone icon...");
+            var icon = CreateMicrophoneIcon();
+            Console.WriteLine($"Icon created successfully: {icon != null}");
+            
+            _notifyIcon = new NotifyIcon
+            {
+                Icon = icon,
+                Text = "Sttify - Speech to Text",
+                Visible = false
+            };
 
-        _notifyIcon.DoubleClick += OnNotifyIconDoubleClick;
+            _notifyIcon.DoubleClick += OnNotifyIconDoubleClick;
+            Console.WriteLine("NotifyIcon object created with properties set");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create NotifyIcon: {ex.Message}");
+            throw;
+        }
     }
 
     private void SetupContextMenu()

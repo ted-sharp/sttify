@@ -8,6 +8,7 @@ using Sttify.Corelib.Hotkey;
 using Sttify.Corelib.Output;
 using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
+using static Sttify.Corelib.Config.SettingsProvider;
 using Sttify.Services;
 using Sttify.Tray;
 using Sttify.ViewModels;
@@ -34,6 +35,10 @@ public partial class App : System.Windows.Application
 
         try
         {
+            // Required for Windows Forms components (NotifyIcon) in WPF
+            System.Windows.Forms.Application.EnableVisualStyles();
+            System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
+            
             InitializeTelemetry();
             BuildHost();
             InitializeServices();
@@ -126,47 +131,37 @@ public partial class App : System.Windows.Application
                     // Create HotkeyManager with default IntPtr (0) for window handle
                     return new HotkeyManager(IntPtr.Zero);
                 });
+                
+                // Use default settings for now - will be configured later
                 services.AddSingleton<RtssBridge>(provider =>
                 {
-                    var settingsProvider = provider.GetRequiredService<SettingsProvider>();
-                    var rtssSettings = settingsProvider.GetSettingsAsync().Result.Rtss;
-                    return new RtssBridge(rtssSettings);
+                    var defaultRtssSettings = new RtssSettings();
+                    return new RtssBridge(defaultRtssSettings);
                 });
                 
                 services.AddSingleton<ISttEngine>(provider =>
                 {
-                    var settingsProvider = provider.GetRequiredService<SettingsProvider>();
-                    var engineSettings = settingsProvider.GetSettingsAsync().Result.Engine;
-                    return SttEngineFactory.CreateEngine(engineSettings);
+                    var defaultEngineSettings = new EngineSettings();
+                    return SttEngineFactory.CreateEngine(defaultEngineSettings);
                 });
                 
                 services.AddSingleton<IEnumerable<ITextOutputSink>>(provider =>
                 {
-                    var settingsProvider = provider.GetRequiredService<SettingsProvider>();
-                    var outputSettings = settingsProvider.GetSettingsAsync().Result.Output;
-                    
                     var sinks = new List<ITextOutputSink>
                     {
                         new TsfTipSink(),
-                        new SendInputSink(new Sttify.Corelib.Output.SendInputSettings 
-                        { 
-                            RateLimitCps = outputSettings.SendInput.RateLimitCps,
-                            CommitKey = outputSettings.SendInput.CommitKey
-                        })
+                        new SendInputSink(new SendInputSettings())
                     };
                     
                     return sinks;
                 });
                 
-                services.AddSingleton<Sttify.Corelib.Session.RecognitionSessionSettings>(provider =>
+                services.AddSingleton<RecognitionSessionSettings>(provider =>
                 {
-                    var settingsProvider = provider.GetRequiredService<SettingsProvider>();
-                    var sessionSettings = settingsProvider.GetSettingsAsync().Result.Session;
-                    
-                    return new Sttify.Corelib.Session.RecognitionSessionSettings
+                    return new RecognitionSessionSettings
                     {
-                        FinalizeTimeoutMs = TimeSpan.FromMilliseconds(sessionSettings.Boundary.FinalizeTimeoutMs),
-                        Delimiter = sessionSettings.Boundary.Delimiter,
+                        FinalizeTimeoutMs = TimeSpan.FromMilliseconds(1500),
+                        Delimiter = "。",
                         EndpointSilenceMs = 800,
                         SampleRate = 16000,
                         Channels = 1,
@@ -190,10 +185,33 @@ public partial class App : System.Windows.Application
 
     private void InitializeServices()
     {
-        var applicationService = _host!.Services.GetRequiredService<ApplicationService>();
-        applicationService.Initialize();
-        
-        _notifyIconHost = new NotifyIconHost(_host.Services);
-        _notifyIconHost.Initialize();
+        try
+        {
+            Console.WriteLine("InitializeServices: Starting service initialization...");
+            
+            Console.WriteLine("InitializeServices: Getting ApplicationService...");
+            var applicationService = _host!.Services.GetRequiredService<ApplicationService>();
+            Console.WriteLine("InitializeServices: ApplicationService obtained successfully");
+            
+            Console.WriteLine("InitializeServices: Calling ApplicationService.Initialize()...");
+            applicationService.Initialize();
+            Console.WriteLine("InitializeServices: ApplicationService initialized successfully");
+            
+            Console.WriteLine("InitializeServices: Creating NotifyIconHost...");
+            _notifyIconHost = new NotifyIconHost(_host.Services);
+            Console.WriteLine("InitializeServices: NotifyIconHost created");
+            
+            Console.WriteLine("InitializeServices: Initializing NotifyIconHost...");
+            _notifyIconHost.Initialize();
+            Console.WriteLine("InitializeServices: NotifyIconHost initialized successfully");
+            
+            Console.WriteLine("InitializeServices: All services initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"InitializeServices failed: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            throw;
+        }
     }
 }
