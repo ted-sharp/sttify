@@ -158,6 +158,14 @@ public class ApplicationSettings
     public bool StartWithWindows { get; set; } = false;
     public bool ShowInTray { get; set; } = true;
     public bool StartMinimized { get; set; } = false;
+    public WindowPosition ControlWindow { get; set; } = new();
+}
+
+public class WindowPosition
+{
+    public double Left { get; set; } = double.NaN; // NaN means not set
+    public double Top { get; set; } = double.NaN;
+    public string DisplayConfiguration { get; set; } = "";
 }
 
 public class AudioSettings

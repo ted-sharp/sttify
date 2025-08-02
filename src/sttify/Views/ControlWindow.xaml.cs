@@ -7,6 +7,9 @@ using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Controls;
 using System.Diagnostics;
+using System.Windows.Forms;
+using Sttify.Corelib.Config;
+using System.Linq;
 
 namespace Sttify.Views;
 
@@ -34,7 +37,12 @@ public partial class ControlWindow : Window
         Loaded += (s, e) => {
             Debug.WriteLine("ControlWindow: Loaded event fired from parameterless constructor");
             SetupDragFunctionality();
+            RestoreWindowPosition();
         };
+        
+        // Save position when window is moved or closed
+        LocationChanged += (s, e) => SaveWindowPosition();
+        Closing += (s, e) => SaveWindowPosition();
     }
 
     // Constructor for dependency injection
@@ -285,5 +293,87 @@ public partial class ControlWindow : Window
             Sttify.Corelib.Session.SessionState.Error => (Colors.Red, "❌"),
             _ => (Colors.Gray, "❓")
         };
+    }
+
+    private async void SaveWindowPosition()
+    {
+        try
+        {
+            var settingsProvider = new SettingsProvider();
+            var settings = await settingsProvider.GetSettingsAsync();
+            
+            settings.Application.ControlWindow.Left = Left;
+            settings.Application.ControlWindow.Top = Top;
+            settings.Application.ControlWindow.DisplayConfiguration = GetDisplayConfiguration();
+            
+            await settingsProvider.SaveSettingsAsync(settings);
+            Debug.WriteLine($"Window position saved: {Left}, {Top}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to save window position: {ex.Message}");
+        }
+    }
+
+    private async void RestoreWindowPosition()
+    {
+        try
+        {
+            var settingsProvider = new SettingsProvider();
+            var settings = await settingsProvider.GetSettingsAsync();
+            var windowPos = settings.Application.ControlWindow;
+            
+            // Check if position is saved
+            if (double.IsNaN(windowPos.Left) || double.IsNaN(windowPos.Top))
+            {
+                Debug.WriteLine("No saved window position, using default");
+                return;
+            }
+            
+            // Check if display configuration changed
+            var currentDisplayConfig = GetDisplayConfiguration();
+            if (windowPos.DisplayConfiguration != currentDisplayConfig)
+            {
+                Debug.WriteLine("Display configuration changed, validating position");
+                if (!IsPositionValid(windowPos.Left, windowPos.Top))
+                {
+                    Debug.WriteLine("Saved position is invalid, using default");
+                    return;
+                }
+            }
+            
+            Left = windowPos.Left;
+            Top = windowPos.Top;
+            Debug.WriteLine($"Window position restored: {Left}, {Top}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to restore window position: {ex.Message}");
+        }
+    }
+
+    private string GetDisplayConfiguration()
+    {
+        var screens = Screen.AllScreens;
+        var config = string.Join(";", screens.Select(s => 
+            $"{s.Bounds.Width}x{s.Bounds.Height}@{s.Bounds.X},{s.Bounds.Y}"));
+        return config;
+    }
+
+    private bool IsPositionValid(double left, double top)
+    {
+        var windowRect = new System.Drawing.Rectangle(
+            (int)left, (int)top, (int)Width, (int)Height);
+        
+        // Check if window overlaps with any screen
+        foreach (var screen in Screen.AllScreens)
+        {
+            if (screen.WorkingArea.IntersectsWith(windowRect))
+            {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
