@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -287,6 +288,7 @@ public class PluginSecurity
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class PluginSecuritySettings
 {
     public bool RequireTrustedAuthors { get; set; } = false;
@@ -295,6 +297,7 @@ public class PluginSecuritySettings
     public ThreatLevel MaxAllowedThreatLevel { get; set; } = ThreatLevel.Medium;
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class PluginSecurityResult
 {
     public string PluginName { get; set; } = "";
@@ -305,6 +308,7 @@ public class PluginSecurityResult
     public Exception? ValidationException { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class AssemblySecurityResult
 {
     public string AssemblyHash { get; set; } = "";

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 using System.Collections.Concurrent;
 
@@ -499,6 +500,7 @@ public class EndpointDetector : IDisposable
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class EndpointSettings
 {
     public int SilenceTimeoutMs { get; set; } = 800;
@@ -513,6 +515,7 @@ public class EndpointSettings
     public bool EnableAdaptiveEndpoint { get; set; } = true;
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class EndpointResult
 {
     public bool HasEndpoint { get; set; }
@@ -566,6 +569,7 @@ public enum EndpointEventType
 }
 
 // Event argument classes
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class UtteranceStartedEventArgs : EventArgs
 {
     public int UtteranceNumber { get; }
@@ -580,6 +584,7 @@ public class UtteranceStartedEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class UtteranceEndedEventArgs : EventArgs
 {
     public int UtteranceNumber { get; }
@@ -598,6 +603,7 @@ public class UtteranceEndedEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class EndpointTriggeredEventArgs : EventArgs
 {
     public EndpointResult Result { get; }
@@ -608,6 +614,7 @@ public class EndpointTriggeredEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class SessionTimeoutEventArgs : EventArgs
 {
     public TimeSpan SessionDuration { get; }

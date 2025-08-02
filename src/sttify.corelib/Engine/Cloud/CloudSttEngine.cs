@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using System.Net.Http;
@@ -204,6 +205,7 @@ public abstract class CloudSttEngine : ISttEngine
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class CloudRecognitionResult
 {
     public bool Success { get; set; } = true;

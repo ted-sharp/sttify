@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using System.Net.Http;
@@ -320,6 +321,7 @@ internal class AwsTranscribeMedia
     public string MediaFileUri { get; set; } = "";
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 internal class AwsTranscribeSettings
 {
     public bool ShowSpeakerLabels { get; set; }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
@@ -128,6 +129,7 @@ public static class Telemetry
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class TelemetrySettings
 {
     public bool EnableConsoleLogging { get; set; } = false;

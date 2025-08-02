@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sttify.Corelib.Audio;
 
 public class AudioCapture : IDisposable
@@ -94,6 +96,7 @@ public class AudioCapture : IDisposable
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class AudioCaptureSettings
 {
     public int SampleRate { get; set; } = 16000;
@@ -104,6 +107,7 @@ public class AudioCaptureSettings
     public string? DeviceId { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class AudioFrameEventArgs : EventArgs
 {
     public ReadOnlyMemory<byte> AudioData { get; }
@@ -114,6 +118,7 @@ public class AudioFrameEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class AudioErrorEventArgs : EventArgs
 {
     public Exception Exception { get; }

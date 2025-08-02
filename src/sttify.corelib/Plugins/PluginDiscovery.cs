@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 using System.Text.Json;
 
@@ -193,6 +194,7 @@ public class PluginDiscovery
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class PluginDiscoveryResult
 {
     public List<PluginDiscoveryInfo> ValidPlugins { get; } = new();

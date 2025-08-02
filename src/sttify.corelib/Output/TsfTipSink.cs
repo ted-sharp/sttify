@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
@@ -202,6 +203,7 @@ public class TipIpcCommand
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class TsfTipSettings
 {
     public TextInsertionMode InsertionMode { get; set; } = TextInsertionMode.FinalOnly;

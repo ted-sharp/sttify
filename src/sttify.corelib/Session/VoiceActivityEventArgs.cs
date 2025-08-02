@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sttify.Corelib.Session;
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class VoiceActivityEventArgs : EventArgs
 {
     public bool IsVoiceActive { get; }
@@ -14,6 +17,7 @@ public class VoiceActivityEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class SilenceDetectedEventArgs : EventArgs
 {
     public TimeSpan SilenceDuration { get; }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Output;
@@ -152,6 +153,7 @@ public class ExternalProcessSink : ITextOutputSink
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class ExternalProcessSettings
 {
     public string ExecutablePath { get; set; } = "";

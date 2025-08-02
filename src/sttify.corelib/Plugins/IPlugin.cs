@@ -1,8 +1,10 @@
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Plugins;
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface IPlugin : IDisposable
 {
     string Name { get; }
@@ -18,6 +20,7 @@ public interface IPlugin : IDisposable
     PluginCapabilities Capabilities { get; }
 }
 
+[ExcludeFromCodeCoverage] // Simple enum definition
 [Flags]
 public enum PluginCapabilities
 {
@@ -30,6 +33,7 @@ public enum PluginCapabilities
     NotificationProvider = 1 << 5
 }
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface IPluginContext
 {
     IServiceProvider ServiceProvider { get; }
@@ -46,18 +50,21 @@ public interface IPluginContext
     void LogError(string message, Exception? exception = null, object? data = null);
 }
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface ISpeechEnginePlugin : IPlugin
 {
     ISttEngine CreateEngine(object configuration);
     Type ConfigurationType { get; }
 }
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface ITextOutputPlugin : IPlugin
 {
     ITextOutputSink CreateOutputSink(object configuration);
     Type ConfigurationType { get; }
 }
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface ITextProcessorPlugin : IPlugin
 {
     Task<string> ProcessTextAsync(string text, string sourceLanguage, string targetLanguage);
@@ -81,6 +88,7 @@ public static class PluginExtensions
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class PluginMetadata
 {
     public string Name { get; set; } = "";

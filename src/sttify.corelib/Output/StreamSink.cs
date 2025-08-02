@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Text;
 using Sttify.Corelib.Diagnostics;
@@ -322,6 +323,7 @@ public enum StreamOutputType
     StandardOutput
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class StreamSinkSettings
 {
     public StreamOutputType OutputType { get; set; } = StreamOutputType.Console;

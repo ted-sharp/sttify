@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Config;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -347,6 +348,7 @@ public class DiagnosticSnapshot
     public Dictionary<string, DiagnosticData> Data { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class DiagnosticSettings
 {
     public int CollectionIntervalSeconds { get; set; } = 10;

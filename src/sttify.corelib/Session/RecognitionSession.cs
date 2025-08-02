@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
@@ -393,6 +394,7 @@ public enum SessionState
     Error
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class RecognitionSessionSettings
 {
     public TimeSpan FinalizeTimeoutMs { get; set; } = TimeSpan.FromMilliseconds(1500);
@@ -406,6 +408,7 @@ public class RecognitionSessionSettings
     public int MinUtteranceLengthMs { get; set; } = 500; // Minimum utterance length
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class SessionStateChangedEventArgs : EventArgs
 {
     public SessionState OldState { get; }
@@ -418,6 +421,7 @@ public class SessionStateChangedEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class TextRecognizedEventArgs : EventArgs
 {
     public string Text { get; }

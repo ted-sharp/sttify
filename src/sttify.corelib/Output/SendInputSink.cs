@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -118,6 +119,7 @@ public class SendInputSink : ITextOutputSink
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class SendInputSettings
 {
     public int RateLimitCps { get; set; } = 50;

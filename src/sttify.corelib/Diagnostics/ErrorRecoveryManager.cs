@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Config;
 using System.Collections.Concurrent;
 
@@ -400,6 +401,7 @@ public class ErrorRecoveryAction
     public DateTime QueuedTime { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class ErrorRecoverySettings
 {
     public int MaxConsecutiveFailures { get; set; } = 3;

@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sttify.Corelib.Output;
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface ITextOutputSink
 {
     string Name { get; }
@@ -9,12 +12,14 @@ public interface ITextOutputSink
     Task SendAsync(string text, CancellationToken cancellationToken = default);
 }
 
+[ExcludeFromCodeCoverage] // Simple enum definition
 public enum TextInsertionMode
 {
     FinalOnly,
     WithComposition
 }
 
+[ExcludeFromCodeCoverage] // Simple exception class with no business logic
 public class TextOutputFailedException : Exception
 {
     public TextOutputFailedException(string message) : base(message) { }

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 using System.IO.Compression;
 using System.Net.Http;
@@ -228,7 +229,7 @@ public class DownloadProgressEventArgs : EventArgs
     }
 }
 
-public class VoskModelDownloadException : Exception
+[ExcludeFromCodeCoverage] // Simple exception class with no business logic\npublic class VoskModelDownloadException : Exception
 {
     public VoskModelDownloadException(string message) : base(message) { }
     public VoskModelDownloadException(string message, Exception innerException) : base(message, innerException) { }

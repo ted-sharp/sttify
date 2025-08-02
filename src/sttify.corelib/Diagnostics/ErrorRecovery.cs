@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Diagnostics;
 
@@ -170,7 +171,7 @@ public class ErrorRecoveryEventArgs : EventArgs
     }
 }
 
-public class ErrorRecoveryException : Exception
+[ExcludeFromCodeCoverage] // Simple exception class with no business logic\npublic class ErrorRecoveryException : Exception
 {
     public ErrorRecoveryException(string message) : base(message) { }
     public ErrorRecoveryException(string message, Exception innerException) : base(message, innerException) { }

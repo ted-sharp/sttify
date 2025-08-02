@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -142,6 +143,7 @@ public class SettingsProvider
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class SttifySettings
 {
     public ApplicationSettings Application { get; set; } = new();
@@ -154,6 +156,7 @@ public class SttifySettings
     public PrivacySettings Privacy { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class ApplicationSettings
 {
     public bool StartWithWindows { get; set; } = false;
@@ -162,6 +165,7 @@ public class ApplicationSettings
     public WindowPosition ControlWindow { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class WindowPosition
 {
     public double Left { get; set; } = double.NaN; // NaN means not set
@@ -169,6 +173,7 @@ public class WindowPosition
     public string DisplayConfiguration { get; set; } = "";
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class AudioSettings
 {
     public string DeviceId { get; set; } = "";
@@ -176,6 +181,7 @@ public class AudioSettings
     public int Channels { get; set; } = 1;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class EngineSettings
 {
     public string Profile { get; set; } = "vosk";
@@ -184,6 +190,7 @@ public class EngineSettings
     public VibeEngineSettings Vibe { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class VoskEngineSettings
 {
     public string ModelPath { get; set; } = "";
@@ -193,6 +200,7 @@ public class VoskEngineSettings
     public int TokensPerPartial { get; set; } = 5;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class CloudEngineSettings
 {
     public string Provider { get; set; } = "azure";
@@ -207,18 +215,21 @@ public class CloudEngineSettings
     public Dictionary<string, object> AdditionalSettings { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class SessionSettings
 {
     public string Mode { get; set; } = "ptt";
     public BoundarySettings Boundary { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class BoundarySettings
 {
     public string Delimiter { get; set; } = "。";
     public int FinalizeTimeoutMs { get; set; } = 1500;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class OutputSettings
 {
     public string Primary { get; set; } = "tsf-tip";
@@ -228,18 +239,21 @@ public class OutputSettings
     public SendInputOutputSettings SendInput { get; set; } = new();
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class TsfOutputSettings
 {
     public string CompositionMode { get; set; } = "final-only";
     public bool SuppressWhenImeComposing { get; set; } = true;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class SendInputOutputSettings
 {
     public int RateLimitCps { get; set; } = 50;
     public int? CommitKey { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class RtssSettings
 {
     public bool Enabled { get; set; } = true;
@@ -247,6 +261,7 @@ public class RtssSettings
     public int TruncateLength { get; set; } = 80;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class HotkeySettings
 {
     public string ToggleUi { get; set; } = "Win+Alt+H";
@@ -255,11 +270,13 @@ public class HotkeySettings
     public string EmergencyStop { get; set; } = "Ctrl+Alt+X";
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class PrivacySettings
 {
     public bool MaskInLogs { get; set; } = false;
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class VibeEngineSettings
 {
     public string Endpoint { get; set; } = "http://localhost:8080";

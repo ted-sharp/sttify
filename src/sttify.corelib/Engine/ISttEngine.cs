@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sttify.Corelib.Engine;
 
+[ExcludeFromCodeCoverage] // Interface definition only
 public interface ISttEngine : IDisposable
 {
     event EventHandler<PartialRecognitionEventArgs>? OnPartial;
@@ -11,6 +14,7 @@ public interface ISttEngine : IDisposable
     void PushAudio(ReadOnlySpan<byte> audioData);
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class PartialRecognitionEventArgs : EventArgs
 {
     public string Text { get; }
@@ -23,6 +27,7 @@ public class PartialRecognitionEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class FinalRecognitionEventArgs : EventArgs
 {
     public string Text { get; }
@@ -37,6 +42,7 @@ public class FinalRecognitionEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class SttErrorEventArgs : EventArgs
 {
     public Exception Exception { get; }

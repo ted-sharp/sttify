@@ -1,5 +1,6 @@
 using Sttify.Corelib.Diagnostics;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace Sttify.Corelib.Audio;
@@ -499,7 +500,7 @@ public class AudioFrame
     public DateTime Timestamp { get; set; }
 }
 
-public class VadResult
+[ExcludeFromCodeCoverage] // Simple data container class\npublic class VadResult
 {
     public bool IsVoice { get; set; }
     public double Confidence { get; set; }
@@ -518,6 +519,7 @@ public class VadResult
     public double TemporalScore { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class VadSettings
 {
     public double InitialEnergyThreshold { get; set; } = -30.0; // dB
@@ -539,6 +541,7 @@ public class VadSettings
     public double TemporalWeight { get; set; } = 0.2;
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class VadStatistics
 {
     public bool IsCurrentlyActive { get; set; }
@@ -550,6 +553,7 @@ public class VadStatistics
     public int HistoryDepth { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class VoiceActivityEventArgs : EventArgs
 {
     public bool IsActive { get; }
@@ -564,6 +568,7 @@ public class VoiceActivityEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class SilenceDetectedEventArgs : EventArgs
 {
     public TimeSpan VoiceDuration { get; }
@@ -576,6 +581,7 @@ public class SilenceDetectedEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class EndpointDetectedEventArgs : EventArgs
 {
     public EndpointType Type { get; }
