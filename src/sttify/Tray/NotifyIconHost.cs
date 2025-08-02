@@ -173,14 +173,19 @@ public class NotifyIconHost : IDisposable
     {
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
+            Console.WriteLine("NotifyIconHost: OnShowControlWindow called");
             var controlWindow = System.Windows.Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
             if (controlWindow == null)
             {
+                Console.WriteLine("NotifyIconHost: Creating new ControlWindow");
                 controlWindow = _serviceProvider.GetRequiredService<ControlWindow>();
+                Console.WriteLine("NotifyIconHost: ControlWindow created, calling Show()");
                 controlWindow.Show();
+                Console.WriteLine("NotifyIconHost: ControlWindow.Show() completed");
             }
             else
             {
+                Console.WriteLine("NotifyIconHost: Using existing ControlWindow");
                 controlWindow.WindowState = WindowState.Normal;
                 controlWindow.Activate();
             }

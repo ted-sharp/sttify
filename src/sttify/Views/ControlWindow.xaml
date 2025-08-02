@@ -87,7 +87,6 @@
                  Stroke="#FF2E7D32" 
                  StrokeThickness="3"
                  x:Name="MicrophoneCircle"
-                 MouseLeftButtonDown="OnMicrophoneClick"
                  MouseRightButtonDown="OnMicrophoneRightClick"
                  RenderTransformOrigin="0.5,0.5">
             <Ellipse.RenderTransform>
