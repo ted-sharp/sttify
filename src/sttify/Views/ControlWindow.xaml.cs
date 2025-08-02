@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using Sttify.Corelib.Config;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Sttify.Views;
 
@@ -17,6 +18,7 @@ public partial class ControlWindow : Window
 {
     private readonly ApplicationService? _applicationService;
     private readonly MainViewModel? _viewModel;
+    private readonly IServiceProvider? _serviceProvider;
     private Storyboard? _currentPulseAnimation;
     private Sttify.Corelib.Session.SessionState _lastState = Sttify.Corelib.Session.SessionState.Idle;
     
@@ -46,11 +48,12 @@ public partial class ControlWindow : Window
     }
 
     // Constructor for dependency injection
-    public ControlWindow(ApplicationService applicationService, MainViewModel viewModel) : this()
+    public ControlWindow(ApplicationService applicationService, MainViewModel viewModel, IServiceProvider serviceProvider) : this()
     {
         Debug.WriteLine("ControlWindow: DI constructor called");
         _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         
         Debug.WriteLine("ControlWindow: Setting DataContext");
         DataContext = _viewModel;
@@ -148,23 +151,44 @@ public partial class ControlWindow : Window
     private async void OnMicrophoneClick(object sender, MouseButtonEventArgs e)
     {
         Debug.WriteLine("OnMicrophoneClick: Click detected");
-        if (_applicationService == null) 
+        
+        // Try to use instance service first, then fall back to static service provider
+        var applicationService = _applicationService;
+        if (applicationService == null)
         {
-            Debug.WriteLine("OnMicrophoneClick: ApplicationService is null, ignoring click");
+            Debug.WriteLine("OnMicrophoneClick: ApplicationService is null - trying to get from static service provider");
+            var serviceProvider = App.ServiceProvider;
+            if (serviceProvider != null)
+            {
+                try
+                {
+                    applicationService = serviceProvider.GetRequiredService<ApplicationService>();
+                    Debug.WriteLine("OnMicrophoneClick: ApplicationService obtained from static service provider");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"OnMicrophoneClick: Failed to get ApplicationService: {ex.Message}");
+                }
+            }
+        }
+        
+        if (applicationService == null)
+        {
+            System.Windows.MessageBox.Show("ApplicationService is not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         
         try
         {
-            var currentState = _applicationService.GetCurrentState();
+            var currentState = applicationService.GetCurrentState();
             
             if (currentState == Sttify.Corelib.Session.SessionState.Listening)
             {
-                await _applicationService.StopRecognitionAsync();
+                await applicationService.StopRecognitionAsync();
             }
             else if (currentState == Sttify.Corelib.Session.SessionState.Idle)
             {
-                await _applicationService.StartRecognitionAsync();
+                await applicationService.StartRecognitionAsync();
             }
         }
         catch (Exception ex)
@@ -176,7 +200,37 @@ public partial class ControlWindow : Window
 
     private void OnMicrophoneRightClick(object sender, MouseButtonEventArgs e)
     {
+        Debug.WriteLine("OnMicrophoneRightClick: Right-click detected");
         var contextMenu = new System.Windows.Controls.ContextMenu();
+        
+        // Add microphone control options
+        var applicationService = _applicationService ?? App.ServiceProvider?.GetService<ApplicationService>();
+        
+        if (applicationService == null)
+        {
+            Debug.WriteLine("OnMicrophoneRightClick: ApplicationService is not available");
+            var noServiceItem = new System.Windows.Controls.MenuItem { Header = "Service Not Available", IsEnabled = false };
+            contextMenu.Items.Add(noServiceItem);
+        }
+        else
+        {
+            var currentState = applicationService.GetCurrentState();
+            var micItem = new System.Windows.Controls.MenuItem();
+            
+            if (currentState == Sttify.Corelib.Session.SessionState.Listening)
+            {
+                micItem.Header = "Stop Recognition";
+                micItem.Click += async (s, args) => await applicationService.StopRecognitionAsync();
+            }
+            else
+            {
+                micItem.Header = "Start Recognition";
+                micItem.Click += async (s, args) => await applicationService.StartRecognitionAsync();
+            }
+            
+            contextMenu.Items.Add(micItem);
+            contextMenu.Items.Add(new System.Windows.Controls.Separator());
+        }
         
         var settingsItem = new System.Windows.Controls.MenuItem { Header = "Settings..." };
         settingsItem.Click += (s, args) => ShowSettingsWindow();
@@ -197,12 +251,27 @@ public partial class ControlWindow : Window
 
     private void ShowSettingsWindow()
     {
+        // Try to use instance service provider first, then fall back to static
+        var serviceProvider = _serviceProvider ?? App.ServiceProvider;
+        
+        if (serviceProvider == null)
+        {
+            System.Windows.MessageBox.Show("Service provider not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         var settingsWindow = System.Windows.Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
         if (settingsWindow == null)
         {
-            // Note: In a real implementation, we would use DI to get the SettingsWindow
-            // settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
-            System.Windows.MessageBox.Show("Settings window not implemented yet.", "Sttify", MessageBoxButton.OK, MessageBoxImage.Information);
+            try
+            {
+                settingsWindow = serviceProvider.GetRequiredService<SettingsWindow>();
+                settingsWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Failed to create settings window: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         else
         {

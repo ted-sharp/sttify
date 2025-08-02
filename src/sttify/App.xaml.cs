@@ -24,6 +24,8 @@ public partial class App : System.Windows.Application
     private IHost? _host;
     private NotifyIconHost? _notifyIconHost;
     private Mutex? _singleInstanceMutex;
+    
+    public static IServiceProvider? ServiceProvider { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -206,6 +208,9 @@ public partial class App : System.Windows.Application
             Console.WriteLine("InitializeServices: NotifyIconHost initialized successfully");
             
             Console.WriteLine("InitializeServices: All services initialized successfully");
+            
+            // Make service provider globally accessible
+            ServiceProvider = _host.Services;
         }
         catch (Exception ex)
         {
