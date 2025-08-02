@@ -75,6 +75,9 @@ public partial class ControlWindow : Window
             microphoneCircle.MouseLeftButtonDown += OnMicrophoneMouseDown;
             microphoneCircle.MouseLeftButtonUp += OnMicrophoneMouseUp;
             microphoneCircle.MouseMove += OnMicrophoneMouseMove;
+            
+            // Make sure the circle can receive mouse events
+            microphoneCircle.IsHitTestVisible = true;
         }
         else
         {
