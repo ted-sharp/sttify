@@ -40,7 +40,17 @@ public class SettingsProviderTests : IDisposable
         // Arrange
         var settings = new SttifySettings
         {
-            Engine = new EngineSettings { Profile = "test-engine" }
+            Engine = new EngineSettings 
+            { 
+                Profile = "test-engine",
+                // Ensure no infinite values that cause JSON serialization issues
+                Vosk = new VoskEngineSettings
+                {
+                    ModelPath = "test-model",
+                    Language = "ja",
+                    Punctuation = true
+                }
+            }
         };
 
         // Act

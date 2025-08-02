@@ -39,8 +39,11 @@ public class HealthMonitorTests
         var results = await healthMonitor.GetHealthStatusAsync();
 
         // Assert
-        Assert.Equal(2, results.Count);
-        Assert.All(results, r => Assert.Equal(HealthStatus.Healthy, r.Value.Status));
+        Assert.True(results.Count >= 2); // Should include default health checks + our custom ones
+        Assert.Contains("Check1", results.Keys);
+        Assert.Contains("Check2", results.Keys);
+        Assert.Equal(HealthStatus.Healthy, results["Check1"].Status);
+        Assert.Equal(HealthStatus.Healthy, results["Check2"].Status);
     }
 
     [Fact]
@@ -55,7 +58,9 @@ public class HealthMonitorTests
         var results = await healthMonitor.GetHealthStatusAsync();
 
         // Assert
-        Assert.Equal(2, results.Count);
+        Assert.True(results.Count >= 2); // Include default health checks
+        Assert.Contains("HealthyCheck", results.Keys);
+        Assert.Contains("UnhealthyCheck", results.Keys);
         Assert.Equal(HealthStatus.Healthy, results["HealthyCheck"].Status);
         Assert.Equal(HealthStatus.Unhealthy, results["UnhealthyCheck"].Status);
     }
@@ -71,7 +76,8 @@ public class HealthMonitorTests
         var results = await healthMonitor.GetHealthStatusAsync();
 
         // Assert
-        Assert.Single(results);
+        Assert.True(results.Count >= 1); // Include default health checks
+        Assert.Contains("FailingCheck", results.Keys);
         Assert.Equal(HealthStatus.Unhealthy, results["FailingCheck"].Status);
         Assert.Contains("Test exception", results["FailingCheck"].Description);
     }
@@ -87,7 +93,8 @@ public class HealthMonitorTests
         var results = await healthMonitor.GetHealthStatusAsync();
 
         // Assert
-        Assert.Single(results);
+        Assert.True(results.Count >= 1); // Include default health checks
+        Assert.Contains("DegradedCheck", results.Keys);
         Assert.Equal(HealthStatus.Degraded, results["DegradedCheck"].Status);
         Assert.Equal("Warning", results["DegradedCheck"].Description);
     }

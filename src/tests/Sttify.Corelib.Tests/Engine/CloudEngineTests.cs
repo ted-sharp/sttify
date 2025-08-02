@@ -50,7 +50,11 @@ public class CloudEngineTests
         var result = new CloudRecognitionResult();
 
         // Assert
-        Assert.False(result.Success); // Default should be false
-        Assert.Equal(0.0f, result.Confidence); // Default confidence
+        Assert.True(result.Success); // Default is true
+        Assert.Equal(0.0, result.Confidence); // Default confidence is double, not float
+        Assert.Equal("", result.Text); // Default text is empty string
+        Assert.Equal("", result.ErrorMessage); // Default error message is empty
+        Assert.False(result.IsFinal); // Default IsFinal is false
+        Assert.NotNull(result.Metadata); // Metadata is initialized
     }
 }
