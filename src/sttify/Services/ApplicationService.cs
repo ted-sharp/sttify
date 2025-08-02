@@ -216,15 +216,15 @@ public class ApplicationService : IDisposable
     private void SetupHealthChecks()
     {
         // Recognition session health check
-        _healthMonitor.RegisterHealthCheck("RecognitionSession", async () =>
+        _healthMonitor.RegisterHealthCheck("RecognitionSession", () =>
         {
             var state = _recognitionSession.CurrentState;
             if (state == SessionState.Error)
             {
-                return HealthCheckResult.Unhealthy("Recognition session is in error state");
+                return Task.FromResult(HealthCheckResult.Unhealthy("Recognition session is in error state"));
             }
             
-            return HealthCheckResult.Healthy($"Recognition session state: {state}");
+            return Task.FromResult(HealthCheckResult.Healthy($"Recognition session state: {state}"));
         });
 
         // Settings provider health check

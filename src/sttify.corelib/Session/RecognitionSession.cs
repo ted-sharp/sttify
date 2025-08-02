@@ -153,7 +153,7 @@ public class RecognitionSession : IDisposable
         }
     }
 
-    private async Task InitializeModeAsync(CancellationToken cancellationToken)
+    private Task InitializeModeAsync(CancellationToken cancellationToken)
     {
         switch (CurrentMode)
         {
@@ -175,6 +175,8 @@ public class RecognitionSession : IDisposable
                 // Single utterance starts immediately but stops after first result
                 break;
         }
+        
+        return Task.CompletedTask;
     }
 
     public async Task StopAsync()

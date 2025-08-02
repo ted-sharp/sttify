@@ -113,7 +113,7 @@ public class WasapiAudioCapture : IDisposable
             {
                 captureDevice = deviceEnumerator.GetDevice(_settings.DeviceId);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 Telemetry.LogWarning("AudioDeviceNotFound", 
                     $"Specified device not found: {_settings.DeviceId}", 

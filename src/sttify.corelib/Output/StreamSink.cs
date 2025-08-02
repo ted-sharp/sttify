@@ -11,7 +11,7 @@ public class StreamSink : ITextOutputSink, IDisposable
     private MemoryMappedFile? _memoryMappedFile;
     private MemoryMappedViewAccessor? _memoryMappedAccessor;
     private readonly object _lock = new();
-    private bool _disposed;
+    private bool _disposed = false;
     private long _totalWrites;
     private long _totalBytesWritten;
 
@@ -64,15 +64,15 @@ public class StreamSink : ITextOutputSink, IDisposable
         }
     }
 
-    public async Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
+    public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {
-        return await Task.FromResult(IsAvailable && !_disposed);
+        return Task.FromResult(IsAvailable && !_disposed);
     }
 
-    public async Task SendAsync(string text, CancellationToken cancellationToken = default)
+    public Task SendAsync(string text, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(text) || _disposed)
-            return;
+            return Task.CompletedTask;
 
         var startTime = DateTime.UtcNow;
         var timestamp = startTime.ToString("yyyy-MM-ddTHH:mm:ss.fff");
@@ -101,7 +101,7 @@ public class StreamSink : ITextOutputSink, IDisposable
         {
             lock (_lock)
             {
-                if (_disposed) return;
+                if (_disposed) return Task.CompletedTask;
                 
                 switch (_settings.OutputType)
                 {
@@ -152,6 +152,8 @@ public class StreamSink : ITextOutputSink, IDisposable
             
             throw new TextOutputFailedException($"Failed to write to {_settings.OutputType}: {ex.Message}", ex);
         }
+        
+        return Task.CompletedTask;
     }
 
     private async Task WriteToFileAsync(string line, CancellationToken cancellationToken)
@@ -224,10 +226,10 @@ public class StreamSink : ITextOutputSink, IDisposable
         }
     }
 
-    private async Task RotateFileAsync()
+    private Task RotateFileAsync()
     {
         if (_fileWriter == null || string.IsNullOrEmpty(_settings.FilePath))
-            return;
+            return Task.CompletedTask;
 
         try
         {
@@ -263,6 +265,8 @@ public class StreamSink : ITextOutputSink, IDisposable
             // Try to reinitialize the file writer
             InitializeFileOutput();
         }
+        
+        return Task.CompletedTask;
     }
 
     private void InitializeSharedMemory()

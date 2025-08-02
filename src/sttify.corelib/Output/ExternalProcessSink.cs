@@ -17,19 +17,19 @@ public class ExternalProcessSink : ITextOutputSink
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
 
-    public async Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
+    public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
-            return false;
+            return Task.FromResult(false);
 
         if (_settings.ThrottleMs > 0)
         {
             var elapsed = DateTime.UtcNow - _lastSent;
             if (elapsed.TotalMilliseconds < _settings.ThrottleMs)
-                return false;
+                return Task.FromResult(false);
         }
 
-        return true;
+        return Task.FromResult(true);
     }
 
     public async Task SendAsync(string text, CancellationToken cancellationToken = default)

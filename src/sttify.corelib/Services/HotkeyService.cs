@@ -59,9 +59,9 @@ public class HotkeyService : IDisposable
         }
     }
 
-    private async Task RegisterApplicationHotkeysAsync()
+    private Task RegisterApplicationHotkeysAsync()
     {
-        if (_currentSettings?.Hotkeys == null) return;
+        if (_currentSettings?.Hotkeys == null) return Task.CompletedTask;
 
         // Register UI toggle hotkey
         if (!string.IsNullOrEmpty(_currentSettings.Hotkeys.ToggleUi))
@@ -98,6 +98,8 @@ public class HotkeyService : IDisposable
                 Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "EmergencyStop", Hotkey = _currentSettings.Hotkeys.EmergencyStop });
             }
         }
+        
+        return Task.CompletedTask;
     }
 
     private void OnHotkeyPressed(object? sender, HotkeyPressedEventArgs e)

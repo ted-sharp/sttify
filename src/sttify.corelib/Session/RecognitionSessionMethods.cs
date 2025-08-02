@@ -15,22 +15,24 @@ public static class RecognitionSessionExtensions
     }
 
     // PTT (Push-to-Talk) methods
-    public static async Task StartPttAsync(this RecognitionSession session)
+    public static Task StartPttAsync(this RecognitionSession session)
     {
         if (session.CurrentMode != RecognitionMode.Ptt)
-            return;
+            return Task.CompletedTask;
 
         // This would be implemented in the main class
         Telemetry.LogEvent("PttStarted");
+        return Task.CompletedTask;
     }
 
-    public static async Task StopPttAsync(this RecognitionSession session)
+    public static Task StopPttAsync(this RecognitionSession session)
     {
         if (session.CurrentMode != RecognitionMode.Ptt)
-            return;
+            return Task.CompletedTask;
 
         // This would be implemented in the main class  
         Telemetry.LogEvent("PttStopped");
+        return Task.CompletedTask;
     }
 
     // Wake word detection

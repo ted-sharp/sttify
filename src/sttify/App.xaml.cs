@@ -212,7 +212,7 @@ public partial class App : System.Windows.Application
             // Make service provider globally accessible
             ServiceProvider = _host.Services;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Console.WriteLine($"InitializeServices failed: {ex.Message}");
             // Console.WriteLine($"Stack trace: {ex.StackTrace}");
