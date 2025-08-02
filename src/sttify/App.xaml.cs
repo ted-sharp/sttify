@@ -45,6 +45,21 @@ public partial class App : System.Windows.Application
         catch (Exception ex)
         {
             Telemetry.LogError("ApplicationStartupFailed", ex);
+            
+            // Output detailed error information to console
+            Console.WriteLine("=== APPLICATION STARTUP ERROR ===");
+            Console.WriteLine($"Exception Type: {ex.GetType().Name}");
+            Console.WriteLine($"Message: {ex.Message}");
+            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
+                Console.WriteLine($"Inner Message: {ex.InnerException.Message}");
+                Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
+            }
+            Console.WriteLine("==================================");
+            
             System.Windows.MessageBox.Show($"Failed to start application: {ex.Message}", "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
         }
@@ -81,6 +96,12 @@ public partial class App : System.Windows.Application
 
     private void InitializeTelemetry()
     {
+        // Allocate console for debugging if attached
+        if (Debugger.IsAttached)
+        {
+            AllocConsole();
+        }
+        
         var telemetrySettings = new TelemetrySettings
         {
             EnableConsoleLogging = Debugger.IsAttached,
@@ -89,6 +110,9 @@ public partial class App : System.Windows.Application
         
         Telemetry.Initialize(telemetrySettings);
     }
+    
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    private static extern bool AllocConsole();
 
     private void BuildHost()
     {
@@ -97,7 +121,11 @@ public partial class App : System.Windows.Application
             {
                 services.AddSingleton<SettingsProvider>();
                 services.AddSingleton<AudioCapture>();
-                services.AddSingleton<HotkeyManager>();
+                services.AddSingleton<HotkeyManager>(provider =>
+                {
+                    // Create HotkeyManager with default IntPtr (0) for window handle
+                    return new HotkeyManager(IntPtr.Zero);
+                });
                 services.AddSingleton<RtssBridge>(provider =>
                 {
                     var settingsProvider = provider.GetRequiredService<SettingsProvider>();
@@ -128,6 +156,25 @@ public partial class App : System.Windows.Application
                     };
                     
                     return sinks;
+                });
+                
+                services.AddSingleton<Sttify.Corelib.Session.RecognitionSessionSettings>(provider =>
+                {
+                    var settingsProvider = provider.GetRequiredService<SettingsProvider>();
+                    var sessionSettings = settingsProvider.GetSettingsAsync().Result.Session;
+                    
+                    return new Sttify.Corelib.Session.RecognitionSessionSettings
+                    {
+                        FinalizeTimeoutMs = TimeSpan.FromMilliseconds(sessionSettings.Boundary.FinalizeTimeoutMs),
+                        Delimiter = sessionSettings.Boundary.Delimiter,
+                        EndpointSilenceMs = 800,
+                        SampleRate = 16000,
+                        Channels = 1,
+                        BufferSizeMs = 100,
+                        WakeWords = ["スティファイ", "sttify"],
+                        VoiceActivityThreshold = 0.01,
+                        MinUtteranceLengthMs = 500
+                    };
                 });
                 
                 services.AddSingleton<RecognitionSession>();

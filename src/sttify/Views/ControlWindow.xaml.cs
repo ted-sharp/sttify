@@ -9,15 +9,20 @@ namespace Sttify.Views;
 
 public partial class ControlWindow : Window
 {
-    private readonly ApplicationService _applicationService;
-    private readonly MainViewModel _viewModel;
+    private readonly ApplicationService? _applicationService;
+    private readonly MainViewModel? _viewModel;
     private Storyboard? _currentPulseAnimation;
     private Sttify.Corelib.Session.SessionState _lastState = Sttify.Corelib.Session.SessionState.Idle;
 
-    public ControlWindow(ApplicationService applicationService, MainViewModel viewModel)
+    // Parameterless constructor for XAML
+    public ControlWindow()
     {
         InitializeComponent();
-        
+    }
+
+    // Constructor for dependency injection
+    public ControlWindow(ApplicationService applicationService, MainViewModel viewModel) : this()
+    {
         _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         
@@ -30,6 +35,8 @@ public partial class ControlWindow : Window
 
     private async void OnMicrophoneClick(object sender, MouseButtonEventArgs e)
     {
+        if (_applicationService == null) return;
+        
         try
         {
             var currentState = _applicationService.GetCurrentState();
@@ -94,6 +101,12 @@ public partial class ControlWindow : Window
 
     private void UpdateUI()
     {
+        if (_applicationService == null) 
+        {
+            StatusText.Text = "Not Connected";
+            return;
+        }
+        
         var currentState = _applicationService.GetCurrentState();
         
         // Only animate if state actually changed
