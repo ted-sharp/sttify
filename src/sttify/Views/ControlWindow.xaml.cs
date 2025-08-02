@@ -348,13 +348,63 @@ public partial class ControlWindow : Window
     {
         var (fillColor, iconText) = GetStateVisuals(newState);
         
-        // Stop any running animations
-        _currentPulseAnimation?.Stop();
-        _currentPulseAnimation = null;
-        _currentAudioLevelAnimation?.Stop();
-        _currentAudioLevelAnimation = null;
-        _currentProcessingAnimation?.Stop();
-        _currentProcessingAnimation = null;
+        // Stop any running animations immediately
+        try
+        {
+            if (_currentPulseAnimation != null)
+            {
+                _currentPulseAnimation.Stop();
+                _currentPulseAnimation.Remove();
+                _currentPulseAnimation = null;
+            }
+            
+            if (_currentAudioLevelAnimation != null)
+            {
+                _currentAudioLevelAnimation.Stop();
+                _currentAudioLevelAnimation.Remove();
+                _currentAudioLevelAnimation = null;
+            }
+            
+            if (_currentProcessingAnimation != null)
+            {
+                _currentProcessingAnimation.Stop();
+                _currentProcessingAnimation.Remove();
+                _currentProcessingAnimation = null;
+            }
+            
+            // Force stop all storyboards on the elements
+            var circleTransform = FindName("CircleScaleTransform") as ScaleTransform;
+            if (circleTransform != null)
+            {
+                circleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                circleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            }
+            
+            var iconRotateTransform = FindName("IconRotateTransform") as RotateTransform;
+            if (iconRotateTransform != null)
+            {
+                iconRotateTransform.BeginAnimation(RotateTransform.AngleProperty, null);
+            }
+            
+            var audioRingTransform = FindName("AudioRingScaleTransform") as ScaleTransform;
+            if (audioRingTransform != null)
+            {
+                audioRingTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+                audioRingTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            }
+            
+            Debug.WriteLine("AnimateStateChange: All animations forcefully stopped");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"AnimateStateChange: Error stopping animations: {ex.Message}");
+        }
+        
+        // Stop audio level monitoring
+        StopAudioLevelMonitoring();
+        
+        // Reset all transforms to default values
+        ResetTransforms();
         
         // Hide audio ring by default
         var audioRing = FindName("AudioRing") as Ellipse;
@@ -582,6 +632,46 @@ public partial class ControlWindow : Window
         else
         {
             Debug.WriteLine("TryRegisterApplicationService: App.ServiceProvider is null");
+        }
+    }
+    
+    private void ResetTransforms()
+    {
+        try
+        {
+            // Immediately reset all transform values
+            var circleTransform = FindName("CircleScaleTransform") as ScaleTransform;
+            if (circleTransform != null)
+            {
+                circleTransform.ScaleX = 1.0;
+                circleTransform.ScaleY = 1.0;
+            }
+            
+            var iconScaleTransform = FindName("IconScaleTransform") as ScaleTransform;
+            if (iconScaleTransform != null)
+            {
+                iconScaleTransform.ScaleX = 1.0;
+                iconScaleTransform.ScaleY = 1.0;
+            }
+            
+            var iconRotateTransform = FindName("IconRotateTransform") as RotateTransform;
+            if (iconRotateTransform != null)
+            {
+                iconRotateTransform.Angle = 0;
+            }
+            
+            var audioRingScaleTransform = FindName("AudioRingScaleTransform") as ScaleTransform;
+            if (audioRingScaleTransform != null)
+            {
+                audioRingScaleTransform.ScaleX = 1.0;
+                audioRingScaleTransform.ScaleY = 1.0;
+            }
+            
+            Debug.WriteLine("ResetTransforms: All transforms immediately reset to default values");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"ResetTransforms: Failed to reset transforms: {ex.Message}");
         }
     }
     

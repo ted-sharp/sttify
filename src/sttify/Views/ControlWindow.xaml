@@ -53,7 +53,7 @@
             <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever">
                 <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleY">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
-                    <EasingDoubleKeyFrame KeyTime="0:0:0.8" Value="1.1">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.8" Value="1.05">
                         <EasingDoubleKeyFrame.EasingFunction>
                             <SineEase EasingMode="EaseInOut"/>
                         </EasingDoubleKeyFrame.EasingFunction>
@@ -67,7 +67,7 @@
                 
                 <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleX">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
-                    <EasingDoubleKeyFrame KeyTime="0:0:0.8" Value="1.1">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.8" Value="1.05">
                         <EasingDoubleKeyFrame.EasingFunction>
                             <SineEase EasingMode="EaseInOut"/>
                         </EasingDoubleKeyFrame.EasingFunction>
@@ -163,7 +163,7 @@
             <Storyboard x:Key="AudioLevelAnimation" RepeatBehavior="Forever">
                 <DoubleAnimationUsingKeyFrames Storyboard.TargetName="AudioRingScaleTransform" Storyboard.TargetProperty="ScaleX">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
-                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1.2">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1.1">
                         <EasingDoubleKeyFrame.EasingFunction>
                             <SineEase EasingMode="EaseInOut"/>
                         </EasingDoubleKeyFrame.EasingFunction>
@@ -176,7 +176,7 @@
                 </DoubleAnimationUsingKeyFrames>
                 <DoubleAnimationUsingKeyFrames Storyboard.TargetName="AudioRingScaleTransform" Storyboard.TargetProperty="ScaleY">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
-                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1.2">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1.1">
                         <EasingDoubleKeyFrame.EasingFunction>
                             <SineEase EasingMode="EaseInOut"/>
                         </EasingDoubleKeyFrame.EasingFunction>
@@ -216,7 +216,7 @@
     
     <Grid>
         <!-- Audio Level Ring -->
-        <Ellipse Width="58" Height="58" 
+        <Ellipse Width="54" Height="54" 
                  Fill="Transparent" 
                  Stroke="#FF4CAF50" 
                  StrokeThickness="1"
