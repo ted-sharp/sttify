@@ -1,4 +1,17 @@
-#include "../pch.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <msctf.h>
+#include <atlbase.h>
+#include <atlcom.h>
+#include <atlstr.h>
+#include <memory>
+#include <string>
+#include <vector>
+#include <mutex>
+#include <thread>
+#include <atomic>
+
+#include "../framework.h"
 #include "LanguageProfile.h"
 
 CLanguageProfile::CLanguageProfile() :
@@ -100,7 +113,6 @@ BOOL CLanguageProfile::IsProfileActive()
     if (!_pInputProcessorProfiles)
         return FALSE;
 
-    CLSID clsid;
     LANGID langid;
     GUID guidProfile;
 
@@ -210,3 +222,4 @@ HRESULT CLanguageProfile::_RegisterCategory()
 
     return hr;
 }
+

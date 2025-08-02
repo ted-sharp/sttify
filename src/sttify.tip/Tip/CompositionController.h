@@ -13,7 +13,7 @@ public:
     HRESULT StartComposition(ITfRange* pRange);
     HRESULT EndComposition();
     HRESULT UpdateComposition(const std::wstring& text);
-    
+
     BOOL IsCompositionActive() const { return _pComposition != nullptr; }
     BOOL IsCompositionInProgress();
 
@@ -25,7 +25,8 @@ private:
     CComPtr<ITfContext> _pContext;
     CComPtr<ITfComposition> _pComposition;
     TfClientId _clientId;
-    
+
     std::wstring _currentCompositionText;
     mutable std::mutex _mutex;
 };
+

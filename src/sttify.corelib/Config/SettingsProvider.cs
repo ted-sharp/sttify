@@ -241,6 +241,8 @@ public class HotkeySettings
 {
     public string ToggleUi { get; set; } = "Win+Alt+H";
     public string ToggleMic { get; set; } = "Win+Alt+M";
+    public string PushToTalk { get; set; } = "Ctrl+Space";
+    public string EmergencyStop { get; set; } = "Ctrl+Alt+X";
 }
 
 public class PrivacySettings

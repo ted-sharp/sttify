@@ -1,5 +1,4 @@
 EXPORTS
 DllCanUnloadNow     PRIVATE
-DllGetActivationFactory PRIVATE
 DllRegisterServer   PRIVATE
 DllUnregisterServer PRIVATE

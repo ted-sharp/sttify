@@ -1,0 +1,619 @@
+using Sttify.Corelib.Diagnostics;
+using System.Collections.Concurrent;
+
+namespace Sttify.Corelib.Audio;
+
+public class EndpointDetector : IDisposable
+{
+    private readonly EndpointSettings _settings;
+    private readonly VoiceActivityDetector _vad;
+    private readonly ConcurrentQueue<EndpointEvent> _eventHistory = new();
+    private readonly Timer _timeoutTimer;
+    
+    private DateTime _sessionStartTime;
+    private DateTime _lastActivityTime;
+    private bool _isInUtterance;
+    private double _totalSpeechDuration;
+    private int _utteranceCount;
+
+    public event EventHandler<UtteranceStartedEventArgs>? OnUtteranceStarted;
+    public event EventHandler<UtteranceEndedEventArgs>? OnUtteranceEnded;
+    public event EventHandler<EndpointTriggeredEventArgs>? OnEndpointTriggered;
+    public event EventHandler<SessionTimeoutEventArgs>? OnSessionTimeout;
+
+    public bool IsInUtterance => _isInUtterance;
+    public TimeSpan SessionDuration => DateTime.UtcNow - _sessionStartTime;
+    public double TotalSpeechDuration => _totalSpeechDuration;
+    public int UtteranceCount => _utteranceCount;
+    public TimeSpan TimeSinceLastActivity => DateTime.UtcNow - _lastActivityTime;
+
+    public EndpointDetector(EndpointSettings? settings = null, VoiceActivityDetector? vad = null)
+    {
+        _settings = settings ?? new EndpointSettings();
+        _vad = vad ?? new VoiceActivityDetector();
+        _sessionStartTime = DateTime.UtcNow;
+        _lastActivityTime = DateTime.UtcNow;
+
+        // Subscribe to VAD events
+        _vad.OnVoiceActivityChanged += OnVoiceActivityChanged;
+        _vad.OnSilenceDetected += OnSilenceDetected;
+        _vad.OnEndpointDetected += OnVadEndpointDetected;
+
+        // Setup timeout timer
+        _timeoutTimer = new Timer(CheckTimeouts, null, 
+            TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    public EndpointResult ProcessAudioFrame(ReadOnlySpan<byte> audioData, int sampleRate, int channels)
+    {
+        try
+        {
+            var timestamp = DateTime.UtcNow;
+            
+            // Process through VAD
+            var vadResult = _vad.ProcessAudioFrame(audioData, sampleRate, channels);
+            
+            // Update activity tracking
+            if (vadResult.IsVoice)
+            {
+                _lastActivityTime = timestamp;
+            }
+
+            // Detect endpoints based on multiple criteria
+            var endpointResult = AnalyzeForEndpoints(vadResult, timestamp);
+
+            // Record event history
+            RecordEvent(new EndpointEvent
+            {
+                Timestamp = timestamp,
+                Type = EndpointEventType.AudioProcessed,
+                VadResult = vadResult,
+                EndpointResult = endpointResult
+            });
+
+            return endpointResult;
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("EndpointDetectionError", ex, new {
+                DataLength = audioData.Length,
+                SampleRate = sampleRate,
+                Channels = channels
+            });
+
+            return new EndpointResult
+            {
+                HasEndpoint = false,
+                EndpointType = EndpointType.Manual,
+                Confidence = 0.0,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+    }
+
+    private EndpointResult AnalyzeForEndpoints(VadResult vadResult, DateTime timestamp)
+    {
+        var result = new EndpointResult
+        {
+            HasEndpoint = false,
+            Timestamp = timestamp,
+            VadConfidence = vadResult.Confidence
+        };
+
+        // 1. Silence-based endpoint detection
+        if (!vadResult.IsVoice && _isInUtterance)
+        {
+            var silenceDuration = timestamp - _lastActivityTime;
+            
+            if (silenceDuration.TotalMilliseconds >= _settings.SilenceTimeoutMs)
+            {
+                result.HasEndpoint = true;
+                result.EndpointType = EndpointType.SilenceBased;
+                result.Confidence = CalculateSilenceConfidence(silenceDuration);
+                result.SilenceDuration = silenceDuration;
+                
+                Telemetry.LogEvent("SilenceEndpointDetected", new {
+                    SilenceDuration = silenceDuration.TotalMilliseconds,
+                    Confidence = result.Confidence
+                });
+            }
+        }
+
+        // 2. Energy-based endpoint detection
+        if (_settings.EnableEnergyEndpoint)
+        {
+            var energyEndpoint = DetectEnergyEndpoint(vadResult);
+            if (energyEndpoint.HasEndpoint && energyEndpoint.Confidence > result.Confidence)
+            {
+                result = energyEndpoint;
+            }
+        }
+
+        // 3. Maximum utterance length
+        if (_isInUtterance && _settings.MaxUtteranceDurationMs > 0)
+        {
+            var utteranceDuration = GetCurrentUtteranceDuration();
+            if (utteranceDuration.TotalMilliseconds >= _settings.MaxUtteranceDurationMs)
+            {
+                result.HasEndpoint = true;
+                result.EndpointType = EndpointType.Timeout;
+                result.Confidence = 1.0;
+                result.UtteranceDuration = utteranceDuration;
+                
+                Telemetry.LogEvent("TimeoutEndpointDetected", new {
+                    UtteranceDuration = utteranceDuration.TotalMilliseconds
+                });
+            }
+        }
+
+        // 4. Session timeout
+        if (_settings.MaxSessionDurationMs > 0)
+        {
+            var sessionDuration = timestamp - _sessionStartTime;
+            if (sessionDuration.TotalMilliseconds >= _settings.MaxSessionDurationMs)
+            {
+                result.HasEndpoint = true;
+                result.EndpointType = EndpointType.Timeout;
+                result.Confidence = 1.0;
+                result.SessionDuration = sessionDuration;
+                result.IsSessionTimeout = true;
+                
+                Telemetry.LogEvent("SessionTimeoutDetected", new {
+                    SessionDuration = sessionDuration.TotalMilliseconds
+                });
+            }
+        }
+
+        // 5. Adaptive endpoint based on speech patterns
+        if (_settings.EnableAdaptiveEndpoint && _utteranceCount > 0)
+        {
+            var adaptiveEndpoint = DetectAdaptiveEndpoint(vadResult, timestamp);
+            if (adaptiveEndpoint.HasEndpoint && adaptiveEndpoint.Confidence > result.Confidence)
+            {
+                result = adaptiveEndpoint;
+            }
+        }
+
+        return result;
+    }
+
+    private EndpointResult DetectEnergyEndpoint(VadResult vadResult)
+    {
+        var result = new EndpointResult { HasEndpoint = false };
+
+        if (_isInUtterance && vadResult.Energy < _settings.EnergyEndpointThreshold)
+        {
+            // Check recent energy trend
+            var recentEvents = GetRecentEvents(TimeSpan.FromMilliseconds(500));
+            var recentEnergies = recentEvents
+                .Where(e => e.VadResult != null)
+                .Select(e => e.VadResult!.Energy)
+                .ToArray();
+
+            if (recentEnergies.Length > 3)
+            {
+                var avgRecentEnergy = recentEnergies.Average();
+                if (avgRecentEnergy < _settings.EnergyEndpointThreshold)
+                {
+                    result.HasEndpoint = true;
+                    result.EndpointType = EndpointType.EnergyBased;
+                    result.Confidence = CalculateEnergyConfidence(avgRecentEnergy);
+                    result.AverageEnergy = avgRecentEnergy;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private EndpointResult DetectAdaptiveEndpoint(VadResult vadResult, DateTime timestamp)
+    {
+        var result = new EndpointResult { HasEndpoint = false };
+
+        // Analyze speech patterns from previous utterances
+        var recentUtterances = GetRecentUtteranceStats();
+        if (recentUtterances.Count < 2) return result;
+
+        var avgUtteranceLength = recentUtterances.Average(u => u.Duration.TotalMilliseconds);
+        var avgSilenceLength = recentUtterances.Average(u => u.EndSilence.TotalMilliseconds);
+
+        if (_isInUtterance)
+        {
+            var currentUtteranceDuration = GetCurrentUtteranceDuration();
+            var timeSinceLastVoice = timestamp - _lastActivityTime;
+
+            // If current utterance is significantly longer than average
+            // and we have some silence, it might be an endpoint
+            if (currentUtteranceDuration.TotalMilliseconds > avgUtteranceLength * 1.5 &&
+                timeSinceLastVoice.TotalMilliseconds > avgSilenceLength * 0.5)
+            {
+                result.HasEndpoint = true;
+                result.EndpointType = EndpointType.SilenceBased;
+                result.Confidence = CalculateAdaptiveConfidence(
+                    currentUtteranceDuration, avgUtteranceLength,
+                    timeSinceLastVoice, avgSilenceLength);
+            }
+        }
+
+        return result;
+    }
+
+    private void OnVoiceActivityChanged(object? sender, VoiceActivityEventArgs e)
+    {
+        if (e.IsActive && !_isInUtterance)
+        {
+            // Utterance started
+            _isInUtterance = true;
+            _utteranceCount++;
+            
+            var startEvent = new UtteranceStartedEventArgs(_utteranceCount, e.Confidence, e.Timestamp);
+            OnUtteranceStarted?.Invoke(this, startEvent);
+            
+            RecordEvent(new EndpointEvent
+            {
+                Timestamp = e.Timestamp,
+                Type = EndpointEventType.UtteranceStarted,
+                Confidence = e.Confidence
+            });
+
+            Telemetry.LogEvent("UtteranceStarted", new {
+                UtteranceNumber = _utteranceCount,
+                Confidence = e.Confidence,
+                SessionDuration = (e.Timestamp - _sessionStartTime).TotalSeconds
+            });
+        }
+        else if (!e.IsActive && _isInUtterance)
+        {
+            // Potential utterance end - will be confirmed by endpoint detection
+            _lastActivityTime = e.Timestamp;
+        }
+    }
+
+    private void OnSilenceDetected(object? sender, SilenceDetectedEventArgs e)
+    {
+        if (_isInUtterance)
+        {
+            _totalSpeechDuration += e.VoiceDuration.TotalSeconds;
+        }
+    }
+
+    private void OnVadEndpointDetected(object? sender, EndpointDetectedEventArgs e)
+    {
+        if (_isInUtterance)
+        {
+            TriggerEndpoint(new EndpointResult
+            {
+                HasEndpoint = true,
+                EndpointType = e.Type,
+                Confidence = 0.8,
+                SilenceDuration = e.Duration,
+                Timestamp = e.Timestamp
+            });
+        }
+    }
+
+    public void TriggerManualEndpoint()
+    {
+        TriggerEndpoint(new EndpointResult
+        {
+            HasEndpoint = true,
+            EndpointType = EndpointType.Manual,
+            Confidence = 1.0,
+            Timestamp = DateTime.UtcNow
+        });
+
+        Telemetry.LogEvent("ManualEndpointTriggered");
+    }
+
+    private void TriggerEndpoint(EndpointResult result)
+    {
+        if (_isInUtterance)
+        {
+            _isInUtterance = false;
+            
+            var utteranceDuration = GetCurrentUtteranceDuration();
+            
+            var endEvent = new UtteranceEndedEventArgs(
+                _utteranceCount, utteranceDuration, result.EndpointType, result.Confidence, result.Timestamp);
+            OnUtteranceEnded?.Invoke(this, endEvent);
+            
+            RecordEvent(new EndpointEvent
+            {
+                Timestamp = result.Timestamp,
+                Type = EndpointEventType.UtteranceEnded,
+                EndpointResult = result,
+                UtteranceDuration = utteranceDuration
+            });
+
+            Telemetry.LogEvent("UtteranceEnded", new {
+                UtteranceNumber = _utteranceCount,
+                Duration = utteranceDuration.TotalMilliseconds,
+                EndpointType = result.EndpointType.ToString(),
+                Confidence = result.Confidence
+            });
+        }
+
+        OnEndpointTriggered?.Invoke(this, new EndpointTriggeredEventArgs(result));
+
+        if (result.IsSessionTimeout)
+        {
+            OnSessionTimeout?.Invoke(this, new SessionTimeoutEventArgs(result.SessionDuration ?? TimeSpan.Zero));
+        }
+    }
+
+    private void CheckTimeouts(object? state)
+    {
+        var now = DateTime.UtcNow;
+        
+        // Check for session timeout
+        if (_settings.MaxSessionDurationMs > 0)
+        {
+            var sessionDuration = now - _sessionStartTime;
+            if (sessionDuration.TotalMilliseconds >= _settings.MaxSessionDurationMs)
+            {
+                TriggerEndpoint(new EndpointResult
+                {
+                    HasEndpoint = true,
+                    EndpointType = EndpointType.Timeout,
+                    Confidence = 1.0,
+                    SessionDuration = sessionDuration,
+                    IsSessionTimeout = true,
+                    Timestamp = now
+                });
+            }
+        }
+
+        // Check for inactivity timeout
+        if (_settings.InactivityTimeoutMs > 0)
+        {
+            var inactivityDuration = now - _lastActivityTime;
+            if (inactivityDuration.TotalMilliseconds >= _settings.InactivityTimeoutMs)
+            {
+                if (_isInUtterance)
+                {
+                    TriggerEndpoint(new EndpointResult
+                    {
+                        HasEndpoint = true,
+                        EndpointType = EndpointType.Timeout,
+                        Confidence = 0.9,
+                        SilenceDuration = inactivityDuration,
+                        Timestamp = now
+                    });
+                }
+            }
+        }
+    }
+
+    private double CalculateSilenceConfidence(TimeSpan silenceDuration)
+    {
+        var ratio = silenceDuration.TotalMilliseconds / _settings.SilenceTimeoutMs;
+        return Math.Min(1.0, 0.5 + ratio * 0.5);
+    }
+
+    private double CalculateEnergyConfidence(double avgEnergy)
+    {
+        var threshold = _settings.EnergyEndpointThreshold;
+        var ratio = (threshold - avgEnergy) / threshold;
+        return Math.Max(0.0, Math.Min(1.0, ratio));
+    }
+
+    private double CalculateAdaptiveConfidence(TimeSpan currentDuration, double avgDuration,
+                                             TimeSpan currentSilence, double avgSilence)
+    {
+        var durationFactor = Math.Min(1.0, currentDuration.TotalMilliseconds / avgDuration);
+        var silenceFactor = Math.Min(1.0, currentSilence.TotalMilliseconds / avgSilence);
+        return (durationFactor + silenceFactor) / 2.0;
+    }
+
+    private TimeSpan GetCurrentUtteranceDuration()
+    {
+        var startEvent = _eventHistory
+            .Where(e => e.Type == EndpointEventType.UtteranceStarted)
+            .OrderByDescending(e => e.Timestamp)
+            .FirstOrDefault();
+
+        return startEvent != null ? DateTime.UtcNow - startEvent.Timestamp : TimeSpan.Zero;
+    }
+
+    private List<EndpointEvent> GetRecentEvents(TimeSpan timespan)
+    {
+        var cutoff = DateTime.UtcNow - timespan;
+        return _eventHistory.Where(e => e.Timestamp >= cutoff).OrderByDescending(e => e.Timestamp).ToList();
+    }
+
+    private List<UtteranceStats> GetRecentUtteranceStats()
+    {
+        var stats = new List<UtteranceStats>();
+        var events = _eventHistory.OrderByDescending(e => e.Timestamp).ToArray();
+        
+        EndpointEvent? endEvent = null;
+        for (int i = 0; i < events.Length; i++)
+        {
+            var evt = events[i];
+            
+            if (evt.Type == EndpointEventType.UtteranceEnded && endEvent == null)
+            {
+                endEvent = evt;
+            }
+            else if (evt.Type == EndpointEventType.UtteranceStarted && endEvent != null)
+            {
+                stats.Add(new UtteranceStats
+                {
+                    Duration = endEvent.Timestamp - evt.Timestamp,
+                    EndSilence = endEvent.EndpointResult?.SilenceDuration ?? TimeSpan.Zero
+                });
+                
+                endEvent = null;
+                if (stats.Count >= 5) break; // Limit to recent utterances
+            }
+        }
+        
+        return stats;
+    }
+
+    private void RecordEvent(EndpointEvent evt)
+    {
+        _eventHistory.Enqueue(evt);
+        
+        // Keep history manageable
+        while (_eventHistory.Count > _settings.MaxEventHistory)
+        {
+            _eventHistory.TryDequeue(out _);
+        }
+    }
+
+    public EndpointStatistics GetStatistics()
+    {
+        return new EndpointStatistics
+        {
+            SessionDuration = SessionDuration,
+            TotalSpeechDuration = _totalSpeechDuration,
+            UtteranceCount = _utteranceCount,
+            IsInUtterance = _isInUtterance,
+            TimeSinceLastActivity = TimeSinceLastActivity,
+            EventHistoryCount = _eventHistory.Count,
+            VadStatistics = _vad.GetStatistics()
+        };
+    }
+
+    public void Reset()
+    {
+        _sessionStartTime = DateTime.UtcNow;
+        _lastActivityTime = DateTime.UtcNow;
+        _isInUtterance = false;
+        _totalSpeechDuration = 0;
+        _utteranceCount = 0;
+        
+        while (_eventHistory.TryDequeue(out _)) { }
+        
+        _vad.Reset();
+        
+        Telemetry.LogEvent("EndpointDetectorReset");
+    }
+
+    public void Dispose()
+    {
+        _timeoutTimer?.Dispose();
+        _vad?.Dispose();
+        while (_eventHistory.TryDequeue(out _)) { }
+    }
+}
+
+public class EndpointSettings
+{
+    public int SilenceTimeoutMs { get; set; } = 800;
+    public int MaxUtteranceDurationMs { get; set; } = 30000;
+    public int MaxSessionDurationMs { get; set; } = 300000; // 5 minutes
+    public int InactivityTimeoutMs { get; set; } = 10000;
+    public int MaxEventHistory { get; set; } = 1000;
+    
+    public bool EnableEnergyEndpoint { get; set; } = true;
+    public double EnergyEndpointThreshold { get; set; } = -40.0; // dB
+    
+    public bool EnableAdaptiveEndpoint { get; set; } = true;
+}
+
+public class EndpointResult
+{
+    public bool HasEndpoint { get; set; }
+    public EndpointType EndpointType { get; set; }
+    public double Confidence { get; set; }
+    public DateTime Timestamp { get; set; }
+    
+    // Additional context
+    public double VadConfidence { get; set; }
+    public TimeSpan? SilenceDuration { get; set; }
+    public TimeSpan? UtteranceDuration { get; set; }
+    public TimeSpan? SessionDuration { get; set; }
+    public double? AverageEnergy { get; set; }
+    public bool IsSessionTimeout { get; set; }
+}
+
+public class EndpointEvent
+{
+    public DateTime Timestamp { get; set; }
+    public EndpointEventType Type { get; set; }
+    public double Confidence { get; set; }
+    public VadResult? VadResult { get; set; }
+    public EndpointResult? EndpointResult { get; set; }
+    public TimeSpan? UtteranceDuration { get; set; }
+}
+
+public class UtteranceStats
+{
+    public TimeSpan Duration { get; set; }
+    public TimeSpan EndSilence { get; set; }
+}
+
+public class EndpointStatistics
+{
+    public TimeSpan SessionDuration { get; set; }
+    public double TotalSpeechDuration { get; set; }
+    public int UtteranceCount { get; set; }
+    public bool IsInUtterance { get; set; }
+    public TimeSpan TimeSinceLastActivity { get; set; }
+    public int EventHistoryCount { get; set; }
+    public VadStatistics? VadStatistics { get; set; }
+}
+
+public enum EndpointEventType
+{
+    AudioProcessed,
+    UtteranceStarted,
+    UtteranceEnded,
+    EndpointDetected,
+    Timeout
+}
+
+// Event argument classes
+public class UtteranceStartedEventArgs : EventArgs
+{
+    public int UtteranceNumber { get; }
+    public double Confidence { get; }
+    public DateTime Timestamp { get; }
+
+    public UtteranceStartedEventArgs(int utteranceNumber, double confidence, DateTime timestamp)
+    {
+        UtteranceNumber = utteranceNumber;
+        Confidence = confidence;
+        Timestamp = timestamp;
+    }
+}
+
+public class UtteranceEndedEventArgs : EventArgs
+{
+    public int UtteranceNumber { get; }
+    public TimeSpan Duration { get; }
+    public EndpointType EndpointType { get; }
+    public double Confidence { get; }
+    public DateTime Timestamp { get; }
+
+    public UtteranceEndedEventArgs(int utteranceNumber, TimeSpan duration, EndpointType endpointType, double confidence, DateTime timestamp)
+    {
+        UtteranceNumber = utteranceNumber;
+        Duration = duration;
+        EndpointType = endpointType;
+        Confidence = confidence;
+        Timestamp = timestamp;
+    }
+}
+
+public class EndpointTriggeredEventArgs : EventArgs
+{
+    public EndpointResult Result { get; }
+
+    public EndpointTriggeredEventArgs(EndpointResult result)
+    {
+        Result = result;
+    }
+}
+
+public class SessionTimeoutEventArgs : EventArgs
+{
+    public TimeSpan SessionDuration { get; }
+
+    public SessionTimeoutEventArgs(TimeSpan sessionDuration)
+    {
+        SessionDuration = sessionDuration;
+    }
+}

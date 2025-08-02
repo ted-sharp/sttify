@@ -1,4 +1,17 @@
-#include "../pch.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <msctf.h>
+#include <atlbase.h>
+#include <atlcom.h>
+#include <atlstr.h>
+#include <memory>
+#include <string>
+#include <vector>
+#include <mutex>
+#include <thread>
+#include <atomic>
+
+#include "../framework.h"
 #include "TipIpcServer.h"
 #include "../Tip/TextService.h"
 
@@ -193,3 +206,4 @@ std::vector<std::wstring> CTipIpcServer::_SplitString(const std::wstring& str, w
 
     return result;
 }
+

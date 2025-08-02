@@ -1,8 +1,15 @@
-#include "pch.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <atlbase.h>
+#include <atlcom.h>
+#include "Tip/TextService.h"
+
+// GUIDs and constants defined in guids.cpp
 
 CComModule _Module;
 
 BEGIN_OBJECT_MAP(ObjectMap)
+    OBJECT_ENTRY(GUID_STTIFY_TIP_TEXTSERVICE, CTextService)
 END_OBJECT_MAP()
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
@@ -25,10 +32,6 @@ STDAPI DllCanUnloadNow()
     return (_Module.GetLockCount() == 0) ? S_OK : S_FALSE;
 }
 
-STDAPI DllGetActivationFactory(HSTRING activatableClassId, IActivationFactory** factory)
-{
-    return E_NOTIMPL;
-}
 
 STDAPI DllRegisterServer()
 {
@@ -39,3 +42,4 @@ STDAPI DllUnregisterServer()
 {
     return _Module.UnregisterServer(TRUE);
 }
+

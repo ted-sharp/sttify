@@ -1,4 +1,17 @@
-#include "../pch.h"
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <msctf.h>
+#include <atlbase.h>
+#include <atlcom.h>
+#include <atlstr.h>
+#include <memory>
+#include <string>
+#include <vector>
+#include <mutex>
+#include <thread>
+#include <atomic>
+
+#include "../framework.h"
 #include "TextService.h"
 #include "CompositionController.h"
 #include "LanguageProfile.h"
@@ -73,6 +86,25 @@ STDMETHODIMP CTextService::OnEndEdit(ITfContext* pContext, TfEditCookie ecReadOn
     return S_OK;
 }
 
+STDMETHODIMP CTextService::DoEditSession(TfEditCookie ec)
+{
+    if (!_pCurrentContext || _pendingText.empty())
+        return E_FAIL;
+
+    CComPtr<ITfInsertAtSelection> pInsertAtSelection;
+    HRESULT hr = _pCurrentContext->QueryInterface(IID_ITfInsertAtSelection, (void**)&pInsertAtSelection);
+    if (FAILED(hr))
+        return hr;
+
+    CComPtr<ITfRange> pRange;
+    hr = pInsertAtSelection->InsertTextAtSelection(ec, 0, _pendingText.c_str(), (LONG)_pendingText.length(), &pRange);
+
+    _pendingText.clear();
+    _pCurrentContext.Release();
+
+    return hr;
+}
+
 HRESULT CTextService::SendText(const std::wstring& text)
 {
     std::lock_guard<std::mutex> lock(_mutex);
@@ -93,7 +125,14 @@ HRESULT CTextService::SendText(const std::wstring& text)
     if (FAILED(hr) || !pContext)
         return hr;
 
-    return _InsertTextAtSelection(pContext, text);
+    // Store text and context for edit session
+    _pendingText = text;
+    _pCurrentContext = pContext;
+
+    HRESULT hrSession;
+    hr = pContext->RequestEditSession(_tfClientId, this, TF_ES_READWRITE | TF_ES_SYNC, &hrSession);
+
+    return hr;
 }
 
 BOOL CTextService::CanInsert()
@@ -132,11 +171,11 @@ HRESULT CTextService::_InitLanguageProfile()
     if (FAILED(hr))
         return hr;
 
-    hr = pInputProcessorProfiles->Register(_tfClientId);
+    hr = pInputProcessorProfiles->Register(GUID_STTIFY_TIP_TEXTSERVICE);
     if (FAILED(hr))
         return hr;
 
-    hr = pInputProcessorProfiles->AddLanguageProfile(_tfClientId,
+    hr = pInputProcessorProfiles->AddLanguageProfile(GUID_STTIFY_TIP_TEXTSERVICE,
         STTIFY_TIP_LANGID,
         GUID_STTIFY_TIP_LANGPROFILE,
         STTIFY_TIP_DESC,
@@ -178,26 +217,6 @@ HRESULT CTextService::_UninitThreadMgrEventSink()
     return hr;
 }
 
-HRESULT CTextService::_InsertTextAtSelection(ITfContext* pContext, const std::wstring& text)
-{
-    if (!pContext || text.empty())
-        return E_INVALIDARG;
-
-    TfEditCookie ec;
-    HRESULT hr = pContext->RequestEditSession(_tfClientId, this, TF_ES_READWRITE | TF_ES_SYNC, &ec);
-    if (FAILED(hr))
-        return hr;
-
-    CComPtr<ITfInsertAtSelection> pInsertAtSelection;
-    hr = pContext->QueryInterface(IID_ITfInsertAtSelection, (void**)&pInsertAtSelection);
-    if (FAILED(hr))
-        return hr;
-
-    CComPtr<ITfRange> pRange;
-    hr = pInsertAtSelection->InsertTextAtSelection(ec, 0, text.c_str(), (LONG)text.length(), &pRange);
-    
-    return hr;
-}
 
 BOOL CTextService::_IsCompositionActive()
 {
@@ -227,6 +246,7 @@ BOOL CTextService::_IsCompositionActive()
     CComPtr<ITfCompositionView> pCompositionView;
     ULONG fetched;
     hr = pEnumCompositionView->Next(1, &pCompositionView, &fetched);
-    
+
     return (SUCCEEDED(hr) && fetched > 0);
 }
+
