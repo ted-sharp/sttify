@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using Sttify.Corelib.Config;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using Sttify.Corelib.Localization;
 
 namespace Sttify.Views;
 
@@ -209,7 +210,7 @@ public partial class ControlWindow : Window
         if (applicationService == null)
         {
             Debug.WriteLine("OnMicrophoneRightClick: ApplicationService is not available");
-            var noServiceItem = new System.Windows.Controls.MenuItem { Header = "Service Not Available", IsEnabled = false };
+            var noServiceItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.service_unavailable"), IsEnabled = false };
             contextMenu.Items.Add(noServiceItem);
         }
         else
@@ -219,12 +220,12 @@ public partial class ControlWindow : Window
             
             if (currentState == Sttify.Corelib.Session.SessionState.Listening)
             {
-                micItem.Header = "Stop Recognition";
+                micItem.Header = LocalizationManager.GetString("menu.stop_recognition");
                 micItem.Click += async (s, args) => await applicationService.StopRecognitionAsync();
             }
             else
             {
-                micItem.Header = "Start Recognition";
+                micItem.Header = LocalizationManager.GetString("menu.start_recognition");
                 micItem.Click += async (s, args) => await applicationService.StartRecognitionAsync();
             }
             
@@ -232,17 +233,17 @@ public partial class ControlWindow : Window
             contextMenu.Items.Add(new System.Windows.Controls.Separator());
         }
         
-        var settingsItem = new System.Windows.Controls.MenuItem { Header = "Settings..." };
+        var settingsItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.settings") };
         settingsItem.Click += (s, args) => ShowSettingsWindow();
         contextMenu.Items.Add(settingsItem);
         
         contextMenu.Items.Add(new System.Windows.Controls.Separator());
         
-        var hideItem = new System.Windows.Controls.MenuItem { Header = "Hide" };
+        var hideItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.hide") };
         hideItem.Click += (s, args) => Hide();
         contextMenu.Items.Add(hideItem);
         
-        var exitItem = new System.Windows.Controls.MenuItem { Header = "Exit" };
+        var exitItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.exit") };
         exitItem.Click += (s, args) => System.Windows.Application.Current.Shutdown();
         contextMenu.Items.Add(exitItem);
         

@@ -2,6 +2,7 @@ using Sttify.Corelib.Audio;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
 using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Plugins;
 
 namespace Sttify.Corelib.Session;
 
@@ -11,6 +12,7 @@ public class RecognitionSession : IDisposable
     private readonly ISttEngine _sttEngine;
     private readonly IEnumerable<ITextOutputSink> _outputSinks;
     private readonly RecognitionSessionSettings _settings;
+    private readonly PluginManager? _pluginManager;
 
     public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
@@ -44,12 +46,14 @@ public class RecognitionSession : IDisposable
         AudioCapture audioCapture,
         ISttEngine sttEngine,
         IEnumerable<ITextOutputSink> outputSinks,
-        RecognitionSessionSettings settings)
+        RecognitionSessionSettings settings,
+        PluginManager? pluginManager = null)
     {
         _audioCapture = audioCapture ?? throw new ArgumentNullException(nameof(audioCapture));
         _sttEngine = sttEngine ?? throw new ArgumentNullException(nameof(sttEngine));
         _outputSinks = outputSinks ?? throw new ArgumentNullException(nameof(outputSinks));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        _pluginManager = pluginManager;
 
         _audioCapture.OnFrame += OnAudioFrame;
         _sttEngine.OnPartial += OnPartialRecognition;
@@ -201,7 +205,14 @@ public class RecognitionSession : IDisposable
         if (string.IsNullOrWhiteSpace(e.Text))
             return;
 
-        OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(e.Text, true, e.Confidence));
+        // Process text through plugins if available
+        var processedText = e.Text;
+        if (_pluginManager != null)
+        {
+            processedText = await ProcessTextThroughPluginsAsync(e.Text);
+        }
+
+        OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(processedText, true, e.Confidence));
 
         foreach (var sink in _outputSinks)
         {
@@ -209,7 +220,7 @@ public class RecognitionSession : IDisposable
             {
                 if (await sink.CanSendAsync())
                 {
-                    await sink.SendAsync(e.Text);
+                    await sink.SendAsync(processedText);
                     break;
                 }
             }
@@ -218,6 +229,33 @@ public class RecognitionSession : IDisposable
                 System.Diagnostics.Debug.WriteLine($"Failed to send text via {sink.Name}: {ex.Message}");
             }
         }
+    }
+
+    private async Task<string> ProcessTextThroughPluginsAsync(string text)
+    {
+        if (_pluginManager == null)
+            return text;
+
+        var processedText = text;
+        var plugins = _pluginManager.GetLoadedPlugins();
+        
+        foreach (var plugin in plugins)
+        {
+            try
+            {
+                // Only process through text processing plugins
+                if (plugin.CanHandleTextProcessing())
+                {
+                    processedText = await plugin.ProcessTextAsync(processedText);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Plugin {plugin.Name} failed to process text: {ex.Message}");
+            }
+        }
+
+        return processedText;
     }
 
     // Add the missing methods that are referenced in the enhanced code

@@ -197,6 +197,7 @@ public class CloudEngineSettings
     public string Provider { get; set; } = "azure";
     public string Endpoint { get; set; } = "";
     public string ApiKey { get; set; } = "";
+    public string SecretKey { get; set; } = ""; // For AWS Access Secret Key
     public string Language { get; set; } = "ja-JP";
     public string Region { get; set; } = "";
     public int TimeoutSeconds { get; set; } = 30;

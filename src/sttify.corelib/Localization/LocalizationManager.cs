@@ -174,6 +174,36 @@ public static class LocalizationManager
             ["settings.audio_device"] = "Audio Input Device",
             ["settings.sample_rate"] = "Sample Rate:",
             ["settings.channels"] = "Channels:",
+            ["settings.audio_quality"] = "Audio Quality",
+            ["settings.sample_rate_desc"] = "Higher sample rates provide better quality but use more processing power",
+            ["settings.channels_desc"] = "Mono is recommended for speech recognition",
+            ["settings.sample_rate_16k"] = "16000 Hz (Recommended for speech)",
+            ["settings.sample_rate_22k"] = "22050 Hz",
+            ["settings.sample_rate_44k"] = "44100 Hz (High quality)",
+            ["settings.channels_mono"] = "Mono (1 channel - Recommended)",
+            ["settings.channels_stereo"] = "Stereo (2 channels)",
+            
+            // Recognition Modes
+            ["settings.recognition_mode"] = "Recognition Mode",
+            ["settings.mode_ptt"] = "Push-to-Talk (PTT)",
+            ["settings.mode_ptt_desc"] = "Press and hold hotkey to activate speech recognition",
+            ["settings.mode_single"] = "Single Utterance",
+            ["settings.mode_single_desc"] = "Recognize one phrase at a time, automatically stopping after silence",
+            ["settings.mode_continuous"] = "Continuous Recognition",
+            ["settings.mode_continuous_desc"] = "Always-on recognition, continuously processing speech",
+            ["settings.mode_wakeword"] = "Wake Word Activation",
+            ["settings.mode_wakeword_desc"] = "Start recognition when 'スティファイ' (Sttify) is detected",
+            ["settings.silence_detection"] = "Silence Detection",
+            ["settings.endpoint_silence"] = "Endpoint Silence (milliseconds):",
+            
+            // Context Menu
+            ["menu.start_recognition"] = "Start Recognition",
+            ["menu.stop_recognition"] = "Stop Recognition",
+            ["menu.settings"] = "Settings...",
+            ["menu.hide"] = "Hide",
+            ["menu.exit"] = "Exit",
+            ["menu.service_unavailable"] = "Service Not Available",
+            ["settings.channels"] = "Channels:",
             
             // Engine Settings
             ["settings.engine_type"] = "Engine Type:",
@@ -242,6 +272,40 @@ public static class LocalizationManager
             ["settings.show_in_tray"] = "システムトレイに表示",
             ["settings.start_minimized"] = "最小化して起動",
             ["settings.mask_logs"] = "ログでテキストをマスク",
+            
+            // Audio Settings (Japanese)
+            ["settings.audio_device"] = "音声入力デバイス",
+            ["settings.sample_rate"] = "サンプルレート:",
+            ["settings.channels"] = "チャンネル:",
+            ["settings.audio_quality"] = "音声品質",
+            ["settings.sample_rate_desc"] = "高いサンプルレートは品質を向上させますが、より多くの処理能力を使用します",
+            ["settings.channels_desc"] = "音声認識にはモノラルが推奨されます",
+            ["settings.sample_rate_16k"] = "16000 Hz (音声認識推奨)",
+            ["settings.sample_rate_22k"] = "22050 Hz",
+            ["settings.sample_rate_44k"] = "44100 Hz (高品質)",
+            ["settings.channels_mono"] = "モノラル (1チャンネル - 推奨)",
+            ["settings.channels_stereo"] = "ステレオ (2チャンネル)",
+            
+            // Recognition Modes (Japanese)
+            ["settings.recognition_mode"] = "認識モード",
+            ["settings.mode_ptt"] = "プッシュ・トゥ・トーク (PTT)",
+            ["settings.mode_ptt_desc"] = "ホットキーを押し続けて音声認識を有効にします",
+            ["settings.mode_single"] = "単発認識",
+            ["settings.mode_single_desc"] = "一度に一つのフレーズを認識し、無音後に自動停止",
+            ["settings.mode_continuous"] = "連続認識",
+            ["settings.mode_continuous_desc"] = "常時オンの認識、継続的に音声を処理",
+            ["settings.mode_wakeword"] = "ウェイクワード起動",
+            ["settings.mode_wakeword_desc"] = "'スティファイ' (Sttify) が検出されたときに認識を開始",
+            ["settings.silence_detection"] = "無音検出",
+            ["settings.endpoint_silence"] = "終了無音時間 (ミリ秒):",
+            
+            // Context Menu (Japanese)
+            ["menu.start_recognition"] = "認識開始",
+            ["menu.stop_recognition"] = "認識停止",
+            ["menu.settings"] = "設定...",
+            ["menu.hide"] = "非表示",
+            ["menu.exit"] = "終了",
+            ["menu.service_unavailable"] = "サービス利用不可",
             
             ["settings.audio_device"] = "音声入力デバイス",
             ["settings.sample_rate"] = "サンプルレート:",

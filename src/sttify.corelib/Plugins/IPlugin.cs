@@ -64,6 +64,23 @@ public interface ITextProcessorPlugin : IPlugin
     string[] SupportedLanguages { get; }
 }
 
+public static class PluginExtensions
+{
+    public static bool CanHandleTextProcessing(this IPlugin plugin)
+    {
+        return plugin.Capabilities.HasFlag(PluginCapabilities.TextProcessor) && plugin is ITextProcessorPlugin;
+    }
+
+    public static async Task<string> ProcessTextAsync(this IPlugin plugin, string text)
+    {
+        if (plugin is ITextProcessorPlugin textProcessor)
+        {
+            return await textProcessor.ProcessTextAsync(text, "auto", "auto");
+        }
+        return text;
+    }
+}
+
 public class PluginMetadata
 {
     public string Name { get; set; } = "";

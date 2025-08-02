@@ -25,6 +25,8 @@ public static class EngineFactory
         return settings.Provider.ToLowerInvariant() switch
         {
             "azure" => new AzureSpeechEngine(settings),
+            "google" => new GoogleCloudSpeechEngine(settings),
+            "aws" => new AwsTranscribeEngine(settings),
             _ => throw new ArgumentException($"Unsupported cloud provider: {settings.Provider}")
         };
     }
@@ -45,7 +47,9 @@ public static class EngineFactory
     {
         return new[]
         {
-            "azure"
+            "azure",
+            "google",
+            "aws"
         };
     }
 

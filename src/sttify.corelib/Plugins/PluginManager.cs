@@ -189,6 +189,14 @@ public class PluginManager : IDisposable
         }
     }
 
+    public IPlugin[] GetLoadedPlugins()
+    {
+        lock (_lockObject)
+        {
+            return _loadedPlugins.Values.ToArray();
+        }
+    }
+
     public PluginMetadata[] GetLoadedPluginsMetadata()
     {
         lock (_lockObject)

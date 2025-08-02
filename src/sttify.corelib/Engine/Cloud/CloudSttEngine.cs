@@ -206,6 +206,8 @@ public abstract class CloudSttEngine : ISttEngine
 
 public class CloudRecognitionResult
 {
+    public bool Success { get; set; } = true;
+    public string ErrorMessage { get; set; } = "";
     public string Text { get; set; } = "";
     public double Confidence { get; set; }
     public bool IsFinal { get; set; }

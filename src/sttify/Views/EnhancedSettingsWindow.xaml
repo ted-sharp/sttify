@@ -1,6 +1,7 @@
 <Window x:Class="Sttify.Views.EnhancedSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Sttify.Converters"
         Title="Sttify Settings"
         Width="800" Height="650"
         WindowStartupLocation="CenterScreen"
@@ -9,6 +10,8 @@
     
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <local:StringToBooleanConverter x:Key="StringToBooleanConverter"/>
+        <local:LocalizationConverter x:Key="LocalizationConverter"/>
         
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16"/>
@@ -107,23 +110,23 @@
                         <TextBlock Text="Select the microphone or audio input device for speech recognition"
                                   Style="{StaticResource DescriptionStyle}"/>
                         
-                        <TextBlock Text="Audio Quality" Style="{StaticResource SectionHeaderStyle}"/>
+                        <TextBlock Text="{Binding Source='settings.audio_quality', Converter={StaticResource LocalizationConverter}}" Style="{StaticResource SectionHeaderStyle}"/>
                         
-                        <Label Content="Sample Rate:"/>
-                        <ComboBox Margin="0,5,0,10" SelectedIndex="0">
-                            <ComboBoxItem Content="16000 Hz (Recommended for speech)"/>
-                            <ComboBoxItem Content="22050 Hz"/>
-                            <ComboBoxItem Content="44100 Hz (High quality)"/>
+                        <Label Content="{Binding Source='settings.sample_rate', Converter={StaticResource LocalizationConverter}}"/>
+                        <ComboBox Margin="0,5,0,10" SelectedValue="{Binding Settings.Audio.SampleRate}">
+                            <ComboBoxItem Content="{Binding Source='settings.sample_rate_16k', Converter={StaticResource LocalizationConverter}}" Tag="16000"/>
+                            <ComboBoxItem Content="{Binding Source='settings.sample_rate_22k', Converter={StaticResource LocalizationConverter}}" Tag="22050"/>
+                            <ComboBoxItem Content="{Binding Source='settings.sample_rate_44k', Converter={StaticResource LocalizationConverter}}" Tag="44100"/>
                         </ComboBox>
-                        <TextBlock Text="Higher sample rates provide better quality but use more processing power"
+                        <TextBlock Text="{Binding Source='settings.sample_rate_desc', Converter={StaticResource LocalizationConverter}}"
                                   Style="{StaticResource DescriptionStyle}"/>
                         
-                        <Label Content="Channels:"/>
-                        <ComboBox Margin="0,5,0,10" SelectedIndex="0">
-                            <ComboBoxItem Content="Mono (1 channel - Recommended)"/>
-                            <ComboBoxItem Content="Stereo (2 channels)"/>
+                        <Label Content="{Binding Source='settings.channels', Converter={StaticResource LocalizationConverter}}"/>
+                        <ComboBox Margin="0,5,0,10" SelectedValue="{Binding Settings.Audio.Channels}">
+                            <ComboBoxItem Content="{Binding Source='settings.channels_mono', Converter={StaticResource LocalizationConverter}}" Tag="1"/>
+                            <ComboBoxItem Content="{Binding Source='settings.channels_stereo', Converter={StaticResource LocalizationConverter}}" Tag="2"/>
                         </ComboBox>
-                        <TextBlock Text="Mono is recommended for speech recognition"
+                        <TextBlock Text="{Binding Source='settings.channels_desc', Converter={StaticResource LocalizationConverter}}"
                                   Style="{StaticResource DescriptionStyle}"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -326,19 +329,27 @@
                     <StackPanel Margin="10">
                         <TextBlock Text="Recognition Mode" Style="{StaticResource SectionHeaderStyle}"/>
                         
-                        <RadioButton Content="Push-to-Talk (PTT)" IsChecked="True" Margin="0,5"/>
+                        <RadioButton Content="Push-to-Talk (PTT)" 
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=ptt}" 
+                                    Margin="0,5"/>
                         <TextBlock Text="Press and hold hotkey to activate speech recognition"
                                   Style="{StaticResource DescriptionStyle}"/>
                         
-                        <RadioButton Content="Single Utterance" Margin="0,5"/>
+                        <RadioButton Content="Single Utterance" 
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=single}" 
+                                    Margin="0,5"/>
                         <TextBlock Text="Recognize one phrase at a time, automatically stopping after silence"
                                   Style="{StaticResource DescriptionStyle}"/>
                         
-                        <RadioButton Content="Continuous Recognition" Margin="0,5"/>
+                        <RadioButton Content="Continuous Recognition" 
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=continuous}" 
+                                    Margin="0,5"/>
                         <TextBlock Text="Always-on recognition, continuously processing speech"
                                   Style="{StaticResource DescriptionStyle}"/>
                         
-                        <RadioButton Content="Wake Word Activation" Margin="0,5"/>
+                        <RadioButton Content="Wake Word Activation" 
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=wakeword}" 
+                                    Margin="0,5"/>
                         <TextBlock Text="Start recognition when 'スティファイ' (Sttify) is detected"
                                   Style="{StaticResource DescriptionStyle}"/>
                         

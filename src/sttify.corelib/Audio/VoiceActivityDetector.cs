@@ -1,5 +1,6 @@
 using Sttify.Corelib.Diagnostics;
 using System.Collections.Concurrent;
+using System.Numerics;
 
 namespace Sttify.Corelib.Audio;
 
@@ -205,19 +206,97 @@ public class VoiceActivityDetector : IDisposable
 
     private double[] SimpleSpectrum(short[] samples)
     {
-        // Simplified spectrum calculation without FFT
-        // This is a placeholder - in production, use a proper FFT library
-        var spectrum = new double[Math.Min(samples.Length / 2, 512)];
+        // Convert samples to complex numbers for FFT
+        var fftSize = GetNextPowerOfTwo(Math.Min(samples.Length, 1024));
+        var complex = new Complex[fftSize];
         
-        for (int i = 0; i < spectrum.Length; i++)
+        // Fill with samples and apply Hamming window
+        for (int i = 0; i < fftSize; i++)
         {
             if (i < samples.Length)
             {
-                spectrum[i] = samples[i];
+                // Apply Hamming window to reduce spectral leakage
+                var windowValue = 0.54 - 0.46 * Math.Cos(2.0 * Math.PI * i / (fftSize - 1));
+                complex[i] = new Complex(samples[i] * windowValue / 32768.0, 0);
+            }
+            else
+            {
+                complex[i] = Complex.Zero;
             }
         }
         
+        // Perform FFT
+        FFT(complex);
+        
+        // Calculate magnitude spectrum (only first half due to symmetry)
+        var spectrum = new double[fftSize / 2];
+        for (int i = 0; i < spectrum.Length; i++)
+        {
+            spectrum[i] = complex[i].Magnitude;
+        }
+        
         return spectrum;
+    }
+    
+    private static int GetNextPowerOfTwo(int n)
+    {
+        n--;
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16;
+        return n + 1;
+    }
+    
+    private static void FFT(Complex[] buffer)
+    {
+        int n = buffer.Length;
+        if (n <= 1) return;
+        
+        // Bit-reverse permutation
+        for (int i = 0; i < n; i++)
+        {
+            int j = BitReverse(i, (int)Math.Log2(n));
+            if (i < j)
+            {
+                (buffer[i], buffer[j]) = (buffer[j], buffer[i]);
+            }
+        }
+        
+        // Cooley-Tukey FFT
+        for (int length = 2; length <= n; length *= 2)
+        {
+            double angle = -2.0 * Math.PI / length;
+            var wlen = new Complex(Math.Cos(angle), Math.Sin(angle));
+            
+            for (int start = 0; start < n; start += length)
+            {
+                var w = Complex.One;
+                
+                for (int i = 0; i < length / 2; i++)
+                {
+                    var u = buffer[start + i];
+                    var v = buffer[start + i + length / 2] * w;
+                    
+                    buffer[start + i] = u + v;
+                    buffer[start + i + length / 2] = u - v;
+                    
+                    w *= wlen;
+                }
+            }
+        }
+    }
+    
+    private static int BitReverse(int value, int bits)
+    {
+        int result = 0;
+        for (int i = 0; i < bits; i++)
+        {
+            result = (result << 1) | (value & 1);
+            value >>= 1;
+        }
+        return result;
     }
 
     private void UpdateNoiseFloor(double energy)
