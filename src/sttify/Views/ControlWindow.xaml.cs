@@ -17,11 +17,16 @@ namespace Sttify.Views;
 
 public partial class ControlWindow : Window
 {
-    private readonly ApplicationService? _applicationService;
+    private ApplicationService? _applicationService;
     private readonly MainViewModel? _viewModel;
     private readonly IServiceProvider? _serviceProvider;
     private Storyboard? _currentPulseAnimation;
+    private Storyboard? _currentAudioLevelAnimation;
+    private Storyboard? _currentProcessingAnimation;
     private Sttify.Corelib.Session.SessionState _lastState = Sttify.Corelib.Session.SessionState.Idle;
+    private bool _isHovering = false;
+    private System.Threading.Timer? _audioLevelTimer;
+    private bool _isEventRegistered = false;
     
     // Drag functionality fields
     private bool _isDragging;
@@ -41,6 +46,9 @@ public partial class ControlWindow : Window
             Debug.WriteLine("ControlWindow: Loaded event fired from parameterless constructor");
             SetupDragFunctionality();
             RestoreWindowPosition();
+            
+            // Try to get ApplicationService and register events if not already done
+            TryRegisterApplicationService();
         };
         
         // Save position when window is moved or closed
@@ -61,6 +69,7 @@ public partial class ControlWindow : Window
         
         Debug.WriteLine("ControlWindow: Subscribing to events");
         _applicationService.SessionStateChanged += OnSessionStateChanged;
+        _isEventRegistered = true;
         
         Debug.WriteLine("ControlWindow: Calling UpdateUI");
         UpdateUI();
@@ -149,30 +158,59 @@ public partial class ControlWindow : Window
         }
     }
 
+    private void OnMicrophoneMouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_isDragging && !_isHovering)
+        {
+            _isHovering = true;
+            try
+            {
+                var hoverInAnimation = (Storyboard)FindResource("HoverInAnimation");
+                hoverInAnimation.Begin();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to start hover in animation: {ex.Message}");
+            }
+        }
+    }
+    
+    private void OnMicrophoneMouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_isHovering)
+        {
+            _isHovering = false;
+            try
+            {
+                var hoverOutAnimation = (Storyboard)FindResource("HoverOutAnimation");
+                hoverOutAnimation.Begin();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to start hover out animation: {ex.Message}");
+            }
+        }
+    }
+    
     private async void OnMicrophoneClick(object sender, MouseButtonEventArgs e)
     {
         Debug.WriteLine("OnMicrophoneClick: Click detected");
         
-        // Try to use instance service first, then fall back to static service provider
-        var applicationService = _applicationService;
-        if (applicationService == null)
+        // Play click animation
+        try
         {
-            Debug.WriteLine("OnMicrophoneClick: ApplicationService is null - trying to get from static service provider");
-            var serviceProvider = App.ServiceProvider;
-            if (serviceProvider != null)
-            {
-                try
-                {
-                    applicationService = serviceProvider.GetRequiredService<ApplicationService>();
-                    Debug.WriteLine("OnMicrophoneClick: ApplicationService obtained from static service provider");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"OnMicrophoneClick: Failed to get ApplicationService: {ex.Message}");
-                }
-            }
+            var clickAnimation = (Storyboard)FindResource("ClickAnimation");
+            clickAnimation.Begin();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to start click animation: {ex.Message}");
         }
         
+        // Ensure ApplicationService is available and events are registered
+        TryRegisterApplicationService();
+        
+        var applicationService = _applicationService;
         if (applicationService == null)
         {
             System.Windows.MessageBox.Show("ApplicationService is not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -310,34 +348,95 @@ public partial class ControlWindow : Window
     {
         var (fillColor, iconText) = GetStateVisuals(newState);
         
-        // Stop any running pulse animation
+        // Stop any running animations
         _currentPulseAnimation?.Stop();
         _currentPulseAnimation = null;
+        _currentAudioLevelAnimation?.Stop();
+        _currentAudioLevelAnimation = null;
+        _currentProcessingAnimation?.Stop();
+        _currentProcessingAnimation = null;
         
-        // Create flip animation with new color and icon
-        var flipAnimation = (Storyboard)FindResource("FlipInAnimation");
-        var colorAnimation = flipAnimation.Children.OfType<ColorAnimation>().FirstOrDefault();
-        
-        if (colorAnimation != null)
+        // Hide audio ring by default
+        var audioRing = FindName("AudioRing") as Ellipse;
+        if (audioRing != null)
         {
-            colorAnimation.To = fillColor;
+            audioRing.Opacity = 0;
         }
         
-        // Set up completion handler to update icon and start pulse if needed
-        flipAnimation.Completed += (s, e) =>
+        try
         {
-            MicrophoneIcon.Text = iconText;
+            // Create flip animation with new color and icon
+            var flipAnimation = (Storyboard)FindResource("FlipInAnimation");
+            var colorAnimation = flipAnimation.Children.OfType<ColorAnimation>().FirstOrDefault();
             
-            // Start pulse animation for listening state
-            if (newState == Sttify.Corelib.Session.SessionState.Listening)
+            if (colorAnimation != null)
             {
-                _currentPulseAnimation = (Storyboard)FindResource("PulseAnimation");
-                _currentPulseAnimation.Begin();
+                colorAnimation.To = fillColor;
             }
-        };
-        
-        // Start the flip animation
-        flipAnimation.Begin();
+            
+            // Set up completion handler to update icon and start state-specific animations
+            flipAnimation.Completed += (s, e) =>
+            {
+                MicrophoneIcon.Text = iconText;
+                
+                // Start state-specific animations
+                switch (newState)
+                {
+                    case Sttify.Corelib.Session.SessionState.Listening:
+                        try
+                        {
+                            _currentPulseAnimation = (Storyboard)FindResource("PulseAnimation");
+                            _currentPulseAnimation.Begin();
+                            
+                            // Show and animate audio ring
+                            if (audioRing != null)
+                            {
+                                audioRing.Opacity = 0.8;
+                                _currentAudioLevelAnimation = (Storyboard)FindResource("AudioLevelAnimation");
+                                _currentAudioLevelAnimation.Begin();
+                            }
+                            
+                            StartAudioLevelMonitoring();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to start listening animations: {ex.Message}");
+                        }
+                        break;
+                        
+                    case Sttify.Corelib.Session.SessionState.Processing:
+                        try
+                        {
+                            _currentProcessingAnimation = (Storyboard)FindResource("ProcessingAnimation");
+                            _currentProcessingAnimation.Begin();
+                            StopAudioLevelMonitoring();
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"Failed to start processing animation: {ex.Message}");
+                        }
+                        break;
+                        
+                    default:
+                        StopAudioLevelMonitoring();
+                        break;
+                }
+            };
+            
+            // Start the flip animation
+            flipAnimation.Begin();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to animate state change: {ex.Message}");
+            // Fallback: directly update without animation
+            MicrophoneIcon.Text = iconText;
+            var microphoneCircle = FindName("MicrophoneCircle") as Ellipse;
+            if (microphoneCircle != null)
+            {
+                microphoneCircle.Fill = new SolidColorBrush(fillColor);
+            }
+        }
     }
 
     private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state)
@@ -448,5 +547,95 @@ public partial class ControlWindow : Window
         }
         
         return false;
+    }
+    
+    private void TryRegisterApplicationService()
+    {
+        if (_applicationService != null || _isEventRegistered)
+        {
+            Debug.WriteLine("TryRegisterApplicationService: Already registered");
+            return;
+        }
+        
+        var serviceProvider = App.ServiceProvider;
+        if (serviceProvider != null)
+        {
+            try
+            {
+                var applicationService = serviceProvider.GetRequiredService<ApplicationService>();
+                Debug.WriteLine("TryRegisterApplicationService: ApplicationService obtained");
+                
+                _applicationService = applicationService;
+                _applicationService.SessionStateChanged += OnSessionStateChanged;
+                _isEventRegistered = true;
+                Debug.WriteLine("TryRegisterApplicationService: Event registration completed");
+                
+                // Update UI to reflect current state
+                UpdateUI();
+                Debug.WriteLine("TryRegisterApplicationService: Initial UI update completed");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"TryRegisterApplicationService: Failed to get ApplicationService: {ex.Message}");
+            }
+        }
+        else
+        {
+            Debug.WriteLine("TryRegisterApplicationService: App.ServiceProvider is null");
+        }
+    }
+    
+    private void StartAudioLevelMonitoring()
+    {
+        StopAudioLevelMonitoring();
+        _audioLevelTimer = new System.Threading.Timer(UpdateAudioLevelVisualization, null, 0, 100);
+    }
+    
+    private void StopAudioLevelMonitoring()
+    {
+        _audioLevelTimer?.Dispose();
+        _audioLevelTimer = null;
+    }
+    
+    private void UpdateAudioLevelVisualization(object? state)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            var random = new Random();
+            var audioLevel = random.NextDouble();
+            
+            var audioRing = FindName("AudioRing") as Ellipse;
+            if (audioRing != null && _applicationService?.GetCurrentState() == Sttify.Corelib.Session.SessionState.Listening)
+            {
+                var scale = 1.0 + (audioLevel * 0.3);
+                var opacity = 0.3 + (audioLevel * 0.5);
+                
+                var transform = audioRing.RenderTransform as ScaleTransform;
+                if (transform != null)
+                {
+                    transform.ScaleX = scale;
+                    transform.ScaleY = scale;
+                }
+                audioRing.Opacity = opacity;
+                
+                var green = (byte)(75 + (audioLevel * 180));
+                audioRing.Stroke = new SolidColorBrush(System.Windows.Media.Color.FromRgb(76, green, 80));
+            }
+        });
+    }
+    
+    protected override void OnClosed(EventArgs e)
+    {
+        StopAudioLevelMonitoring();
+        
+        // Unregister events to prevent memory leaks
+        if (_applicationService != null && _isEventRegistered)
+        {
+            _applicationService.SessionStateChanged -= OnSessionStateChanged;
+            _isEventRegistered = false;
+            Debug.WriteLine("OnClosed: Event unregistration completed");
+        }
+        
+        base.OnClosed(e);
     }
 }

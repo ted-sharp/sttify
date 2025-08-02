@@ -54,18 +54,18 @@ public partial class App : System.Windows.Application
             Telemetry.LogError("ApplicationStartupFailed", ex);
             
             // Output detailed error information to console
-            Console.WriteLine("=== APPLICATION STARTUP ERROR ===");
-            Console.WriteLine($"Exception Type: {ex.GetType().Name}");
-            Console.WriteLine($"Message: {ex.Message}");
-            Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-            
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
-                Console.WriteLine($"Inner Message: {ex.InnerException.Message}");
-                Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
-            }
-            Console.WriteLine("==================================");
+            // Console.WriteLine("=== APPLICATION STARTUP ERROR ===");
+            // Console.WriteLine($"Exception Type: {ex.GetType().Name}");
+            // Console.WriteLine($"Message: {ex.Message}");
+            // Console.WriteLine($"Stack Trace: {ex.StackTrace}");
+            // 
+            // if (ex.InnerException != null)
+            // {
+            //     Console.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
+            //     Console.WriteLine($"Inner Message: {ex.InnerException.Message}");
+            //     Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
+            // }
+            // Console.WriteLine("==================================");
             
             System.Windows.MessageBox.Show($"Failed to start application: {ex.Message}", "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
@@ -104,14 +104,14 @@ public partial class App : System.Windows.Application
     private void InitializeTelemetry()
     {
         // Allocate console for debugging if attached
-        if (Debugger.IsAttached)
-        {
-            AllocConsole();
-        }
+        // if (Debugger.IsAttached)
+        // {
+        //     AllocConsole();
+        // }
         
         var telemetrySettings = new TelemetrySettings
         {
-            EnableConsoleLogging = Debugger.IsAttached,
+            EnableConsoleLogging = false, // Debugger.IsAttached,
             MaskTextInLogs = false
         };
         
@@ -189,33 +189,33 @@ public partial class App : System.Windows.Application
     {
         try
         {
-            Console.WriteLine("InitializeServices: Starting service initialization...");
+            // Console.WriteLine("InitializeServices: Starting service initialization...");
             
-            Console.WriteLine("InitializeServices: Getting ApplicationService...");
+            // Console.WriteLine("InitializeServices: Getting ApplicationService...");
             var applicationService = _host!.Services.GetRequiredService<ApplicationService>();
-            Console.WriteLine("InitializeServices: ApplicationService obtained successfully");
+            // Console.WriteLine("InitializeServices: ApplicationService obtained successfully");
             
-            Console.WriteLine("InitializeServices: Calling ApplicationService.Initialize()...");
+            // Console.WriteLine("InitializeServices: Calling ApplicationService.Initialize()...");
             applicationService.Initialize();
-            Console.WriteLine("InitializeServices: ApplicationService initialized successfully");
+            // Console.WriteLine("InitializeServices: ApplicationService initialized successfully");
             
-            Console.WriteLine("InitializeServices: Creating NotifyIconHost...");
+            // Console.WriteLine("InitializeServices: Creating NotifyIconHost...");
             _notifyIconHost = new NotifyIconHost(_host.Services);
-            Console.WriteLine("InitializeServices: NotifyIconHost created");
+            // Console.WriteLine("InitializeServices: NotifyIconHost created");
             
-            Console.WriteLine("InitializeServices: Initializing NotifyIconHost...");
+            // Console.WriteLine("InitializeServices: Initializing NotifyIconHost...");
             _notifyIconHost.Initialize();
-            Console.WriteLine("InitializeServices: NotifyIconHost initialized successfully");
+            // Console.WriteLine("InitializeServices: NotifyIconHost initialized successfully");
             
-            Console.WriteLine("InitializeServices: All services initialized successfully");
+            // Console.WriteLine("InitializeServices: All services initialized successfully");
             
             // Make service provider globally accessible
             ServiceProvider = _host.Services;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"InitializeServices failed: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            // Console.WriteLine($"InitializeServices failed: {ex.Message}");
+            // Console.WriteLine($"Stack trace: {ex.StackTrace}");
             throw;
         }
     }

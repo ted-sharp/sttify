@@ -50,24 +50,24 @@ public class ApplicationService : IDisposable
     {
         try
         {
-            Console.WriteLine("ApplicationService: Starting initialization...");
+            // Console.WriteLine("ApplicationService: Starting initialization...");
             Telemetry.LogEvent("ApplicationServiceInitializing");
             
-            Console.WriteLine("ApplicationService: Initializing hotkeys...");
+            // Console.WriteLine("ApplicationService: Initializing hotkeys...");
             InitializeHotkeys();
-            Console.WriteLine("ApplicationService: Hotkeys initialized");
+            // Console.WriteLine("ApplicationService: Hotkeys initialized");
             
-            Console.WriteLine("ApplicationService: Initializing RTSS...");
+            // Console.WriteLine("ApplicationService: Initializing RTSS...");
             InitializeRtss();
-            Console.WriteLine("ApplicationService: RTSS initialized");
+            // Console.WriteLine("ApplicationService: RTSS initialized");
             
             Telemetry.LogEvent("ApplicationServiceInitialized");
-            Console.WriteLine("ApplicationService: Initialization completed successfully");
+            // Console.WriteLine("ApplicationService: Initialization completed successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ApplicationService initialization failed: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            // Console.WriteLine($"ApplicationService initialization failed: {ex.Message}");
+            // Console.WriteLine($"Stack trace: {ex.StackTrace}");
             Telemetry.LogError("ApplicationServiceInitializationFailed", ex);
             throw;
         }
@@ -111,24 +111,24 @@ public class ApplicationService : IDisposable
     {
         try
         {
-            Console.WriteLine("ApplicationService: Getting settings for hotkeys...");
+            // Console.WriteLine("ApplicationService: Getting settings for hotkeys...");
             var settings = await _settingsProvider.GetSettingsAsync();
-            Console.WriteLine($"ApplicationService: Settings loaded - ToggleUi: {settings.Hotkeys.ToggleUi}, ToggleMic: {settings.Hotkeys.ToggleMic}");
+            // Console.WriteLine($"ApplicationService: Settings loaded - ToggleUi: {settings.Hotkeys.ToggleUi}, ToggleMic: {settings.Hotkeys.ToggleMic}");
             
-            Console.WriteLine("ApplicationService: Registering ToggleUi hotkey...");
+            // Console.WriteLine("ApplicationService: Registering ToggleUi hotkey...");
             _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
-            Console.WriteLine("ApplicationService: Registering ToggleMic hotkey...");
+            // Console.WriteLine("ApplicationService: Registering ToggleMic hotkey...");
             _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
             
             Telemetry.LogEvent("HotkeysRegistered", new { 
                 ToggleUi = settings.Hotkeys.ToggleUi,
                 ToggleMic = settings.Hotkeys.ToggleMic
             });
-            Console.WriteLine("ApplicationService: Hotkeys registered successfully");
+            // Console.WriteLine("ApplicationService: Hotkeys registered successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ApplicationService: Hotkey initialization failed: {ex.Message}");
+            // Console.WriteLine($"ApplicationService: Hotkey initialization failed: {ex.Message}");
             Telemetry.LogError("HotkeyInitializationFailed", ex);
         }
     }
@@ -137,14 +137,14 @@ public class ApplicationService : IDisposable
     {
         try
         {
-            Console.WriteLine("ApplicationService: Initializing RTSS service...");
+            // Console.WriteLine("ApplicationService: Initializing RTSS service...");
             var initialized = _rtssService.Initialize();
-            Console.WriteLine($"ApplicationService: RTSS initialization result: {initialized}");
+            // Console.WriteLine($"ApplicationService: RTSS initialization result: {initialized}");
             Telemetry.LogEvent("RtssInitialized", new { Success = initialized });
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"ApplicationService: RTSS initialization failed: {ex.Message}");
+            // Console.WriteLine($"ApplicationService: RTSS initialization failed: {ex.Message}");
             Telemetry.LogError("RtssInitializationFailed", ex);
         }
     }

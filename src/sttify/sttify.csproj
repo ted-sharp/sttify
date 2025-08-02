@@ -11,6 +11,16 @@
     <Platforms>AnyCPU;x64</Platforms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\sttify.corelib\sttify.corelib.csproj" />

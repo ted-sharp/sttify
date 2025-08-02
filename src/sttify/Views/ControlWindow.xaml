@@ -10,11 +10,10 @@
         ResizeMode="NoResize"
         ShowInTaskbar="False">
     
-    <Grid>
-        <Grid.Resources>
+    <Window.Resources>
             <!-- Animation Resources -->
             <Storyboard x:Key="FlipInAnimation">
-                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="MicrophoneCircle" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleX">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
                     <EasingDoubleKeyFrame KeyTime="0:0:0.15" Value="0">
                         <EasingDoubleKeyFrame.EasingFunction>
@@ -28,7 +27,7 @@
                     </EasingDoubleKeyFrame>
                 </DoubleAnimationUsingKeyFrames>
                 
-                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="MicrophoneIcon" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="IconScaleTransform" Storyboard.TargetProperty="ScaleX">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
                     <EasingDoubleKeyFrame KeyTime="0:0:0.15" Value="0">
                         <EasingDoubleKeyFrame.EasingFunction>
@@ -52,7 +51,7 @@
             </Storyboard>
             
             <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever">
-                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="MicrophoneCircle" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleY">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
                     <EasingDoubleKeyFrame KeyTime="0:0:0.8" Value="1.1">
                         <EasingDoubleKeyFrame.EasingFunction>
@@ -66,7 +65,7 @@
                     </EasingDoubleKeyFrame>
                 </DoubleAnimationUsingKeyFrames>
                 
-                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="MicrophoneCircle" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleX">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
                     <EasingDoubleKeyFrame KeyTime="0:0:0.8" Value="1.1">
                         <EasingDoubleKeyFrame.EasingFunction>
@@ -80,7 +79,155 @@
                     </EasingDoubleKeyFrame>
                 </DoubleAnimationUsingKeyFrames>
             </Storyboard>
-        </Grid.Resources>
+            
+            <!-- Hover Animation -->
+            <Storyboard x:Key="HoverInAnimation">
+                <DoubleAnimation Storyboard.TargetName="CircleScaleTransform" 
+                               Storyboard.TargetProperty="ScaleX"
+                               To="1.05" Duration="0:0:0.2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation Storyboard.TargetName="CircleScaleTransform" 
+                               Storyboard.TargetProperty="ScaleY"
+                               To="1.05" Duration="0:0:0.2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation Storyboard.TargetName="MicrophoneCircle" 
+                               Storyboard.TargetProperty="Effect.BlurRadius"
+                               To="8" Duration="0:0:0.2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+            
+            <Storyboard x:Key="HoverOutAnimation">
+                <DoubleAnimation Storyboard.TargetName="CircleScaleTransform" 
+                               Storyboard.TargetProperty="ScaleX"
+                               To="1" Duration="0:0:0.2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation Storyboard.TargetName="CircleScaleTransform" 
+                               Storyboard.TargetProperty="ScaleY"
+                               To="1" Duration="0:0:0.2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+                <DoubleAnimation Storyboard.TargetName="MicrophoneCircle" 
+                               Storyboard.TargetProperty="Effect.BlurRadius"
+                               To="5" Duration="0:0:0.2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+            
+            <!-- Click Animation -->
+            <Storyboard x:Key="ClickAnimation">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleX">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.05"/>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.05" Value="0.95">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <QuadraticEase EasingMode="EaseIn"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="1.05">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <ElasticEase EasingMode="EaseOut" Oscillations="1" Springiness="3"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                </DoubleAnimationUsingKeyFrames>
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleY">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.05"/>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.05" Value="0.95">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <QuadraticEase EasingMode="EaseIn"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="1.05">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <ElasticEase EasingMode="EaseOut" Oscillations="1" Springiness="3"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                </DoubleAnimationUsingKeyFrames>
+            </Storyboard>
+            
+            <!-- Audio Level Animation -->
+            <Storyboard x:Key="AudioLevelAnimation" RepeatBehavior="Forever">
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="AudioRingScaleTransform" Storyboard.TargetProperty="ScaleX">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1.2">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <SineEase EasingMode="EaseInOut"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.6" Value="1">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <SineEase EasingMode="EaseInOut"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                </DoubleAnimationUsingKeyFrames>
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="AudioRingScaleTransform" Storyboard.TargetProperty="ScaleY">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="1.2">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <SineEase EasingMode="EaseInOut"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.6" Value="1">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <SineEase EasingMode="EaseInOut"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                </DoubleAnimationUsingKeyFrames>
+                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="AudioRing" Storyboard.TargetProperty="Opacity">
+                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.8"/>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.3" Value="0.3">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <SineEase EasingMode="EaseInOut"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                    <EasingDoubleKeyFrame KeyTime="0:0:0.6" Value="0.8">
+                        <EasingDoubleKeyFrame.EasingFunction>
+                            <SineEase EasingMode="EaseInOut"/>
+                        </EasingDoubleKeyFrame.EasingFunction>
+                    </EasingDoubleKeyFrame>
+                </DoubleAnimationUsingKeyFrames>
+            </Storyboard>
+            
+            <!-- Processing Spin Animation -->
+            <Storyboard x:Key="ProcessingAnimation" RepeatBehavior="Forever">
+                <DoubleAnimation Storyboard.TargetName="IconRotateTransform" 
+                               Storyboard.TargetProperty="Angle"
+                               From="0" To="360" Duration="0:0:2">
+                    <DoubleAnimation.EasingFunction>
+                        <QuadraticEase EasingMode="EaseInOut"/>
+                    </DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+            </Storyboard>
+    </Window.Resources>
+    
+    <Grid>
+        <!-- Audio Level Ring -->
+        <Ellipse Width="58" Height="58" 
+                 Fill="Transparent" 
+                 Stroke="#FF4CAF50" 
+                 StrokeThickness="1"
+                 x:Name="AudioRing"
+                 RenderTransformOrigin="0.5,0.5"
+                 Opacity="0"
+                 IsHitTestVisible="False">
+            <Ellipse.RenderTransform>
+                <ScaleTransform x:Name="AudioRingScaleTransform"/>
+            </Ellipse.RenderTransform>
+        </Ellipse>
         
         <Ellipse Width="50" Height="50" 
                  Fill="#FF4CAF50" 
@@ -88,6 +235,8 @@
                  StrokeThickness="2"
                  x:Name="MicrophoneCircle"
                  MouseRightButtonDown="OnMicrophoneRightClick"
+                 MouseEnter="OnMicrophoneMouseEnter"
+                 MouseLeave="OnMicrophoneMouseLeave"
                  RenderTransformOrigin="0.5,0.5"
                  Cursor="Hand">
             <Ellipse.RenderTransform>
@@ -107,7 +256,10 @@
                    RenderTransformOrigin="0.5,0.5"
                    IsHitTestVisible="False">
             <TextBlock.RenderTransform>
-                <ScaleTransform x:Name="IconScaleTransform"/>
+                <TransformGroup>
+                    <ScaleTransform x:Name="IconScaleTransform"/>
+                    <RotateTransform x:Name="IconRotateTransform"/>
+                </TransformGroup>
             </TextBlock.RenderTransform>
         </TextBlock>
         
