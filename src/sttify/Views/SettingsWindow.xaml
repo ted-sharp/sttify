@@ -56,10 +56,27 @@
             
             <TabItem Header="Engine">
                 <StackPanel Margin="10">
-                    <Label Content="STT Engine:"/>
-                    <ComboBox ItemsSource="{Binding AvailableEngines}"
-                             SelectedItem="{Binding Settings.Engine.Profile}"
-                             Margin="0,5,0,10"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Label Grid.Column="0" Content="STT Engine:" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableEngines}"
+                                 SelectedItem="{Binding Settings.Engine.Profile}"
+                                 Margin="5,0,5,0" VerticalAlignment="Center"/>
+                        <Button Grid.Column="2" Content="📦 Models" 
+                               Command="{Binding ShowVoskModelInfoCommand}"
+                               Width="70" VerticalAlignment="Center" Margin="0,0,5,0"
+                               ToolTip="Show Vosk model download information"
+                               Visibility="{Binding IsVoskSelected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button Grid.Column="3" Content="📖 Docs" 
+                               Command="{Binding OpenEngineDocumentationCommand}"
+                               Width="60" VerticalAlignment="Center"
+                               ToolTip="Open official documentation"/>
+                    </Grid>
                     
                     <Label Content="Vosk Model Path:"/>
                     <Grid Margin="0,5,0,10">
@@ -119,7 +136,7 @@
                         </StackPanel>
                     </GroupBox>
                     
-                    <GroupBox Header="Display Settings">
+                    <GroupBox Header="Display Settings" Margin="0,0,0,15">
                         <StackPanel Margin="10">
                             <CheckBox Content="Always show window on primary monitor" 
                                      IsChecked="{Binding Settings.Application.AlwaysOnPrimaryMonitor}" 
@@ -127,6 +144,16 @@
                             <CheckBox Content="Remember window position" 
                                      IsChecked="{Binding Settings.Application.RememberWindowPosition}" 
                                      Margin="0,5"/>
+                        </StackPanel>
+                    </GroupBox>
+                    
+                    <GroupBox Header="Logs &amp; Diagnostics">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Open application log files directory" 
+                                      Margin="0,0,0,10" TextWrapping="Wrap"/>
+                            <Button Content="Open Log Directory" 
+                                   Command="{Binding OpenLogDirectoryCommand}"
+                                   Width="150" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </GroupBox>
                 </StackPanel>

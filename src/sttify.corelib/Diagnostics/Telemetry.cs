@@ -25,10 +25,13 @@ public static class Telemetry
         _batchTimer = new Timer(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
     }
 
-    public static void Initialize(TelemetrySettings settings)
+    public static void Initialize(TelemetrySettings? settings = null)
     {
         if (_isInitialized)
             return;
+
+        // Use provided settings or load from configuration
+        settings ??= Config.AppConfiguration.GetTelemetrySettings();
 
         var logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -39,8 +42,9 @@ public static class Telemetry
         Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
 
         var logConfig = new LoggerConfiguration()
-            .MinimumLevel.Debug()
+            .MinimumLevel.Is(settings.MinimumLevel)
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .MinimumLevel.Override("System", LogEventLevel.Warning)
             .WriteTo.File(
                 new CompactJsonFormatter(),
                 logPath,
@@ -57,7 +61,11 @@ public static class Telemetry
         _logger = logConfig.CreateLogger();
         _isInitialized = true;
 
-        LogEvent("TelemetryInitialized", new { Settings = settings });
+        LogEvent("TelemetryInitialized", new { 
+            Settings = settings,
+            LogLevel = settings.MinimumLevel.ToString(),
+            IsDebugMode = Config.AppConfiguration.IsDebugMode()
+        });
     }
 
     public static void LogEvent(string eventName, object? data = null)

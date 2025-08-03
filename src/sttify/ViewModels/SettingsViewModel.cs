@@ -1,10 +1,12 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Configuration;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Engine.Vosk;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Net.Http;
 using System.Windows;
 
@@ -16,6 +18,7 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVibeEngine))]
+    [NotifyPropertyChangedFor(nameof(IsVoskSelected))]
     private SttifySettings _settings = new();
 
     [ObservableProperty]
@@ -43,6 +46,7 @@ public partial class SettingsViewModel : ObservableObject
     private string _downloadStatus = "";
 
     public bool IsVibeEngine => Settings?.Engine?.Profile?.ToLowerInvariant() == "vibe";
+    public bool IsVoskSelected => Settings?.Engine?.Profile?.ToLowerInvariant() == "vosk";
 
     public SettingsViewModel(SettingsProvider settingsProvider)
     {
@@ -126,6 +130,138 @@ public partial class SettingsViewModel : ObservableObject
                 MessageBoxButton.OK, 
                 MessageBoxImage.Error);
         }
+    }
+
+    [RelayCommand]
+    private void OpenLogDirectory()
+    {
+        try
+        {
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var logDirectory = Path.Combine(appDataPath, "sttify", "logs");
+            
+            // Create directory if it doesn't exist
+            Directory.CreateDirectory(logDirectory);
+            
+            // Open directory in Windows Explorer
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = logDirectory,
+                UseShellExecute = true,
+                Verb = "open"
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to open log directory: {ex.Message}", 
+                "Open Failed", 
+                MessageBoxButton.OK, 
+                MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void OpenEngineDocumentation()
+    {
+        try
+        {
+            var selectedEngine = Settings?.Engine?.Profile?.ToLowerInvariant();
+            var url = GetEngineDocumentationUrl(selectedEngine);
+            
+            if (!string.IsNullOrEmpty(url))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(
+                    "No documentation URL available for the selected engine.", 
+                    "Documentation", 
+                    MessageBoxButton.OK, 
+                    MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to open documentation: {ex.Message}", 
+                "Open Failed", 
+                MessageBoxButton.OK, 
+                MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void ShowVoskModelInfo()
+    {
+        try
+        {
+            var voskConfig = GetVoskConfiguration();
+            if (voskConfig?.RecommendedModels?.Length > 0)
+            {
+                var modelInfo = string.Join("\n\n", voskConfig.RecommendedModels.Select(m => 
+                    $"📦 {m.Name}\n" +
+                    $"   Size: {m.Size}\n" +
+                    $"   Language: {m.Language}\n" +
+                    $"   {m.Description}\n" +
+                    $"   Download: {m.DownloadUrl}"));
+
+                System.Windows.MessageBox.Show(
+                    $"Recommended Vosk Models:\n\n{modelInfo}\n\nFor more models, visit: {voskConfig.ModelsUrl}",
+                    "Vosk Models",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://alphacep.com/vosk/models",
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to show model information: {ex.Message}",
+                "Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private static Sttify.Corelib.Config.VoskConfiguration? GetVoskConfiguration()
+    {
+        try
+        {
+            var config = Sttify.Corelib.Config.AppConfiguration.Configuration;
+            var voskConfig = new Sttify.Corelib.Config.VoskConfiguration();
+            config.GetSection("Engines:Vosk").Bind(voskConfig);
+            return voskConfig;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? GetEngineDocumentationUrl(string? engineProfile)
+    {
+        return engineProfile switch
+        {
+            "vosk" => "https://alphacep.com/vosk/models",
+            "vibe" => "https://github.com/thewh1teagle/vibe",
+            "azure" => "https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/",
+            "aws" => "https://docs.aws.amazon.com/transcribe/",
+            "google" => "https://cloud.google.com/speech-to-text/docs",
+            _ => null
+        };
     }
 
     private async Task LoadAudioDevicesAsync()
