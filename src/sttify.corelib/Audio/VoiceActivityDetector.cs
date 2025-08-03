@@ -500,7 +500,8 @@ public class AudioFrame
     public DateTime Timestamp { get; set; }
 }
 
-[ExcludeFromCodeCoverage] // Simple data container class\npublic class VadResult
+[ExcludeFromCodeCoverage] // Simple data container class
+public class VadResult
 {
     public bool IsVoice { get; set; }
     public double Confidence { get; set; }

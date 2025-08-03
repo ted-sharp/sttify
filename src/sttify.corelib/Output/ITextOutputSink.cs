@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Output;
 
-[ExcludeFromCodeCoverage] // Interface definition only
 public interface ITextOutputSink
 {
     string Name { get; }
@@ -12,7 +11,6 @@ public interface ITextOutputSink
     Task SendAsync(string text, CancellationToken cancellationToken = default);
 }
 
-[ExcludeFromCodeCoverage] // Simple enum definition
 public enum TextInsertionMode
 {
     FinalOnly,

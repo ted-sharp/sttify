@@ -171,7 +171,8 @@ public class ErrorRecoveryEventArgs : EventArgs
     }
 }
 
-[ExcludeFromCodeCoverage] // Simple exception class with no business logic\npublic class ErrorRecoveryException : Exception
+[ExcludeFromCodeCoverage] // Simple exception class with no business logic
+public class ErrorRecoveryException : Exception
 {
     public ErrorRecoveryException(string message) : base(message) { }
     public ErrorRecoveryException(string message, Exception innerException) : base(message, innerException) { }

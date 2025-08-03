@@ -229,7 +229,8 @@ public class DownloadProgressEventArgs : EventArgs
     }
 }
 
-[ExcludeFromCodeCoverage] // Simple exception class with no business logic\npublic class VoskModelDownloadException : Exception
+[ExcludeFromCodeCoverage] // Simple exception class with no business logic
+public class VoskModelDownloadException : Exception
 {
     public VoskModelDownloadException(string message) : base(message) { }
     public VoskModelDownloadException(string message, Exception innerException) : base(message, innerException) { }

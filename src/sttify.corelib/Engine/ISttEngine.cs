@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Engine;
 
-[ExcludeFromCodeCoverage] // Interface definition only
 public interface ISttEngine : IDisposable
 {
     event EventHandler<PartialRecognitionEventArgs>? OnPartial;
