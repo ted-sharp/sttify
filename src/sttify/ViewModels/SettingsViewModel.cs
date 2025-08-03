@@ -143,8 +143,8 @@ public partial class SettingsViewModel : ObservableObject
             // Create directory if it doesn't exist
             Directory.CreateDirectory(logDirectory);
             
-            // Open directory in Windows Explorer
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            // Open directory in Windows Explorer using modern C# syntax
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = logDirectory,
                 UseShellExecute = true,
@@ -171,7 +171,7 @@ public partial class SettingsViewModel : ObservableObject
             
             if (!string.IsNullOrEmpty(url))
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = url,
                     UseShellExecute = true
@@ -219,7 +219,7 @@ public partial class SettingsViewModel : ObservableObject
             }
             else
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "https://alphacep.com/vosk/models",
                     UseShellExecute = true
@@ -251,9 +251,8 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    private static string? GetEngineDocumentationUrl(string? engineProfile)
-    {
-        return engineProfile switch
+    private static string? GetEngineDocumentationUrl(string? engineProfile) =>
+        engineProfile switch
         {
             "vosk" => "https://alphacep.com/vosk/models",
             "vibe" => "https://github.com/thewh1teagle/vibe",
@@ -262,7 +261,6 @@ public partial class SettingsViewModel : ObservableObject
             "google" => "https://cloud.google.com/speech-to-text/docs",
             _ => null
         };
-    }
 
     private async Task LoadAudioDevicesAsync()
     {

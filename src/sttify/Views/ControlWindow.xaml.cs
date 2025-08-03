@@ -489,9 +489,8 @@ public partial class ControlWindow : Window
         }
     }
 
-    private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state)
-    {
-        return state switch
+    private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state) =>
+        state switch
         {
             Sttify.Corelib.Session.SessionState.Idle => "Ready",
             Sttify.Corelib.Session.SessionState.Listening => "Listening",
@@ -501,11 +500,9 @@ public partial class ControlWindow : Window
             Sttify.Corelib.Session.SessionState.Error => "Error",
             _ => "Unknown"
         };
-    }
 
-    private (System.Windows.Media.Color fillColor, string iconText) GetStateVisuals(Sttify.Corelib.Session.SessionState state)
-    {
-        return state switch
+    private (System.Windows.Media.Color fillColor, string iconText) GetStateVisuals(Sttify.Corelib.Session.SessionState state) =>
+        state switch
         {
             Sttify.Corelib.Session.SessionState.Idle => (Colors.Gray, "🎤"),
             Sttify.Corelib.Session.SessionState.Listening => (Colors.Green, "🎙️"),
@@ -515,7 +512,6 @@ public partial class ControlWindow : Window
             Sttify.Corelib.Session.SessionState.Error => (Colors.Red, "❌"),
             _ => (Colors.Gray, "❓")
         };
-    }
 
     private async void SaveWindowPosition()
     {

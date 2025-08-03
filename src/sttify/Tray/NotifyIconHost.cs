@@ -115,7 +115,7 @@ public class NotifyIconHost : IDisposable
             return;
 
         var startStopItem = _notifyIcon.ContextMenuStrip?.Items.OfType<ToolStripMenuItem>()
-            .FirstOrDefault(item => item.Text.Contains("Recognition"));
+            .FirstOrDefault(item => item.Text?.Contains("Recognition") == true);
 
         if (startStopItem != null)
         {

@@ -277,8 +277,12 @@ public class StreamSink : ITextOutputSink, IDisposable
 
         try
         {
-            _memoryMappedFile = MemoryMappedFile.CreateOrOpen(_settings.SharedMemoryName, _settings.SharedMemorySize);
-            _memoryMappedAccessor = _memoryMappedFile.CreateViewAccessor();
+            // Windows-specific memory mapped file functionality
+            if (OperatingSystem.IsWindows())
+            {
+                _memoryMappedFile = MemoryMappedFile.CreateOrOpen(_settings.SharedMemoryName, _settings.SharedMemorySize);
+                _memoryMappedAccessor = _memoryMappedFile.CreateViewAccessor();
+            }
         }
         catch (Exception ex)
         {

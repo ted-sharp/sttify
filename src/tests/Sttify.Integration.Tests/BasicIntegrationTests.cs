@@ -25,7 +25,10 @@ public class BasicIntegrationTests
         services.AddSingleton<ISttEngine>(provider =>
         {
             var settingsProvider = provider.GetRequiredService<SettingsProvider>();
-            var settings = new SettingsProvider().GetSettingsAsync().Result; // For test only
+            // Suppress xUnit1031 warning for integration test that uses .Result for simplicity
+#pragma warning disable xUnit1031
+            var settings = settingsProvider.GetSettingsAsync().Result;
+#pragma warning restore xUnit1031
             return new RealVoskEngineAdapter(settings.Engine.Vosk);
         });
         services.AddSingleton<IEnumerable<ITextOutputSink>>(provider =>

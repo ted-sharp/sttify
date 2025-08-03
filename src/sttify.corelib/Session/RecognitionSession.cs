@@ -18,7 +18,11 @@ public class RecognitionSession : IDisposable
     public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
     public event EventHandler<SilenceDetectedEventArgs>? OnSilenceDetected;
+    
+    // Currently not implemented but reserved for future voice activity detection features
+#pragma warning disable CS0067 // Event is declared but never used - reserved for future features
     public event EventHandler<VoiceActivityEventArgs>? OnVoiceActivity;
+#pragma warning restore CS0067
 
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
     private SessionState _currentState = SessionState.Idle;
@@ -30,15 +34,19 @@ public class RecognitionSession : IDisposable
     private readonly Timer _silenceTimer;
     private readonly Timer _finalizeTimer;
     
-    // Wake word detection state
+    // Wake word detection state - reserved for future implementation
+#pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
     private bool _waitingForWakeWord = false;
+#pragma warning restore CS0414
     private readonly List<string> _wakeWords = ["スティファイ", "sttify"];
     
     // Continuous mode state
     private CancellationTokenSource? _continuousModeCts;
     
-    // PTT state
+    // PTT state - reserved for future implementation
+#pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
     private bool _pttPressed = false;
+#pragma warning restore CS0414
     
     // Single utterance state  
     private bool _utteranceStarted = false;
