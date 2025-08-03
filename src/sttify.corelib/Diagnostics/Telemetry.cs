@@ -2,6 +2,8 @@ using System.Diagnostics.CodeAnalysis;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
+using System.Collections.Concurrent;
+using System.Buffers;
 
 namespace Sttify.Corelib.Diagnostics;
 
@@ -9,6 +11,19 @@ public static class Telemetry
 {
     private static ILogger? _logger;
     private static bool _isInitialized;
+    
+    // Batching for better I/O performance
+    private static readonly ConcurrentQueue<LogEntry> _logQueue = new();
+    private static readonly Timer _batchTimer;
+    private static readonly object _batchLock = new();
+    private static volatile bool _isShuttingDown;
+    private const int BatchSize = 50;
+    private const int BatchIntervalMs = 100;
+    
+    static Telemetry()
+    {
+        _batchTimer = new Timer(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
+    }
 
     public static void Initialize(TelemetrySettings settings)
     {
@@ -47,26 +62,46 @@ public static class Telemetry
 
     public static void LogEvent(string eventName, object? data = null)
     {
-        if (!_isInitialized || _logger == null)
+        if (!_isInitialized || _isShuttingDown)
             return;
-
-        _logger.Information("[{EventName}] {Data}", eventName, data ?? new { });
+            
+        EnqueueLogEntry(new LogEntry
+        {
+            Level = LogEventLevel.Information,
+            EventName = eventName,
+            Data = data,
+            Timestamp = DateTime.UtcNow
+        });
     }
 
     public static void LogError(string eventName, Exception exception, object? data = null)
     {
-        if (!_isInitialized || _logger == null)
+        if (!_isInitialized || _isShuttingDown)
             return;
-
-        _logger.Error(exception, "[{EventName}] {Data}", eventName, data ?? new { });
+            
+        EnqueueLogEntry(new LogEntry
+        {
+            Level = LogEventLevel.Error,
+            EventName = eventName,
+            Exception = exception,
+            Data = data,
+            Timestamp = DateTime.UtcNow
+        });
     }
 
     public static void LogWarning(string eventName, string message, object? data = null)
     {
-        if (!_isInitialized || _logger == null)
+        if (!_isInitialized || _isShuttingDown)
             return;
-
-        _logger.Warning("[{EventName}] {Message} {Data}", eventName, message, data ?? new { });
+            
+        EnqueueLogEntry(new LogEntry
+        {
+            Level = LogEventLevel.Warning,
+            EventName = eventName,
+            Message = message,
+            Data = data,
+            Timestamp = DateTime.UtcNow
+        });
     }
 
     public static void LogRecognition(string text, bool isFinal, double confidence, bool maskText = false)
@@ -118,15 +153,89 @@ public static class Telemetry
         return text[..2] + new string('*', text.Length - 4) + text[^2..];
     }
 
+    private static void EnqueueLogEntry(LogEntry entry)
+    {
+        _logQueue.Enqueue(entry);
+        
+        // If queue is getting large, force flush
+        if (_logQueue.Count >= BatchSize * 2)
+        {
+            Task.Run(() => FlushBatch(null));
+        }
+    }
+    
+    private static void FlushBatch(object? state)
+    {
+        if (_isShuttingDown || !_isInitialized || _logger == null)
+            return;
+            
+        lock (_batchLock)
+        {
+            var entries = new List<LogEntry>();
+            
+            // Drain up to BatchSize entries
+            while (entries.Count < BatchSize && _logQueue.TryDequeue(out var entry))
+            {
+                entries.Add(entry);
+            }
+            
+            if (entries.Count == 0)
+                return;
+                
+            // Write all entries in batch
+            foreach (var entry in entries)
+            {
+                try
+                {
+                    if (entry.Exception != null)
+                    {
+                        _logger.Error(entry.Exception, "[{EventName}] {Data}", entry.EventName, entry.Data ?? new { });
+                    }
+                    else if (!string.IsNullOrEmpty(entry.Message))
+                    {
+                        _logger.Warning("[{EventName}] {Message} {Data}", entry.EventName, entry.Message, entry.Data ?? new { });
+                    }
+                    else
+                    {
+                        _logger.Information("[{EventName}] {Data}", entry.EventName, entry.Data ?? new { });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Fallback logging - write to console if regular logging fails
+                    Console.WriteLine($"Telemetry logging failed: {ex.Message}");
+                }
+            }
+        }
+    }
+    
     public static void Shutdown()
     {
+        _isShuttingDown = true;
+        
+        // Flush any remaining entries
+        FlushBatch(null);
+        
         if (_isInitialized && _logger is IDisposable disposableLogger)
         {
-            LogEvent("TelemetryShutdown");
+            // Log shutdown directly (bypass batching since we're shutting down)
+            _logger?.Information("[TelemetryShutdown]");
             disposableLogger.Dispose();
             _isInitialized = false;
         }
+        
+        _batchTimer.Dispose();
     }
+}
+
+private class LogEntry
+{
+    public LogEventLevel Level { get; set; }
+    public string EventName { get; set; } = "";
+    public string? Message { get; set; }
+    public Exception? Exception { get; set; }
+    public object? Data { get; set; }
+    public DateTime Timestamp { get; set; }
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

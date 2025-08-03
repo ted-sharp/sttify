@@ -30,15 +30,19 @@ public class SendInputSink : ITextOutputSink
         if (string.IsNullOrEmpty(text))
             return;
 
-        await Task.Run(() => SendTextViaInput(text), cancellationToken);
+        await SendTextViaInputAsync(text, cancellationToken);
     }
 
-    private void SendTextViaInput(string text)
+    private async Task SendTextViaInputAsync(string text, CancellationToken cancellationToken)
     {
         var inputs = new List<INPUT>();
+        var delayMs = _settings.RateLimitCps > 0 ? 1000 / _settings.RateLimitCps : 0;
 
         foreach (char c in text)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
             inputs.Add(new INPUT
             {
                 type = INPUT_KEYBOARD,
@@ -55,21 +59,34 @@ public class SendInputSink : ITextOutputSink
                 }
             });
 
-            if (_settings.RateLimitCps > 0)
+            // Send character immediately for better responsiveness
+            if (inputs.Count == 1)
             {
-                Thread.Sleep(1000 / _settings.RateLimitCps);
+                SendInput(1, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+                inputs.Clear();
+                
+                if (delayMs > 0)
+                {
+                    await Task.Delay(delayMs, cancellationToken);
+                }
             }
         }
 
-        if (_settings.CommitKey != null)
-        {
-            inputs.Add(CreateKeyInput(_settings.CommitKey.Value, false));
-            inputs.Add(CreateKeyInput(_settings.CommitKey.Value, true));
-        }
-
+        // Send any remaining inputs
         if (inputs.Count > 0)
         {
             SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+        }
+
+        // Send commit key if specified
+        if (_settings.CommitKey != null)
+        {
+            var commitInputs = new INPUT[]
+            {
+                CreateKeyInput(_settings.CommitKey.Value, false),
+                CreateKeyInput(_settings.CommitKey.Value, true)
+            };
+            SendInput(2, commitInputs, Marshal.SizeOf<INPUT>());
         }
     }
 

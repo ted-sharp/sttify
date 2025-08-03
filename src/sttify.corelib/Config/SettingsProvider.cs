@@ -11,6 +11,9 @@ public class SettingsProvider
     private readonly JsonSerializerOptions _jsonOptions;
     private SttifySettings? _cachedSettings;
     private DateTime _lastModified;
+    private FileSystemWatcher? _fileWatcher;
+    private volatile bool _configChanged;
+    private readonly object _lockObject = new();
 
     public SettingsProvider()
     {
@@ -27,17 +30,30 @@ public class SettingsProvider
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
         };
+        
+        SetupFileWatcher();
     }
 
     public async Task<SttifySettings> GetSettingsAsync()
     {
-        if (_cachedSettings == null || HasConfigChanged())
+        lock (_lockObject)
         {
-            _cachedSettings = await LoadSettingsAsync();
+            if (_cachedSettings != null && !_configChanged)
+            {
+                return _cachedSettings;
+            }
+        }
+        
+        var settings = await LoadSettingsAsync();
+        
+        lock (_lockObject)
+        {
+            _cachedSettings = settings;
+            _configChanged = false;
             _lastModified = File.Exists(_configPath) ? File.GetLastWriteTime(_configPath) : DateTime.MinValue;
         }
         
-        return _cachedSettings;
+        return settings;
     }
 
     public async Task SaveSettingsAsync(SttifySettings settings)
@@ -50,10 +66,24 @@ public class SettingsProvider
             File.Copy(_configPath, backupPath, true);
         }
         
-        await File.WriteAllTextAsync(_configPath, json);
+        // Temporarily disable file watcher to avoid triggering change event for our own write
+        _fileWatcher?.Dispose();
         
-        _cachedSettings = settings;
-        _lastModified = File.GetLastWriteTime(_configPath);
+        try
+        {
+            await File.WriteAllTextAsync(_configPath, json);
+            
+            lock (_lockObject)
+            {
+                _cachedSettings = settings;
+                _configChanged = false;
+                _lastModified = File.GetLastWriteTime(_configPath);
+            }
+        }
+        finally
+        {
+            SetupFileWatcher();
+        }
     }
 
     private async Task<SttifySettings> LoadSettingsAsync()
@@ -97,12 +127,39 @@ public class SettingsProvider
         }
     }
 
-    private bool HasConfigChanged()
+    private void SetupFileWatcher()
     {
-        if (!File.Exists(_configPath))
-            return false;
+        try
+        {
+            var directory = Path.GetDirectoryName(_configPath);
+            var fileName = Path.GetFileName(_configPath);
             
-        return File.GetLastWriteTime(_configPath) > _lastModified;
+            if (directory != null && Directory.Exists(directory))
+            {
+                _fileWatcher = new FileSystemWatcher(directory, fileName)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                    EnableRaisingEvents = true
+                };
+                
+                _fileWatcher.Changed += OnConfigFileChanged;
+                _fileWatcher.Created += OnConfigFileChanged;
+            }
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("FileWatcherSetupFailed", ex, new { ConfigPath = _configPath });
+        }
+    }
+    
+    private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
+    {
+        lock (_lockObject)
+        {
+            _configChanged = true;
+        }
+        
+        Telemetry.LogEvent("ConfigFileChanged", new { Path = e.FullPath, ChangeType = e.ChangeType.ToString() });
     }
 
     private static SttifySettings CreateDefaultSettings()
@@ -183,6 +240,11 @@ public class SettingsProvider
         {
             Telemetry.LogError("ConfigBackupFailed", ex, new { ConfigPath = _configPath });
         }
+    }
+    
+    public void Dispose()
+    {
+        _fileWatcher?.Dispose();
     }
 }
 

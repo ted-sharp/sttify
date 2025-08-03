@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Caching;
+using Sttify.Corelib.Collections;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -16,17 +18,24 @@ public abstract class CloudSttEngine : ISttEngine
     protected readonly CloudEngineSettings _settings;
     protected readonly HttpClient _httpClient;
     protected bool _isRunning;
-    protected readonly Queue<byte[]> _audioQueue = new();
+    protected readonly BoundedQueue<byte[]> _audioQueue;
     protected readonly object _lockObject = new();
     protected CancellationTokenSource? _processingCancellation;
     protected Task? _processingTask;
     protected DateTime _recognitionStartTime;
+    protected readonly ResponseCache<CloudRecognitionResult> _responseCache;
 
     protected CloudSttEngine(CloudEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _httpClient = new HttpClient();
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        
+        // Use bounded queue to prevent memory bloat
+        _audioQueue = new BoundedQueue<byte[]>(50); // Smaller queue for cloud processing
+        
+        // Cache responses to reduce API calls and improve latency
+        _responseCache = new ResponseCache<CloudRecognitionResult>(maxEntries: 500, ttl: TimeSpan.FromMinutes(15));
         
         ConfigureHttpClient();
     }
@@ -102,15 +111,10 @@ public abstract class CloudSttEngine : ISttEngine
             return;
 
         var buffer = audioData.ToArray();
-        lock (_audioQueue)
+        if (!_audioQueue.TryEnqueue(buffer))
         {
-            _audioQueue.Enqueue(buffer);
-            
-            // Prevent queue from growing too large
-            while (_audioQueue.Count > 50) // Smaller queue for cloud processing
-            {
-                _audioQueue.Dequeue();
-            }
+            // Queue full - drop oldest data
+            Telemetry.LogWarning("CloudAudioQueueFull", "Audio queue full, dropping oldest data", new { QueueSize = _audioQueue.Count });
         }
     }
 
@@ -125,12 +129,13 @@ public abstract class CloudSttEngine : ISttEngine
             {
                 byte[]? audioChunk = null;
                 
-                lock (_audioQueue)
+                if (_audioQueue.TryDequeue(out audioChunk))
                 {
-                    if (_audioQueue.Count > 0)
-                    {
-                        audioChunk = _audioQueue.Dequeue();
-                    }
+                    // Got audio chunk
+                }
+                else
+                {
+                    audioChunk = null;
                 }
 
                 if (audioChunk != null)
@@ -144,7 +149,24 @@ public abstract class CloudSttEngine : ISttEngine
                 {
                     try
                     {
-                        var result = await ProcessAudioChunkAsync(audioBuffer.ToArray(), cancellationToken);
+                        var audioArray = audioBuffer.ToArray();
+                        var cacheKey = ResponseCache<CloudRecognitionResult>.GenerateKey(audioArray, GetProviderName());
+                        
+                        CloudRecognitionResult result;
+                        if (_responseCache.TryGet(cacheKey, out var cachedResult))
+                        {
+                            result = cachedResult;
+                            Telemetry.LogEvent("CloudCacheHit", new { Provider = GetProviderName(), AudioSize = audioArray.Length });
+                        }
+                        else
+                        {
+                            result = await ProcessAudioChunkAsync(audioArray, cancellationToken);
+                            if (result.Success)
+                            {
+                                _responseCache.Set(cacheKey, result);
+                            }
+                        }
+                        
                         ProcessCloudResult(result);
                         
                         audioBuffer.Clear();
@@ -202,6 +224,7 @@ public abstract class CloudSttEngine : ISttEngine
     {
         StopAsync().Wait();
         _httpClient?.Dispose();
+        _responseCache?.Dispose();
     }
 }
 

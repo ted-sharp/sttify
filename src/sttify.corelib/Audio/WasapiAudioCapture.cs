@@ -2,6 +2,7 @@ using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using Sttify.Corelib.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Buffers;
 
 namespace Sttify.Corelib.Audio;
 
@@ -16,6 +17,7 @@ public class WasapiAudioCapture : IDisposable
     private bool _isCapturing;
     private readonly object _lockObject = new();
     private AudioCaptureSettings _settings = new();
+    private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
     public bool IsCapturing 
     { 
@@ -160,19 +162,41 @@ public class WasapiAudioCapture : IDisposable
         {
             if (e.BytesRecorded > 0 && IsCapturing && _waveFormat != null)
             {
-                var audioData = new byte[e.BytesRecorded];
-                Array.Copy(e.Buffer, 0, audioData, 0, e.BytesRecorded);
-
-                // Convert to Vosk-compatible format if necessary
-                if (!AudioConverter.IsVoskCompatible(_waveFormat))
+                // Use buffer pool to avoid allocations
+                var rentedBuffer = _bufferPool.Rent(e.BytesRecorded);
+                try
                 {
-                    audioData = AudioConverter.ConvertToVoskFormat(audioData, _waveFormat);
-                }
+                    Array.Copy(e.Buffer, 0, rentedBuffer, 0, e.BytesRecorded);
+                    var audioSpan = rentedBuffer.AsSpan(0, e.BytesRecorded);
 
-                var level = AudioConverter.CalculateAudioLevel(audioData, _waveFormat);
-                
-                Telemetry.LogAudioCapture(e.BytesRecorded, level);
-                OnFrame?.Invoke(this, new AudioFrameEventArgs(audioData));
+                    byte[]? processedData = null;
+                    try
+                    {
+                        // Convert to Vosk-compatible format if necessary
+                        if (!AudioConverter.IsVoskCompatible(_waveFormat))
+                        {
+                            processedData = AudioConverter.ConvertToVoskFormat(audioSpan, _waveFormat);
+                        }
+                        else
+                        {
+                            // Create a copy for the event since we need to return the rented buffer
+                            processedData = audioSpan.ToArray();
+                        }
+
+                        var level = AudioConverter.CalculateAudioLevel(processedData, _waveFormat);
+                        
+                        Telemetry.LogAudioCapture(e.BytesRecorded, level);
+                        OnFrame?.Invoke(this, new AudioFrameEventArgs(processedData));
+                    }
+                    finally
+                    {
+                        // processedData will be handled by the event handler
+                    }
+                }
+                finally
+                {
+                    _bufferPool.Return(rentedBuffer);
+                }
             }
         }
         catch (Exception ex)

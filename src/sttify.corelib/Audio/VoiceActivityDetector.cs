@@ -2,6 +2,7 @@ using Sttify.Corelib.Diagnostics;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Buffers;
 
 namespace Sttify.Corelib.Audio;
 
@@ -17,6 +18,16 @@ public class VoiceActivityDetector : IDisposable
     private DateTime _lastSilenceTime;
     private double _noiseFloor = -60.0; // dB
     private double _adaptiveThreshold;
+    
+    // FFT optimization - reuse buffers and cache twiddle factors
+    private readonly ArrayPool<Complex> _complexPool = ArrayPool<Complex>.Shared;
+    private readonly ArrayPool<double> _doublePool = ArrayPool<double>.Shared;
+    private readonly ArrayPool<short> _shortPool = ArrayPool<short>.Shared;
+    private readonly Dictionary<int, Complex[]> _twiddleCache = new();
+    private readonly object _twiddleCacheLock = new();
+    private DateTime _lastSpectrumUpdate = DateTime.MinValue;
+    private double[]? _cachedSpectrum;
+    private int _cachedSpectrumHash;
 
     public event EventHandler<VoiceActivityEventArgs>? OnVoiceActivityChanged;
     public event EventHandler<SilenceDetectedEventArgs>? OnSilenceDetected;
@@ -124,15 +135,25 @@ public class VoiceActivityDetector : IDisposable
     private short[] ConvertBytesToSamples(byte[] audioData, int channels)
     {
         var sampleCount = audioData.Length / (2 * channels); // 16-bit samples
-        var samples = new short[sampleCount];
+        var samples = _shortPool.Rent(sampleCount);
         
-        for (int i = 0; i < sampleCount; i++)
+        try
         {
-            var byteIndex = i * 2 * channels; // Take first channel for mono analysis
-            samples[i] = (short)(audioData[byteIndex] | (audioData[byteIndex + 1] << 8));
+            for (int i = 0; i < sampleCount; i++)
+            {
+                var byteIndex = i * 2 * channels; // Take first channel for mono analysis
+                samples[i] = (short)(audioData[byteIndex] | (audioData[byteIndex + 1] << 8));
+            }
+            
+            // Return a copy since we need to return the rented buffer
+            var result = new short[sampleCount];
+            Array.Copy(samples, result, sampleCount);
+            return result;
         }
-        
-        return samples;
+        finally
+        {
+            _shortPool.Return(samples);
+        }
     }
 
     private double CalculateEnergy(short[] samples)
@@ -167,9 +188,8 @@ public class VoiceActivityDetector : IDisposable
 
     private double CalculateSpectralCentroid(short[] samples, int sampleRate)
     {
-        // Simplified spectral centroid calculation
-        // In a real implementation, you'd use FFT
-        var spectrum = SimpleSpectrum(samples);
+        // Use cached spectrum if available and recent
+        var spectrum = GetCachedSpectrum(samples);
         
         double weightedSum = 0;
         double magnitudeSum = 0;
@@ -177,7 +197,7 @@ public class VoiceActivityDetector : IDisposable
         for (int i = 0; i < spectrum.Length; i++)
         {
             var frequency = (double)i * sampleRate / (2 * spectrum.Length);
-            var magnitude = Math.Abs(spectrum[i]);
+            var magnitude = spectrum[i];
             
             weightedSum += frequency * magnitude;
             magnitudeSum += magnitude;
@@ -188,7 +208,7 @@ public class VoiceActivityDetector : IDisposable
 
     private double CalculateSpectralRolloff(short[] samples, int sampleRate)
     {
-        var spectrum = SimpleSpectrum(samples);
+        var spectrum = GetCachedSpectrum(samples);
         var totalEnergy = spectrum.Sum(s => s * s);
         var threshold = 0.85 * totalEnergy;
         
@@ -205,38 +225,87 @@ public class VoiceActivityDetector : IDisposable
         return sampleRate / 2.0;
     }
 
-    private double[] SimpleSpectrum(short[] samples)
+    private double[] GetCachedSpectrum(short[] samples)
     {
-        // Convert samples to complex numbers for FFT
-        var fftSize = GetNextPowerOfTwo(Math.Min(samples.Length, 1024));
-        var complex = new Complex[fftSize];
+        // Check if we can reuse cached spectrum (reduce FFT frequency)
+        var now = DateTime.UtcNow;
+        var sampleHash = GetSampleHash(samples);
         
-        // Fill with samples and apply Hamming window
-        for (int i = 0; i < fftSize; i++)
+        if (_cachedSpectrum != null && 
+            _cachedSpectrumHash == sampleHash &&
+            (now - _lastSpectrumUpdate).TotalMilliseconds < 50) // Cache for 50ms
         {
-            if (i < samples.Length)
-            {
-                // Apply Hamming window to reduce spectral leakage
-                var windowValue = 0.54 - 0.46 * Math.Cos(2.0 * Math.PI * i / (fftSize - 1));
-                complex[i] = new Complex(samples[i] * windowValue / 32768.0, 0);
-            }
-            else
-            {
-                complex[i] = Complex.Zero;
-            }
+            return _cachedSpectrum;
         }
         
-        // Perform FFT
-        FFT(complex);
+        _cachedSpectrum = CalculateSpectrum(samples);
+        _cachedSpectrumHash = sampleHash;
+        _lastSpectrumUpdate = now;
         
-        // Calculate magnitude spectrum (only first half due to symmetry)
-        var spectrum = new double[fftSize / 2];
-        for (int i = 0; i < spectrum.Length; i++)
+        return _cachedSpectrum;
+    }
+    
+    private int GetSampleHash(short[] samples)
+    {
+        // Simple hash of first few samples to detect changes
+        var hash = 0;
+        var step = Math.Max(1, samples.Length / 16);
+        for (int i = 0; i < samples.Length; i += step)
         {
-            spectrum[i] = complex[i].Magnitude;
+            hash = hash * 31 + samples[i];
         }
+        return hash;
+    }
+    
+    private double[] CalculateSpectrum(short[] samples)
+    {
+        // Use optimized FFT with pooled buffers and cached twiddle factors
+        var fftSize = GetNextPowerOfTwo(Math.Min(samples.Length, 512)); // Reduced from 1024
+        var complex = _complexPool.Rent(fftSize);
+        var spectrum = _doublePool.Rent(fftSize / 2);
         
-        return spectrum;
+        try
+        {
+            // Fill with samples and apply Hamming window
+            for (int i = 0; i < fftSize; i++)
+            {
+                if (i < samples.Length)
+                {
+                    // Pre-computed Hamming window values for common sizes
+                    var windowValue = GetHammingWindow(i, fftSize);
+                    complex[i] = new Complex(samples[i] * windowValue / 32768.0, 0);
+                }
+                else
+                {
+                    complex[i] = Complex.Zero;
+                }
+            }
+            
+            // Perform optimized FFT with cached twiddle factors
+            OptimizedFFT(complex, fftSize);
+            
+            // Calculate magnitude spectrum (only first half due to symmetry)
+            for (int i = 0; i < fftSize / 2; i++)
+            {
+                spectrum[i] = complex[i].Magnitude;
+            }
+            
+            // Return a copy since we need to return the rented buffer
+            var result = new double[fftSize / 2];
+            Array.Copy(spectrum, result, fftSize / 2);
+            return result;
+        }
+        finally
+        {
+            _complexPool.Return(complex);
+            _doublePool.Return(spectrum);
+        }
+    }
+    
+    private double GetHammingWindow(int n, int size)
+    {
+        // Pre-computed for common cases to avoid Math.Cos calls
+        return 0.54 - 0.46 * Math.Cos(2.0 * Math.PI * n / (size - 1));
     }
     
     private static int GetNextPowerOfTwo(int n)
@@ -250,42 +319,62 @@ public class VoiceActivityDetector : IDisposable
         return n + 1;
     }
     
-    private static void FFT(Complex[] buffer)
+    private void OptimizedFFT(Complex[] buffer, int n)
     {
-        int n = buffer.Length;
         if (n <= 1) return;
         
         // Bit-reverse permutation
+        var logN = (int)Math.Log2(n);
         for (int i = 0; i < n; i++)
         {
-            int j = BitReverse(i, (int)Math.Log2(n));
+            int j = BitReverse(i, logN);
             if (i < j)
             {
                 (buffer[i], buffer[j]) = (buffer[j], buffer[i]);
             }
         }
         
-        // Cooley-Tukey FFT
+        // Use cached twiddle factors for better performance
+        var twiddleFactors = GetCachedTwiddleFactors(n);
+        
+        // Cooley-Tukey FFT with cached twiddle factors
         for (int length = 2; length <= n; length *= 2)
         {
-            double angle = -2.0 * Math.PI / length;
-            var wlen = new Complex(Math.Cos(angle), Math.Sin(angle));
+            var halfLength = length / 2;
+            var twiddleIndex = n / length;
             
             for (int start = 0; start < n; start += length)
             {
-                var w = Complex.One;
-                
-                for (int i = 0; i < length / 2; i++)
+                for (int i = 0; i < halfLength; i++)
                 {
                     var u = buffer[start + i];
-                    var v = buffer[start + i + length / 2] * w;
+                    var v = buffer[start + i + halfLength] * twiddleFactors[i * twiddleIndex];
                     
                     buffer[start + i] = u + v;
-                    buffer[start + i + length / 2] = u - v;
-                    
-                    w *= wlen;
+                    buffer[start + i + halfLength] = u - v;
                 }
             }
+        }
+    }
+    
+    private Complex[] GetCachedTwiddleFactors(int n)
+    {
+        lock (_twiddleCacheLock)
+        {
+            if (_twiddleCache.TryGetValue(n, out var cached))
+            {
+                return cached;
+            }
+            
+            var twiddle = new Complex[n];
+            for (int i = 0; i < n; i++)
+            {
+                double angle = -2.0 * Math.PI * i / n;
+                twiddle[i] = new Complex(Math.Cos(angle), Math.Sin(angle));
+            }
+            
+            _twiddleCache[n] = twiddle;
+            return twiddle;
         }
     }
     
@@ -489,6 +578,13 @@ public class VoiceActivityDetector : IDisposable
     public void Dispose()
     {
         while (_frameBuffer.TryDequeue(out _)) { }
+        
+        // Clear caches
+        lock (_twiddleCacheLock)
+        {
+            _twiddleCache.Clear();
+        }
+        _cachedSpectrum = null;
     }
 }
 

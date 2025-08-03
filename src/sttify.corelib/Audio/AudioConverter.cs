@@ -1,5 +1,6 @@
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using System.Buffers;
 
 namespace Sttify.Corelib.Audio;
 
@@ -9,9 +10,9 @@ public static class AudioConverter
     private const int TargetBitsPerSample = 16;
     private const int TargetChannels = 1;
 
-    public static byte[] ConvertToVoskFormat(byte[] audioData, WaveFormat sourceFormat)
+    public static byte[] ConvertToVoskFormat(ReadOnlySpan<byte> audioData, WaveFormat sourceFormat)
     {
-        if (audioData == null || audioData.Length == 0)
+        if (audioData.IsEmpty)
             return Array.Empty<byte>();
 
         // If already in correct format, return as-is
@@ -19,50 +20,73 @@ public static class AudioConverter
             sourceFormat.BitsPerSample == TargetBitsPerSample &&
             sourceFormat.Channels == TargetChannels)
         {
-            return audioData;
+            return audioData.ToArray();
         }
 
         try
         {
-            using var sourceStream = new MemoryStream(audioData);
-            using var sourceProvider = new RawSourceWaveStream(sourceStream, sourceFormat);
-
-            // Convert to ISampleProvider for processing
-            ISampleProvider sampleProvider = sourceProvider.ToSampleProvider();
-
-            // Convert to mono if necessary
-            if (sourceFormat.Channels > 1)
+            // Use array pool for temporary buffer to avoid allocation
+            var pool = ArrayPool<byte>.Shared;
+            var tempBuffer = pool.Rent(audioData.Length);
+            try
             {
-                sampleProvider = sampleProvider.ToMono();
-            }
+                audioData.CopyTo(tempBuffer);
+                
+                using var sourceStream = new MemoryStream(tempBuffer, 0, audioData.Length);
+                using var sourceProvider = new RawSourceWaveStream(sourceStream, sourceFormat);
 
-            // Resample if necessary
-            if (sourceFormat.SampleRate != TargetSampleRate)
+                // Convert to ISampleProvider for processing
+                ISampleProvider sampleProvider = sourceProvider.ToSampleProvider();
+
+                // Convert to mono if necessary
+                if (sourceFormat.Channels > 1)
+                {
+                    sampleProvider = sampleProvider.ToMono();
+                }
+
+                // Resample if necessary
+                if (sourceFormat.SampleRate != TargetSampleRate)
+                {
+                    sampleProvider = new WdlResamplingSampleProvider(sampleProvider, TargetSampleRate);
+                }
+
+                // Convert back to wave format
+                var targetFormat = new WaveFormat(TargetSampleRate, TargetBitsPerSample, TargetChannels);
+                var waveProvider = new SampleToWaveProvider16(sampleProvider);
+                
+                using var outputStream = new MemoryStream();
+                var readBuffer = pool.Rent(4096);
+                try
+                {
+                    int bytesRead;
+                    while ((bytesRead = waveProvider.Read(readBuffer, 0, readBuffer.Length)) > 0)
+                    {
+                        outputStream.Write(readBuffer, 0, bytesRead);
+                    }
+                }
+                finally
+                {
+                    pool.Return(readBuffer);
+                }
+
+                return outputStream.ToArray();
+            }
+            finally
             {
-                sampleProvider = new WdlResamplingSampleProvider(sampleProvider, TargetSampleRate);
+                pool.Return(tempBuffer);
             }
-
-            // Convert back to wave format
-            var targetFormat = new WaveFormat(TargetSampleRate, TargetBitsPerSample, TargetChannels);
-            var waveProvider = new SampleToWaveProvider16(sampleProvider);
-            
-            using var outputStream = new MemoryStream();
-            var buffer = new byte[4096];
-            int bytesRead;
-            
-            while ((bytesRead = waveProvider.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                outputStream.Write(buffer, 0, bytesRead);
-            }
-
-            return outputStream.ToArray();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Audio conversion failed: {ex.Message}");
             // Return original data if conversion fails
-            return audioData;
+            return audioData.ToArray();
         }
+    }
+
+    public static byte[] ConvertToVoskFormat(byte[] audioData, WaveFormat sourceFormat)
+    {
+        return ConvertToVoskFormat(audioData.AsSpan(), sourceFormat);
     }
 
     public static WaveFormat GetVoskTargetFormat()
@@ -77,9 +101,9 @@ public static class AudioConverter
                format.Channels == TargetChannels;
     }
 
-    public static double CalculateAudioLevel(byte[] audioData, WaveFormat format)
+    public static double CalculateAudioLevel(ReadOnlySpan<byte> audioData, WaveFormat format)
     {
-        if (audioData.Length == 0)
+        if (audioData.IsEmpty)
             return 0.0;
 
         try
@@ -103,7 +127,12 @@ public static class AudioConverter
         }
     }
 
-    private static double Calculate16BitLevel(byte[] audioData)
+    public static double CalculateAudioLevel(byte[] audioData, WaveFormat format)
+    {
+        return CalculateAudioLevel(audioData.AsSpan(), format);
+    }
+
+    private static double Calculate16BitLevel(ReadOnlySpan<byte> audioData)
     {
         double sum = 0;
         int sampleCount = 0;
@@ -122,14 +151,14 @@ public static class AudioConverter
         return Math.Min(1.0, average / 32768.0);
     }
 
-    private static double Calculate32BitLevel(byte[] audioData)
+    private static double Calculate32BitLevel(ReadOnlySpan<byte> audioData)
     {
         double sum = 0;
         int sampleCount = 0;
 
         for (int i = 0; i < audioData.Length - 3; i += 4)
         {
-            float sample = BitConverter.ToSingle(audioData, i);
+            float sample = BitConverter.ToSingle(audioData.Slice(i, 4));
             sum += Math.Abs(sample);
             sampleCount++;
         }
@@ -140,7 +169,7 @@ public static class AudioConverter
         return Math.Min(1.0, sum / sampleCount);
     }
 
-    private static double Calculate8BitLevel(byte[] audioData)
+    private static double Calculate8BitLevel(ReadOnlySpan<byte> audioData)
     {
         double sum = 0;
         foreach (byte sample in audioData)
