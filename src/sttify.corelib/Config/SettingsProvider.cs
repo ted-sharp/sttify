@@ -177,6 +177,21 @@ public class SettingsProvider
                     Punctuation = true,
                     EndpointSilenceMs = 800,
                     TokensPerPartial = 5
+                },
+                Vibe = new VibeEngineSettings
+                {
+                    Endpoint = "http://localhost:8080",
+                    ApiKey = "",
+                    Language = "ja",
+                    Model = "base",
+                    OutputFormat = "json",
+                    EnableDiarization = false,
+                    EnablePostProcessing = true,
+                    AutoCapitalize = true,
+                    AutoPunctuation = true,
+                    TimeoutSeconds = 30,
+                    ProcessingIntervalSeconds = 3.0,
+                    MaxBufferSize = 64000
                 }
             },
             Session = new SessionSettings

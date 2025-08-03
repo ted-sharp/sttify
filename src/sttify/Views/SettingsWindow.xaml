@@ -94,6 +94,39 @@
                     <CheckBox Content="Enable punctuation" 
                              IsChecked="{Binding Settings.Engine.Vosk.Punctuation}" 
                              Margin="0,5"/>
+                    
+                    <!-- Vibe Configuration -->
+                    <GroupBox Header="Vibe Configuration" Margin="0,15,0,0"
+                             Visibility="{Binding IsVibeEngine, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel Margin="10">
+                            <Label Content="Vibe Endpoint:"/>
+                            <TextBox Text="{Binding Settings.Engine.Vibe.Endpoint}" Margin="0,5,0,10"/>
+                            <TextBlock Text="URL of the Vibe HTTP API server (e.g., http://localhost:8080)"
+                                      Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
+                            
+                            <Label Content="API Key (optional):"/>
+                            <TextBox Text="{Binding Settings.Engine.Vibe.ApiKey}" Margin="0,5,0,10"/>
+                            
+                            <Label Content="Language:"/>
+                            <ComboBox SelectedValue="{Binding Settings.Engine.Vibe.Language}" Margin="0,5,0,10">
+                                <ComboBoxItem Content="Auto Detect" Tag=""/>
+                                <ComboBoxItem Content="Japanese (ja)" Tag="ja"/>
+                                <ComboBoxItem Content="English (en)" Tag="en"/>
+                                <ComboBoxItem Content="Chinese (zh)" Tag="zh"/>
+                            </ComboBox>
+                            
+                            <CheckBox Content="Enable diarization (speaker separation)" 
+                                     IsChecked="{Binding Settings.Engine.Vibe.EnableDiarization}" 
+                                     Margin="0,5"/>
+                            <CheckBox Content="Enable post-processing" 
+                                     IsChecked="{Binding Settings.Engine.Vibe.EnablePostProcessing}" 
+                                     Margin="0,5"/>
+                            
+                            <Button Content="Test Connection" 
+                                   Command="{Binding TestVibeCommand}"
+                                   Width="120" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </GroupBox>
                 </StackPanel>
             </TabItem>
             
@@ -109,7 +142,41 @@
                     
                     <CheckBox Content="Suppress when IME is composing" 
                              IsChecked="{Binding Settings.Output.Tsf.SuppressWhenImeComposing}" 
-                             Margin="0,5"/>
+                             Margin="0,5,0,15"/>
+                    
+                    <!-- Test Section -->
+                    <GroupBox Header="Output Test" Margin="0,0,0,15">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Test output methods using global keyboard shortcuts (works from any application):" 
+                                      Margin="0,0,0,10" TextWrapping="Wrap"/>
+                            <TextBox x:Name="TestTextBox" Text="Hello, this is a test from Sttify." 
+                                    Margin="0,0,0,10"/>
+                            
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="Test TSF TIP (direct text insertion)" Margin="0,2"/>
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
+                            </Grid>
+                            
+                            <TextBlock Text="1. Focus a text editor (like Notepad)&#10;2. Press the desired global shortcut key (Win+Shift+F1/F2/F3)&#10;3. The test text will be sent to the focused application" 
+                                      Foreground="Gray" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </GroupBox>
                 </StackPanel>
             </TabItem>
             

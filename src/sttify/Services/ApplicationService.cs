@@ -28,6 +28,7 @@ public class ApplicationService : IDisposable
         HotkeyManager hotkeyManager,
         RtssBridge rtssService)
     {
+        System.Diagnostics.Debug.WriteLine("*** ApplicationService Constructor Called - VERSION 2024-DEBUG ***");
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         _recognitionSession = recognitionSession ?? throw new ArgumentNullException(nameof(recognitionSession));
         _hotkeyManager = hotkeyManager ?? throw new ArgumentNullException(nameof(hotkeyManager));
@@ -75,11 +76,27 @@ public class ApplicationService : IDisposable
 
     public async Task StartRecognitionAsync()
     {
-        await _errorRecovery.ExecuteWithRetryAsync(async () =>
+        System.Diagnostics.Debug.WriteLine("*** ApplicationService.StartRecognitionAsync CALLED - VERSION 2024-DEBUG ***");
+        System.Diagnostics.Debug.WriteLine($"*** RecognitionSession Instance ID: {_recognitionSession.GetHashCode()} ***");
+        Telemetry.LogEvent("ApplicationService_StartRecognitionRequested");
+        
+        try
         {
-            await _recognitionSession.StartAsync();
-            Telemetry.LogEvent("RecognitionStarted");
-        }, "StartRecognition");
+            await _errorRecovery.ExecuteWithRetryAsync(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine("*** About to call RecognitionSession.StartAsync ***");
+                Telemetry.LogEvent("ApplicationService_CallingRecognitionSessionStart");
+                await _recognitionSession.StartAsync();
+                Telemetry.LogEvent("RecognitionStarted");
+                System.Diagnostics.Debug.WriteLine("*** RecognitionSession.StartAsync completed ***");
+            }, "StartRecognition");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** ApplicationService.StartRecognitionAsync FAILED: {ex.Message} ***");
+            Telemetry.LogError("ApplicationService_StartRecognitionFailed", ex);
+            throw;
+        }
     }
 
     public async Task StopRecognitionAsync()

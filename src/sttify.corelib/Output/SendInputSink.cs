@@ -30,7 +30,9 @@ public class SendInputSink : ITextOutputSink
         if (string.IsNullOrEmpty(text))
             return;
 
+        System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Text: '{text}', Length: {text.Length} ***");
         await SendTextViaInputAsync(text, cancellationToken);
+        System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Completed sending '{text}' ***");
     }
 
     private async Task SendTextViaInputAsync(string text, CancellationToken cancellationToken)
@@ -62,7 +64,8 @@ public class SendInputSink : ITextOutputSink
             // Send character immediately for better responsiveness
             if (inputs.Count == 1)
             {
-                SendInput(1, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+                uint result = SendInput(1, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+                System.Diagnostics.Debug.WriteLine($"*** SendInput API call for char '{c}': result={result} ***");
                 inputs.Clear();
                 
                 if (delayMs > 0)

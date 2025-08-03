@@ -19,6 +19,7 @@ public class VoskEngineAdapter : ISttEngine
     public VoskEngineAdapter(VoskEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter Constructor - Instance ID: {GetHashCode()} ***");
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -26,14 +27,9 @@ public class VoskEngineAdapter : ISttEngine
         if (_isRunning)
             throw new InvalidOperationException("Engine is already running");
 
-        if (string.IsNullOrEmpty(_settings.ModelPath) || !Directory.Exists(_settings.ModelPath))
-        {
-            OnError?.Invoke(this, new SttErrorEventArgs(
-                new DirectoryNotFoundException($"Vosk model not found at: {_settings.ModelPath}"),
-                "Vosk model directory not found"));
-            return;
-        }
-
+        // For mock implementation, continue even without model path
+        System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter (Mock) - Starting with ModelPath: '{_settings.ModelPath}' ***");
+        
         lock (_lockObject)
         {
             _isRunning = true;
@@ -42,6 +38,7 @@ public class VoskEngineAdapter : ISttEngine
 
         _processingTask = Task.Run(() => ProcessAudioLoop(_processingCancellation.Token), cancellationToken);
         
+        System.Diagnostics.Debug.WriteLine("*** VoskEngineAdapter (Mock) - Started successfully ***");
         await Task.Delay(100, cancellationToken);
     }
 
@@ -81,6 +78,10 @@ public class VoskEngineAdapter : ISttEngine
         lock (_audioQueue)
         {
             _audioQueue.Enqueue(buffer);
+            if (_audioQueue.Count == 1) // Only log first audio push to avoid spam
+            {
+                System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter (Mock) - First audio received: {audioData.Length} bytes ***");
+            }
         }
     }
 
@@ -110,10 +111,12 @@ public class VoskEngineAdapter : ISttEngine
                     
                     if (mockResult.IsPartial)
                     {
+                        System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter (Mock) - Generating PARTIAL: '{mockResult.Text}' ***");
                         OnPartial?.Invoke(this, new PartialRecognitionEventArgs(mockResult.Text, mockResult.Confidence));
                     }
                     else if (mockResult.IsFinal)
                     {
+                        System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter (Mock) - Generating FINAL: '{mockResult.Text}' ***");
                         var duration = DateTime.UtcNow - startTime;
                         OnFinal?.Invoke(this, new FinalRecognitionEventArgs(mockResult.Text, mockResult.Confidence, duration));
                         

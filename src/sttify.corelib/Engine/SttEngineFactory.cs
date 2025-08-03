@@ -7,24 +7,33 @@ public static class SttEngineFactory
 {
     public static ISttEngine CreateEngine(EngineSettings engineSettings)
     {
-        return engineSettings.Profile.ToLowerInvariant() switch
+        System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Profile: {engineSettings.Profile} ***");
+        var engine = engineSettings.Profile.ToLowerInvariant() switch
         {
             "vosk" => CreateVoskEngine(engineSettings.Vosk),
             "vosk-real" => new RealVoskEngineAdapter(engineSettings.Vosk),
             "vosk-mock" => new VoskEngineAdapter(engineSettings.Vosk),
             _ => throw new NotSupportedException($"Engine profile '{engineSettings.Profile}' is not supported")
         };
+        System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Created: {engine.GetType().Name} ***");
+        return engine;
     }
 
     private static ISttEngine CreateVoskEngine(VoskEngineSettings voskSettings)
     {
+        System.Diagnostics.Debug.WriteLine($"*** CreateVoskEngine - ModelPath: '{voskSettings.ModelPath}' ***");
         // Check if Vosk model exists and is valid, then decide which implementation to use
-        if (IsValidVoskModel(voskSettings.ModelPath))
+        bool isValidModel = IsValidVoskModel(voskSettings.ModelPath);
+        System.Diagnostics.Debug.WriteLine($"*** CreateVoskEngine - IsValidModel: {isValidModel} ***");
+        
+        if (isValidModel)
         {
+            System.Diagnostics.Debug.WriteLine("*** CreateVoskEngine - Using RealVoskEngineAdapter ***");
             return new RealVoskEngineAdapter(voskSettings);
         }
         else
         {
+            System.Diagnostics.Debug.WriteLine("*** CreateVoskEngine - Using VoskEngineAdapter (Mock) ***");
             // Fall back to mock implementation for development/testing
             return new VoskEngineAdapter(voskSettings);
         }

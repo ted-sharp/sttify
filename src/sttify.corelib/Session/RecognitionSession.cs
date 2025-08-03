@@ -58,6 +58,7 @@ public class RecognitionSession : IDisposable
         RecognitionSessionSettings settings,
         PluginManager? pluginManager = null)
     {
+        System.Diagnostics.Debug.WriteLine($"*** RecognitionSession Constructor - Instance ID: {GetHashCode()} ***");
         _audioCapture = audioCapture ?? throw new ArgumentNullException(nameof(audioCapture));
         _sttEngine = sttEngine ?? throw new ArgumentNullException(nameof(sttEngine));
         _outputSinks = outputSinks ?? throw new ArgumentNullException(nameof(outputSinks));
@@ -113,6 +114,7 @@ public class RecognitionSession : IDisposable
                 if (_currentState != value)
                 {
                     var oldState = _currentState;
+                    System.Diagnostics.Debug.WriteLine($"*** STATE CHANGE: {oldState} → {value} ***");
                     _currentState = value;
                     OnStateChanged?.Invoke(this, new SessionStateChangedEventArgs(oldState, value));
                 }
@@ -122,17 +124,28 @@ public class RecognitionSession : IDisposable
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
+        System.Diagnostics.Debug.WriteLine($"*** RecognitionSession.StartAsync ENTRY - Current State: {CurrentState} ***");
+        Telemetry.LogEvent("RecognitionSession_StartRequested", new { CurrentState = CurrentState.ToString() });
+        
         if (CurrentState != SessionState.Idle)
         {
+            System.Diagnostics.Debug.WriteLine($"*** RecognitionSession EARLY RETURN - State is {CurrentState}, not Idle ***");
             Telemetry.LogWarning("RecognitionSessionStartSkipped", $"Session already in state: {CurrentState}");
             return;
         }
 
-        CurrentState = SessionState.Starting;
-        
+        System.Diagnostics.Debug.WriteLine("*** RecognitionSession proceeding with startup ***");
+
         try
         {
+            CurrentState = SessionState.Starting;
+            Telemetry.LogEvent("RecognitionSession_StateChangedToStarting");
+            
+            System.Diagnostics.Debug.WriteLine($"*** About to call _sttEngine.StartAsync() on {_sttEngine.GetType().Name} ***");
+            Telemetry.LogEvent("RecognitionSession_StartingEngine");
             await _sttEngine.StartAsync(cancellationToken);
+            System.Diagnostics.Debug.WriteLine($"*** _sttEngine.StartAsync() completed successfully ***");
+            Telemetry.LogEvent("RecognitionSession_EngineStarted");
             
             var audioCaptureSettings = new AudioCaptureSettings
             {
@@ -141,21 +154,29 @@ public class RecognitionSession : IDisposable
                 BufferSize = (_settings.SampleRate * _settings.Channels * 2 * _settings.BufferSizeMs) / 1000 // Convert ms to buffer size
             };
             
+            Telemetry.LogEvent("RecognitionSession_StartingAudioCapture", new { audioCaptureSettings.SampleRate, audioCaptureSettings.Channels, audioCaptureSettings.BufferSize });
             await _audioCapture.StartAsync(audioCaptureSettings, cancellationToken);
+            Telemetry.LogEvent("RecognitionSession_AudioCaptureStarted");
             
             // Initialize mode-specific behavior
+            Telemetry.LogEvent("RecognitionSession_InitializingMode", new { Mode = CurrentMode.ToString() });
             await InitializeModeAsync(cancellationToken);
+            Telemetry.LogEvent("RecognitionSession_ModeInitialized");
             
             CurrentState = SessionState.Listening;
+            Telemetry.LogEvent("RecognitionSession_StateChangedToListening");
             
             Telemetry.LogEvent("RecognitionSessionStarted", new 
             { 
                 Mode = CurrentMode.ToString(),
                 AudioSettings = new { audioCaptureSettings.SampleRate, audioCaptureSettings.Channels }
             });
+            System.Diagnostics.Debug.WriteLine("*** RecognitionSession startup completed successfully ***");
         }
         catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"*** EXCEPTION in RecognitionSession.StartAsync: {ex.GetType().Name} - {ex.Message} ***");
+            System.Diagnostics.Debug.WriteLine($"*** Exception Stack Trace: {ex.StackTrace} ***");
             CurrentState = SessionState.Error;
             Telemetry.LogError("RecognitionSessionStartFailed", ex, new { Mode = CurrentMode.ToString() });
             throw;
@@ -208,13 +229,19 @@ public class RecognitionSession : IDisposable
 
     private void OnPartialRecognition(object? sender, PartialRecognitionEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"*** PARTIAL RECOGNITION: '{e.Text}' (Confidence: {e.Confidence}) ***");
         OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(e.Text, false, e.Confidence));
     }
 
     private async void OnFinalRecognition(object? sender, FinalRecognitionEventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"*** FINAL RECOGNITION: '{e.Text}' (Confidence: {e.Confidence}) ***");
+        
         if (string.IsNullOrWhiteSpace(e.Text))
+        {
+            System.Diagnostics.Debug.WriteLine("*** FINAL RECOGNITION IGNORED - Empty text ***");
             return;
+        }
 
         // Process text through plugins if available
         var processedText = e.Text;
@@ -349,17 +376,25 @@ public class RecognitionSession : IDisposable
 
     private async Task SendTextToOutputSinksAsync(string text)
     {
+        System.Diagnostics.Debug.WriteLine($"*** SendTextToOutputSinksAsync - Text: '{text}', Sinks Count: {_outputSinks.Count()} ***");
+        
         bool textSentSuccessfully = false;
         var failedSinks = new List<string>();
 
         foreach (var sink in _outputSinks)
         {
+            System.Diagnostics.Debug.WriteLine($"*** Trying output sink: {sink.Name} ({sink.GetType().Name}) ***");
             try
             {
-                if (await sink.CanSendAsync())
+                bool canSend = await sink.CanSendAsync();
+                System.Diagnostics.Debug.WriteLine($"*** Sink {sink.Name} CanSend: {canSend} ***");
+                
+                if (canSend)
                 {
+                    System.Diagnostics.Debug.WriteLine($"*** Sending text '{text}' to {sink.Name} ***");
                     await sink.SendAsync(text);
                     textSentSuccessfully = true;
+                    System.Diagnostics.Debug.WriteLine($"*** Successfully sent to {sink.Name} ***");
                     
                     Telemetry.LogEvent("TextOutputSuccessful", new 
                     { 
@@ -369,9 +404,14 @@ public class RecognitionSession : IDisposable
                     });
                     break;
                 }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"*** Sink {sink.Name} cannot send (CanSend returned false) ***");
+                }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"*** Exception in sink {sink.Name}: {ex.Message} ***");
                 failedSinks.Add(sink.Name);
                 
                 Telemetry.LogError("OutputSinkFailed", ex, new 

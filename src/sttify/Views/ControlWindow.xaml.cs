@@ -220,14 +220,22 @@ public partial class ControlWindow : Window
         try
         {
             var currentState = applicationService.GetCurrentState();
+            Debug.WriteLine($"OnMicrophoneClick: Current state is {currentState}");
             
             if (currentState == Sttify.Corelib.Session.SessionState.Listening)
             {
+                Debug.WriteLine("OnMicrophoneClick: Calling StopRecognitionAsync");
                 await applicationService.StopRecognitionAsync();
             }
             else if (currentState == Sttify.Corelib.Session.SessionState.Idle)
             {
+                Debug.WriteLine("OnMicrophoneClick: Calling StartRecognitionAsync");
                 await applicationService.StartRecognitionAsync();
+                Debug.WriteLine("OnMicrophoneClick: StartRecognitionAsync completed");
+            }
+            else
+            {
+                Debug.WriteLine($"OnMicrophoneClick: State {currentState} - no action taken");
             }
         }
         catch (Exception ex)

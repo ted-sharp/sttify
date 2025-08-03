@@ -54,18 +54,18 @@ public partial class App : System.Windows.Application
             Telemetry.LogError("ApplicationStartupFailed", ex);
             
             // Output detailed error information to console
-            // Console.WriteLine("=== APPLICATION STARTUP ERROR ===");
-            // Console.WriteLine($"Exception Type: {ex.GetType().Name}");
-            // Console.WriteLine($"Message: {ex.Message}");
-            // Console.WriteLine($"Stack Trace: {ex.StackTrace}");
-            // 
-            // if (ex.InnerException != null)
-            // {
-            //     Console.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
-            //     Console.WriteLine($"Inner Message: {ex.InnerException.Message}");
-            //     Console.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
-            // }
-            // Console.WriteLine("==================================");
+            System.Diagnostics.Debug.WriteLine("=== APPLICATION STARTUP ERROR ===");
+            System.Diagnostics.Debug.WriteLine($"Exception Type: {ex.GetType().Name}");
+            System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            
+            if (ex.InnerException != null)
+            {
+                System.Diagnostics.Debug.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"Inner Message: {ex.InnerException.Message}");
+                System.Diagnostics.Debug.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
+            }
+            System.Diagnostics.Debug.WriteLine("==================================");
             
             System.Windows.MessageBox.Show($"Failed to start application: {ex.Message}", "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
@@ -143,7 +143,20 @@ public partial class App : System.Windows.Application
                 
                 services.AddSingleton<ISttEngine>(provider =>
                 {
-                    var defaultEngineSettings = new EngineSettings();
+                    // Use safe default settings for initialization to avoid dependency issues
+                    var defaultEngineSettings = new EngineSettings
+                    {
+                        Profile = "vosk",
+                        Vosk = new VoskEngineSettings
+                        {
+                            ModelPath = "",
+                            Language = "ja",
+                            Punctuation = true,
+                            EndpointSilenceMs = 800,
+                            TokensPerPartial = 5
+                        }
+                    };
+                    System.Diagnostics.Debug.WriteLine($"*** STT Engine Settings - Profile: {defaultEngineSettings.Profile}, ModelPath: '{defaultEngineSettings.Vosk.ModelPath}' ***");
                     return SttEngineFactory.CreateEngine(defaultEngineSettings);
                 });
                 

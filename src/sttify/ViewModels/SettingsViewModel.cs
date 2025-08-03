@@ -5,6 +5,7 @@ using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Engine.Vosk;
+using Sttify.Corelib.Output;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
@@ -447,5 +448,105 @@ public partial class SettingsViewModel : ObservableObject
             DownloadProgress = e.ProgressPercentage;
             DownloadStatus = e.Status;
         });
+    }
+
+    [RelayCommand]
+    private async Task TestOutputAsync(string? testText)
+    {
+        if (string.IsNullOrEmpty(testText))
+        {
+            System.Diagnostics.Debug.WriteLine("*** Test Output: No test text provided ***");
+            return;
+        }
+
+        try
+        {
+            // Create output sink based on current settings
+            ITextOutputSink outputSink = Settings.Output.PrimaryOutputIndex switch
+            {
+                0 => new TsfTipSink(), // TSF TIP
+                1 => new SendInputSink(), // SendInput
+                _ => new SendInputSink() // Default to SendInput
+            };
+
+            System.Diagnostics.Debug.WriteLine($"*** Testing {outputSink.Name} with text: '{testText}' ***");
+
+            bool canSend = await outputSink.CanSendAsync();
+            if (canSend)
+            {
+                await outputSink.SendAsync(testText);
+                System.Diagnostics.Debug.WriteLine($"*** Test completed successfully using {outputSink.Name} ***");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"*** {outputSink.Name} output method is not available ***");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** Test failed: {ex.Message} ***");
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestTsfAsync(string? testText)
+    {
+        if (string.IsNullOrEmpty(testText))
+        {
+            System.Diagnostics.Debug.WriteLine("*** Test TSF TIP: No test text provided ***");
+            return;
+        }
+
+        try
+        {
+            var tsfSink = new TsfTipSink();
+            System.Diagnostics.Debug.WriteLine($"*** Testing TSF TIP with text: '{testText}' ***");
+
+            bool canSend = await tsfSink.CanSendAsync();
+            if (canSend)
+            {
+                await tsfSink.SendAsync(testText);
+                System.Diagnostics.Debug.WriteLine($"*** TSF TIP test completed successfully ***");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"*** TSF TIP is not available ***");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** TSF TIP test failed: {ex.Message} ***");
+        }
+    }
+
+    [RelayCommand]
+    private async Task TestSendInputAsync(string? testText)
+    {
+        if (string.IsNullOrEmpty(testText))
+        {
+            System.Diagnostics.Debug.WriteLine("*** Test SendInput: No test text provided ***");
+            return;
+        }
+
+        try
+        {
+            var sendInputSink = new SendInputSink();
+            System.Diagnostics.Debug.WriteLine($"*** Testing SendInput with text: '{testText}' ***");
+
+            bool canSend = await sendInputSink.CanSendAsync();
+            if (canSend)
+            {
+                await sendInputSink.SendAsync(testText);
+                System.Diagnostics.Debug.WriteLine($"*** SendInput test completed successfully ***");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"*** SendInput is not available on this platform ***");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** SendInput test failed: {ex.Message} ***");
+        }
     }
 }
