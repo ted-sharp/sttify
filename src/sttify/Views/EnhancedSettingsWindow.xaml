@@ -9,7 +9,6 @@
         Icon="pack://application:,,,/Resources/microphone.ico">
     
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <local:StringToBooleanConverter x:Key="StringToBooleanConverter"/>
         <local:LocalizationConverter x:Key="LocalizationConverter"/>
         
@@ -54,7 +53,7 @@
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
             <TextBlock Text="🎤" FontSize="24" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <TextBlock Text="Sttify Configuration" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
-            <ProgressBar Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+            <ProgressBar Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
                         IsIndeterminate="True" Width="100" Height="4" Margin="20,0,0,0" VerticalAlignment="Center"/>
         </StackPanel>
         
@@ -177,7 +176,7 @@
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
                                                     <Border Background="#FF4CAF50" CornerRadius="3" Padding="5,2" Margin="10,0,0,0"
-                                                           Visibility="{Binding IsRecommended, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                           Visibility="{Binding IsRecommended, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                         <TextBlock Text="RECOMMENDED" FontSize="10" Foreground="White" FontWeight="Bold"/>
                                                     </Border>
                                                 </StackPanel>
@@ -193,7 +192,7 @@
                                             <Button Grid.Column="1" Content="Download" 
                                                    Command="{Binding DataContext.DownloadModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                    CommandParameter="{Binding}"
-                                                   IsEnabled="{Binding DataContext.IsDownloadingModel, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   IsEnabled="{Binding DataContext.IsDownloadingModel, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                    Padding="15,5"/>
                                         </Grid>
                                     </Border>
@@ -202,7 +201,7 @@
                         </ItemsControl>
                         
                         <!-- Download Progress -->
-                        <StackPanel Visibility="{Binding IsDownloadingModel, Converter={StaticResource BoolToVisibilityConverter}}"
+                        <StackPanel Visibility="{Binding IsDownloadingModel, Converter={StaticResource BooleanToVisibilityConverter}}"
                                    Margin="0,10">
                             <TextBlock Text="{Binding DownloadStatus}" FontWeight="Bold"/>
                             <ProgressBar Value="{Binding DownloadProgress}" Height="6" Margin="0,5"/>
@@ -218,9 +217,9 @@
 
                         <!-- Vibe Configuration -->
                         <TextBlock Text="Vibe Configuration" Style="{StaticResource SectionHeaderStyle}" 
-                                  Visibility="{Binding IsVibeEngine, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                  Visibility="{Binding IsVibeEngine, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         
-                        <StackPanel Visibility="{Binding IsVibeEngine, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Visibility="{Binding IsVibeEngine, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Label Content="Vibe Endpoint:"/>
                             <TextBox Text="{Binding Settings.Engine.Vibe.Endpoint}" Margin="0,5,0,10"/>
                             <TextBlock Text="URL of the Vibe HTTP API server (e.g., http://localhost:8080)"
