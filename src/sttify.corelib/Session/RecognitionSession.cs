@@ -217,21 +217,7 @@ public class RecognitionSession : IDisposable
 
         OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(processedText, true, e.Confidence));
 
-        foreach (var sink in _outputSinks)
-        {
-            try
-            {
-                if (await sink.CanSendAsync())
-                {
-                    await sink.SendAsync(processedText);
-                    break;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Failed to send text via {sink.Name}: {ex.Message}");
-            }
-        }
+        await SendTextToOutputSinksAsync(processedText);
     }
 
     private async Task<string> ProcessTextThroughPluginsAsync(string text)
@@ -351,6 +337,55 @@ public class RecognitionSession : IDisposable
         }
         
         return false;
+    }
+
+    private async Task SendTextToOutputSinksAsync(string text)
+    {
+        bool textSentSuccessfully = false;
+        var failedSinks = new List<string>();
+
+        foreach (var sink in _outputSinks)
+        {
+            try
+            {
+                if (await sink.CanSendAsync())
+                {
+                    await sink.SendAsync(text);
+                    textSentSuccessfully = true;
+                    
+                    Telemetry.LogEvent("TextOutputSuccessful", new 
+                    { 
+                        SinkName = sink.Name,
+                        TextLength = text.Length,
+                        Mode = "Session"
+                    });
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                failedSinks.Add(sink.Name);
+                
+                Telemetry.LogError("OutputSinkFailed", ex, new 
+                {
+                    SinkName = sink.Name,
+                    TextLength = text.Length,
+                    Mode = "Session" // Basic mode identifier
+                });
+            }
+        }
+
+        if (!textSentSuccessfully)
+        {
+            Telemetry.LogError("AllOutputSinksFailed", 
+                new InvalidOperationException("No output sinks available"), 
+                new 
+                {
+                    TextLength = text.Length,
+                    FailedSinks = failedSinks,
+                    FailedSinkCount = failedSinks.Count
+                });
+        }
     }
 
     public void Dispose()

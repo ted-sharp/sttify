@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Config;
 
@@ -67,11 +68,31 @@ public class SettingsProvider
         try
         {
             var json = await File.ReadAllTextAsync(_configPath);
-            return JsonSerializer.Deserialize<SttifySettings>(json, _jsonOptions) ?? CreateDefaultSettings();
+            var settings = JsonSerializer.Deserialize<SttifySettings>(json, _jsonOptions);
+            
+            if (settings == null)
+            {
+                Telemetry.LogError("SettingsDeserializationFailed", 
+                    new InvalidOperationException("Settings deserialization returned null"),
+                    new { ConfigPath = _configPath });
+                return CreateDefaultSettings();
+            }
+            
+            return settings;
+        }
+        catch (JsonException ex)
+        {
+            Telemetry.LogError("SettingsJsonParsingFailed", ex, 
+                new { ConfigPath = _configPath });
+            
+            // Try to backup corrupted file and create new defaults
+            await BackupCorruptedConfigAsync();
+            return CreateDefaultSettings();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to load settings: {ex.Message}");
+            Telemetry.LogError("SettingsLoadFailed", ex, 
+                new { ConfigPath = _configPath });
             return CreateDefaultSettings();
         }
     }
@@ -140,6 +161,28 @@ public class SettingsProvider
                 MaskInLogs = false
             }
         };
+    }
+
+    private async Task BackupCorruptedConfigAsync()
+    {
+        try
+        {
+            if (File.Exists(_configPath))
+            {
+                var backupPath = $"{_configPath}.corrupted.{DateTime.UtcNow:yyyyMMdd-HHmmss}.bak";
+                await File.WriteAllTextAsync(backupPath, await File.ReadAllTextAsync(_configPath));
+                
+                Telemetry.LogEvent("CorruptedConfigBackedUp", new 
+                { 
+                    OriginalPath = _configPath,
+                    BackupPath = backupPath
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("ConfigBackupFailed", ex, new { ConfigPath = _configPath });
+        }
     }
 }
 
