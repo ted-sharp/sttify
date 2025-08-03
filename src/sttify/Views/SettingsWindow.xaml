@@ -106,6 +106,31 @@
                             Margin="0,5,0,10"/>
                 </StackPanel>
             </TabItem>
+            
+            <TabItem Header="Interface">
+                <StackPanel Margin="10">
+                    <GroupBox Header="Control Window" Margin="0,0,0,15">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Reset control window position to default location" 
+                                      Margin="0,0,0,10" TextWrapping="Wrap"/>
+                            <Button Content="Reset Window Position" 
+                                   Command="{Binding ResetWindowPositionCommand}"
+                                   Width="150" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </GroupBox>
+                    
+                    <GroupBox Header="Display Settings">
+                        <StackPanel Margin="10">
+                            <CheckBox Content="Always show window on primary monitor" 
+                                     IsChecked="{Binding Settings.Application.AlwaysOnPrimaryMonitor}" 
+                                     Margin="0,5"/>
+                            <CheckBox Content="Remember window position" 
+                                     IsChecked="{Binding Settings.Application.RememberWindowPosition}" 
+                                     Margin="0,5"/>
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+            </TabItem>
         </TabControl>
         
         <!-- Buttons -->

@@ -267,6 +267,8 @@ public class ApplicationSettings
     public bool StartWithWindows { get; set; } = false;
     public bool ShowInTray { get; set; } = true;
     public bool StartMinimized { get; set; } = false;
+    public bool AlwaysOnPrimaryMonitor { get; set; } = false;
+    public bool RememberWindowPosition { get; set; } = true;
     public WindowPosition ControlWindow { get; set; } = new();
 }
 

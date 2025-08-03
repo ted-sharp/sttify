@@ -101,6 +101,33 @@ public partial class SettingsViewModel : ObservableObject
         Settings = new SttifySettings();
     }
 
+    [RelayCommand]
+    private async Task ResetWindowPositionAsync()
+    {
+        try
+        {
+            Settings.Application.ControlWindow.Left = double.NaN;
+            Settings.Application.ControlWindow.Top = double.NaN;
+            Settings.Application.ControlWindow.DisplayConfiguration = "";
+            
+            await SaveSettingsAsync();
+            
+            System.Windows.MessageBox.Show(
+                "Control window position has been reset. The window will appear at the default location on next startup.", 
+                "Position Reset", 
+                MessageBoxButton.OK, 
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Failed to reset window position: {ex.Message}", 
+                "Reset Failed", 
+                MessageBoxButton.OK, 
+                MessageBoxImage.Error);
+        }
+    }
+
     private async Task LoadAudioDevicesAsync()
     {
         try

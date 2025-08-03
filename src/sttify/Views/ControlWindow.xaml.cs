@@ -524,12 +524,20 @@ public partial class ControlWindow : Window
             var settingsProvider = new SettingsProvider();
             var settings = await settingsProvider.GetSettingsAsync();
             
-            settings.Application.ControlWindow.Left = Left;
-            settings.Application.ControlWindow.Top = Top;
-            settings.Application.ControlWindow.DisplayConfiguration = GetDisplayConfiguration();
-            
-            await settingsProvider.SaveSettingsAsync(settings);
-            Debug.WriteLine($"Window position saved: {Left}, {Top}");
+            // Only save position if remember window position is enabled
+            if (settings.Application.RememberWindowPosition)
+            {
+                settings.Application.ControlWindow.Left = Left;
+                settings.Application.ControlWindow.Top = Top;
+                settings.Application.ControlWindow.DisplayConfiguration = GetDisplayConfiguration();
+                
+                await settingsProvider.SaveSettingsAsync(settings);
+                Debug.WriteLine($"Window position saved: {Left}, {Top}");
+            }
+            else
+            {
+                Debug.WriteLine("Window position saving is disabled");
+            }
         }
         catch (Exception ex)
         {
@@ -545,11 +553,31 @@ public partial class ControlWindow : Window
             var settings = await settingsProvider.GetSettingsAsync();
             var windowPos = settings.Application.ControlWindow;
             
+            // Check if position should be remembered
+            if (!settings.Application.RememberWindowPosition)
+            {
+                Debug.WriteLine("Remember window position is disabled, using default");
+                return;
+            }
+            
             // Check if position is saved
             if (double.IsNaN(windowPos.Left) || double.IsNaN(windowPos.Top))
             {
                 Debug.WriteLine("No saved window position, using default");
                 return;
+            }
+            
+            // If always on primary monitor is enabled, place on primary monitor
+            if (settings.Application.AlwaysOnPrimaryMonitor)
+            {
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen != null)
+                {
+                    Left = primaryScreen.WorkingArea.Left + 100;
+                    Top = primaryScreen.WorkingArea.Top + 100;
+                    Debug.WriteLine("Placed on primary monitor due to AlwaysOnPrimaryMonitor setting");
+                    return;
+                }
             }
             
             // Check if display configuration changed
