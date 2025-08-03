@@ -228,7 +228,7 @@ public static class Telemetry
     }
 }
 
-private class LogEntry
+internal class LogEntry
 {
     public LogEventLevel Level { get; set; }
     public string EventName { get; set; } = "";
