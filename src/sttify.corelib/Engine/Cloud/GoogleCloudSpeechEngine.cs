@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Engine.Cloud;
 
@@ -167,18 +168,21 @@ internal class GoogleSpeechAudio
     public string Content { get; set; } = "";
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class GoogleSpeechResponse
 {
     [JsonPropertyName("results")]
     public GoogleSpeechResult[]? Results { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class GoogleSpeechResult
 {
     [JsonPropertyName("alternatives")]
     public GoogleSpeechAlternative[]? Alternatives { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class GoogleSpeechAlternative
 {
     [JsonPropertyName("transcript")]

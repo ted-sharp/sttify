@@ -1,9 +1,11 @@
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using Sttify.Corelib.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Audio;
 
+[ExcludeFromCodeCoverage] // WASAPI hardware dependent, system integration, difficult to mock effectively
 public class WasapiAudioCapture : IDisposable
 {
     public event EventHandler<AudioFrameEventArgs>? OnFrame;
@@ -282,6 +284,7 @@ public class WasapiAudioCapture : IDisposable
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class AudioDeviceInfo
 {
     public string Id { get; set; } = "";

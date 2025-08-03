@@ -6,6 +6,7 @@ using System.Text.Json;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
+[ExcludeFromCodeCoverage] // File system and network I/O for model management, difficult to mock effectively
 public class VoskModelManager
 {
     private static readonly HttpClient _httpClient = new();
@@ -203,6 +204,7 @@ public class VoskModelManager
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class VoskModelInfo
 {
     public string Name { get; set; } = "";
@@ -213,6 +215,7 @@ public class VoskModelInfo
     public bool IsRecommended { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class DownloadProgressEventArgs : EventArgs
 {
     public double ProgressPercentage { get; }

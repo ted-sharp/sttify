@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Audio;
 
+[ExcludeFromCodeCoverage] // WASAPI hardware dependent wrapper, difficult to mock effectively
 public class AudioCapture : IDisposable
 {
     public event EventHandler<AudioFrameEventArgs>? OnFrame;

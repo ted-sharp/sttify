@@ -3,9 +3,11 @@ using Sttify.Corelib.Diagnostics;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Engine.Vibe;
 
+[ExcludeFromCodeCoverage] // External Vibe API integration, network dependent, difficult to mock effectively
 public class VibeSttEngine : ISttEngine, IDisposable
 {
     public event EventHandler<PartialRecognitionEventArgs>? OnPartial;

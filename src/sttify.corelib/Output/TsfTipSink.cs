@@ -6,6 +6,7 @@ using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Output;
 
+[ExcludeFromCodeCoverage] // Windows TSF API integration, difficult to mock effectively
 public class TsfTipSink : ITextOutputSink
 {
     private const string PipeName = "sttify_tip_ipc";
@@ -194,6 +195,7 @@ public class TsfTipSink : ITextOutputSink
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 public class TipIpcCommand
 {
     public string Command { get; set; } = "";

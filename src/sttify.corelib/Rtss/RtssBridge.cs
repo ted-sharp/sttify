@@ -2,9 +2,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Rtss;
 
+[ExcludeFromCodeCoverage] // External RTSS shared memory integration, difficult to mock effectively
 public class RtssBridge : IDisposable
 {
     private const string RTSS_SHARED_MEMORY_NAME = "RTSSSharedMemoryV2";

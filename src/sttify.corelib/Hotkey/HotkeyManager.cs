@@ -1,8 +1,10 @@
 using System.Runtime.InteropServices;
 using Sttify.Corelib.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Hotkey;
 
+[ExcludeFromCodeCoverage] // Win32 API integration, system dependent, difficult to mock effectively
 public class HotkeyManager : IDisposable
 {
     private const int WM_HOTKEY = 0x0312;
@@ -280,6 +282,7 @@ public enum ModifierKeys
     Windows = 8
 }
 
+[ExcludeFromCodeCoverage] // Simple data container class
 public class HotkeyInfo
 {
     public string Name { get; }
@@ -313,6 +316,7 @@ public enum VirtualKey
     Up = 0x26, Down = 0x28, Left = 0x25, Right = 0x27
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class HotkeyPressedEventArgs : EventArgs
 {
     public string Name { get; }
@@ -327,6 +331,7 @@ public class HotkeyPressedEventArgs : EventArgs
     }
 }
 
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class HotkeyRegistrationEventArgs : EventArgs
 {
     public string Name { get; }

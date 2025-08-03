@@ -4,6 +4,7 @@ using System.Text;
 
 namespace Sttify.Corelib.Output;
 
+[ExcludeFromCodeCoverage] // Win32 SendInput API integration, difficult to mock effectively
 public class SendInputSink : ITextOutputSink
 {
     private const int INPUT_KEYBOARD = 1;

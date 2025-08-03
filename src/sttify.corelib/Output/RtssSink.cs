@@ -1,8 +1,10 @@
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Rtss;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Output;
 
+[ExcludeFromCodeCoverage] // External RTSS application integration, difficult to mock effectively
 public class RtssSink : ITextOutputSink, IDisposable
 {
     public string Name => "RTSS Overlay";

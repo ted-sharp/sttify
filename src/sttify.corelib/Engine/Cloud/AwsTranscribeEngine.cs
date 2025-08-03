@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 
 namespace Sttify.Corelib.Engine.Cloud;
 
+[ExcludeFromCodeCoverage] // External AWS API integration, network dependent, difficult to mock effectively
 public class AwsTranscribeEngine : CloudSttEngine
 {
     private readonly string _region;
@@ -307,6 +308,7 @@ public class AwsTranscribeEngine : CloudSttEngine
 }
 
 // AWS Transcribe API models
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscribeJobRequest
 {
     public string TranscriptionJobName { get; set; } = "";
@@ -316,6 +318,7 @@ internal class AwsTranscribeJobRequest
     public AwsTranscribeSettings? Settings { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscribeMedia
 {
     public string MediaFileUri { get; set; } = "";
@@ -328,11 +331,13 @@ internal class AwsTranscribeSettings
     public int MaxSpeakerLabels { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscribeJobResponse
 {
     public AwsTranscriptionJob? TranscriptionJob { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscriptionJob
 {
     public string? TranscriptionJobStatus { get; set; }
@@ -340,21 +345,25 @@ internal class AwsTranscriptionJob
     public AwsTranscript? Transcript { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscript
 {
     public string? TranscriptFileUri { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscriptResult
 {
     public AwsTranscriptResults? Results { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscriptResults
 {
     public AwsTranscriptItem[]? Transcripts { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Simple DTO with no business logic
 internal class AwsTranscriptItem
 {
     public string? Transcript { get; set; }

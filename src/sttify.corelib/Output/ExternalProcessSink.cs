@@ -4,6 +4,7 @@ using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Output;
 
+[ExcludeFromCodeCoverage] // External process execution, system integration, difficult to mock effectively
 public class ExternalProcessSink : ITextOutputSink
 {
     private readonly ExternalProcessSettings _settings;
