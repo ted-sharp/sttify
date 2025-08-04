@@ -226,6 +226,73 @@
                     </GroupBox>
                 </StackPanel>
             </TabItem>
+            
+            <TabItem Header="System">
+                <ScrollViewer>
+                    <StackPanel Margin="10">
+                        <GroupBox Header="Privilege Information" Margin="0,0,0,15">
+                            <StackPanel Margin="10">
+                                <TextBlock x:Name="PrivilegeStatusText" 
+                                          Text="Checking privilege level..." 
+                                          FontWeight="Bold" 
+                                          Margin="0,0,0,10"/>
+                                
+                                <TextBlock x:Name="PrivilegeDescriptionText" 
+                                          TextWrapping="Wrap" 
+                                          Margin="0,0,0,10"/>
+                                
+                                <Button x:Name="RestartNormalButton" 
+                                       Content="🔄 Restart Without Administrator" 
+                                       Width="200" 
+                                       HorizontalAlignment="Left" 
+                                       Margin="0,5,0,0"
+                                       Click="OnRestartNormal"
+                                       Visibility="Collapsed"/>
+                            </StackPanel>
+                        </GroupBox>
+                        
+                        <GroupBox Header="Input Test Status" Margin="0,0,0,15">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="Use these global hotkeys to test text input functionality:" 
+                                          Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                <TextBox x:Name="SystemTestTextBox" Text="Hello, this is a test from Sttify." 
+                                        Margin="0,0,0,10"/>
+                                
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
+                                    
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Test TSF TIP (direct text insertion)" Margin="0,2"/>
+                                    
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
+                                    
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="📝 Tip:" FontWeight="Bold" Margin="0,10,10,2"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Focus on a text editor (like Notepad) before pressing hotkeys" Margin="0,10,0,2" TextWrapping="Wrap"/>
+                                </Grid>
+                                
+                                <Button Content="🗒️ Open Notepad for Testing" 
+                                       Click="OnOpenNotepad"
+                                       Width="200" 
+                                       HorizontalAlignment="Left" 
+                                       Margin="0,5,0,0"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
         
         <!-- Buttons -->

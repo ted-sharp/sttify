@@ -4,6 +4,14 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <!-- UAC Manifest Options:
+             asInvoker          - Run with the same privileges as the parent process (recommended)
+             requireAdministrator - Always require administrator privileges  
+             highestAvailable   - Use highest available privileges
+             
+             Current setting: asInvoker for best compatibility with text input functionality.
+             This allows running both with normal privileges (optimal) and elevated privileges (when needed).
+        -->
         <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
@@ -16,5 +24,19 @@
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
     </application>
   </compatibility>
-  <!-- DPI awareness is now configured via ApplicationHighDpiMode property in project file -->
+  <!-- Enable themes for Windows common controls -->
+  <dependency>
+    <dependentAssembly>
+      <assemblyIdentity
+          type="win32"
+          name="Microsoft.Windows.Common-Controls"
+          version="6.0.0.0"
+          processorArchitecture="*"
+          publicKeyToken="6595b64144ccf1df"
+          language="*"
+        />
+    </dependentAssembly>
+  </dependency>
+
+  <!-- DPI awareness is configured via ApplicationHighDpiMode property in project file -->
 </assembly>

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Text;
 using Sttify.Corelib.Diagnostics;
+using System.IO;
 
 namespace Sttify.Corelib.Output;
 

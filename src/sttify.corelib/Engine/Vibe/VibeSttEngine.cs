@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace Sttify.Corelib.Engine.Vibe;
 

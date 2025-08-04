@@ -42,6 +42,14 @@ public partial class App : System.Windows.Application
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
             
             InitializeTelemetry();
+            
+            // Check for elevation and warn user about UIPI issues
+            if (!CheckElevationAndWarnUser())
+            {
+                Shutdown();
+                return;
+            }
+            
             BuildHost();
             InitializeServices();
             
@@ -230,6 +238,60 @@ public partial class App : System.Windows.Application
             // Console.WriteLine($"InitializeServices failed: {ex.Message}");
             // Console.WriteLine($"Stack trace: {ex.StackTrace}");
             throw;
+        }
+    }
+
+    private bool CheckElevationAndWarnUser()
+    {
+        try
+        {
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            bool isElevated = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            
+            if (isElevated)
+            {
+                System.Diagnostics.Debug.WriteLine("*** WARNING: Sttify is running with administrator privileges ***");
+                System.Diagnostics.Debug.WriteLine("*** This will prevent input to non-elevated applications due to UIPI ***");
+                System.Diagnostics.Debug.WriteLine("*** Consider running Sttify without administrator privileges for better compatibility ***");
+                
+                // Show warning to user (force to foreground)
+                var result = System.Windows.MessageBox.Show(
+                    "⚠️ Administrator Privileges Detected\n\n" +
+                    "Sttify is running with administrator privileges, which prevents text input to most applications due to Windows security (UIPI).\n\n" +
+                    "🔧 SOLUTION:\n" +
+                    "• Close Sttify\n" +
+                    "• Run it again WITHOUT \"Run as administrator\"\n" +
+                    "• Most features work better with normal privileges\n\n" +
+                    "⚡ Quick Fix:\n" +
+                    "Right-click Sttify → Properties → Compatibility → Uncheck \"Run as administrator\"\n\n" +
+                    "Continue with administrator privileges anyway?\n" +
+                    "(Text input will be blocked to most applications)",
+                    "Privilege Warning - Input Will Be Blocked",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+                    
+                if (result == MessageBoxResult.No)
+                {
+                    System.Diagnostics.Debug.WriteLine("*** User chose to exit due to elevation warning ***");
+                    return false;
+                }
+                
+                System.Diagnostics.Debug.WriteLine("*** User chose to continue with elevation despite warnings ***");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("*** Sttify running with normal user privileges - optimal for text input ***");
+            }
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** Failed to check elevation: {ex.Message} ***");
+            // If we can't check elevation, assume it's safe to continue
+            return true;
         }
     }
 }

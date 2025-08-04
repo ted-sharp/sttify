@@ -156,6 +156,68 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
 - **Left Click**: Start/Stop recognition
 - **Right Click**: Context menu with settings and options
 
+## 🔐 Privilege and Permissions Guide
+
+### Understanding Windows Privileges
+
+Sttify can run in two modes, each with distinct advantages and limitations:
+
+#### ✅ **Normal User Privileges (RECOMMENDED)**
+```
+✅ Pros:
+• Text input works with ALL applications (Notepad, browsers, games, etc.)
+• No UIPI (User Interface Privilege Isolation) blocking
+• More secure and follows Windows best practices
+• Better compatibility with modern Windows security
+
+❌ Cons:
+• TSF TIP component requires one-time admin installation
+• Cannot interact with elevated applications
+```
+
+#### ⚠️ **Administrator Privileges**
+```
+✅ Pros:
+• Can interact with other elevated applications
+• Full system access for advanced features
+• Bypass some security restrictions
+
+❌ Cons:
+• UIPI blocks text input to most applications
+• SendInput, Ctrl+V, WM_CHAR all fail due to Windows security
+• Only works with other elevated applications
+• Security risk and not recommended for daily use
+```
+
+### 🎯 **RECOMMENDATION: Use Normal Privileges**
+
+**For optimal text input functionality, run Sttify WITHOUT administrator privileges.**
+
+### Quick Solutions
+
+#### If you're experiencing input problems:
+
+1. **Check privilege status** in Settings → System tab
+2. **If elevated**: Click "🔄 Restart Without Administrator"
+3. **If normal**: Text input should work perfectly
+
+#### Development with Visual Studio:
+
+```powershell
+# If VS is running as admin, Sttify inherits elevation
+# Solution: Close VS, restart without "Run as administrator"
+# Or: Use the restart button in Sttify settings
+```
+
+### Technical Details
+
+The application manifest is configured with `level="asInvoker"`, which means:
+- Inherits the privilege level of the launching process
+- Allows both normal and elevated execution
+- Optimal for compatibility while supporting both scenarios
+
+**Windows UIPI Protection**: When elevated, Windows blocks ALL input methods (SendInput, keyboard messages, clipboard operations) to non-elevated applications for security reasons. This is not a Sttify limitation but a Windows security feature.
+
 ## Architecture
 
 ### High-Level Overview
