@@ -110,7 +110,7 @@ public class SendInputSink : ITextOutputSink
             var unicodeInput = new INPUT
             {
                 type = INPUT_KEYBOARD,
-                union = new InputUnion
+                union = new INPUTUNION
                 {
                     ki = new KEYBDINPUT
                     {
@@ -118,7 +118,7 @@ public class SendInputSink : ITextOutputSink
                         wScan = c,
                         dwFlags = KEYEVENTF_UNICODE,
                         time = 0,
-                        dwExtraInfo = UIntPtr.Zero
+                        dwExtraInfo = IntPtr.Zero
                     }
                 }
             };
@@ -378,7 +378,7 @@ public class SendInputSink : ITextOutputSink
         return new INPUT
         {
             type = INPUT_KEYBOARD,
-            union = new InputUnion
+            union = new INPUTUNION
             {
                 ki = new KEYBDINPUT
                 {
@@ -386,7 +386,7 @@ public class SendInputSink : ITextOutputSink
                     wScan = 0,
                     dwFlags = keyUp ? 0x0002u : 0u,
                     time = 0,
-                    dwExtraInfo = UIntPtr.Zero
+                    dwExtraInfo = IntPtr.Zero
                 }
             }
         };
@@ -440,30 +440,20 @@ public class SendInputSink : ITextOutputSink
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
 
-    // Microsoft公式仕様に基づく正確な定義
+    // INPUT は Sequential のまま
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT
     {
         public uint type;
-        public InputUnion union;
+        public INPUTUNION union;   // ← フィールド名を U に
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    private struct InputUnion
+    private struct INPUTUNION   // ← 名前を INPUTUNION に
     {
         [FieldOffset(0)] public MOUSEINPUT mi;
         [FieldOffset(0)] public KEYBDINPUT ki;
         [FieldOffset(0)] public HARDWAREINPUT hi;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT
-    {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public UIntPtr dwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -474,7 +464,17 @@ public class SendInputSink : ITextOutputSink
         public uint mouseData;
         public uint dwFlags;
         public uint time;
-        public UIntPtr dwExtraInfo;
+        public IntPtr dwExtraInfo;   // ← IntPtr
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;   // ← IntPtr
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -484,6 +484,7 @@ public class SendInputSink : ITextOutputSink
         public ushort wParamL;
         public ushort wParamH;
     }
+
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
