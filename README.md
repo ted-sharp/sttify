@@ -12,6 +12,7 @@
 
 ### 🖥️ **Smart Text Insertion**
 - **SendInput Integration**: Virtual keyboard input to applications using Windows SendInput API
+- **IME Control**: Automatic IME suppression to prevent input conflicts with Japanese/Chinese input methods
 - **External Process Support**: Launch external applications with recognized text
 - **Stream Output**: File, stdout, or shared memory output options
 - **RDP Support**: Optimized text insertion for Remote Desktop sessions
@@ -111,7 +112,19 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
   },
   "output": {
     "primary": "sendinput",
-    "fallbacks": ["external-process", "stream"]
+    "fallbacks": ["external-process", "stream"],
+    "sendInput": {
+      "rateLimitCps": 50,
+      "ime": {
+        "enableImeControl": true,
+        "closeImeWhenSending": true,
+        "setAlphanumericMode": true,
+        "clearCompositionString": true,
+        "restoreImeStateAfterSending": true,
+        "restoreDelayMs": 100,
+        "skipWhenImeComposing": true
+      }
+    }
   },
   "hotkeys": {
     "toggleUi": "Win+Alt+H",
@@ -151,6 +164,9 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
 | `Win+Alt+M` | Toggle Microphone |
 | `Ctrl+Space` | Push-to-Talk (when in PTT mode) |
 | `Ctrl+Alt+X` | Emergency Stop (immediate halt) |
+| `Win+Shift+F1` | Test SendInput (for debugging) |
+| `Win+Shift+F2` | Test External Process (for debugging) |
+| `Win+Shift+F4` | Test IME Control (for debugging) |
 
 ### Control Window
 - **Left Click**: Start/Stop recognition

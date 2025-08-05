@@ -45,12 +45,13 @@ public partial class SettingsWindow : Window
             _hotkeyManager = new HotkeyManager(windowHandle);
             _hotkeyManager.OnHotkeyPressed += OnGlobalHotkeyPressed;
             
-            // Register global hotkeys (using Win+Shift+F1/F2/F3 to avoid conflicts)
+            // Register global hotkeys (using Win+Shift+F1/F2/F3/F4 to avoid conflicts)
             bool success1 = _hotkeyManager.RegisterHotkey("Win+Shift+F1", "TestCurrentOutput");
             bool success2 = _hotkeyManager.RegisterHotkey("Win+Shift+F2", "TestExternalProcess");
             bool success3 = _hotkeyManager.RegisterHotkey("Win+Shift+F3", "TestSendInput");
+            bool success4 = _hotkeyManager.RegisterHotkey("Win+Shift+F4", "TestImeControl");
             
-            System.Diagnostics.Debug.WriteLine($"*** Global hotkey registration results: F1={success1}, F2={success2}, F3={success3} ***");
+            System.Diagnostics.Debug.WriteLine($"*** Global hotkey registration results: F1={success1}, F2={success2}, F3={success3}, F4={success4} ***");
         }
         catch (Exception ex)
         {
@@ -110,6 +111,10 @@ public partial class SettingsWindow : Window
                 case "TestSendInput":
                     System.Diagnostics.Debug.WriteLine("*** Executing TestSendInput ***");
                     await _viewModel.TestSendInputCommand.ExecuteAsync(testText);
+                    break;
+                case "TestImeControl":
+                    System.Diagnostics.Debug.WriteLine("*** Executing TestImeControl ***");
+                    await _viewModel.TestImeControlCommand.ExecuteAsync(testText);
                     break;
             }
         }

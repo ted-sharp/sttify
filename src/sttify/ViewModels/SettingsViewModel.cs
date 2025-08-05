@@ -5,6 +5,7 @@ using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Engine.Vosk;
+using Sttify.Corelib.Ime;
 using Sttify.Corelib.Output;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -464,10 +465,10 @@ public partial class SettingsViewModel : ObservableObject
             // Create output sink based on current settings
             ITextOutputSink outputSink = Settings.Output.PrimaryOutputIndex switch
             {
-                0 => new SendInputSink(new SendInputSettings()), // SendInput
+                0 => new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput)), // SendInput
                 1 => new ExternalProcessSink(new ExternalProcessSettings()), // External Process
                 2 => new StreamSink(new StreamSinkSettings()), // Stream
-                _ => new SendInputSink(new SendInputSettings()) // Default to SendInput
+                _ => new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput)) // Default to SendInput
             };
 
             System.Diagnostics.Debug.WriteLine($"*** Testing {outputSink.Name} with text: '{testText}' ***");
@@ -501,7 +502,7 @@ public partial class SettingsViewModel : ObservableObject
 
         try
         {
-            var sendInputSink = new SendInputSink();
+            var sendInputSink = new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput));
             System.Diagnostics.Debug.WriteLine($"*** Testing SendInput with text: '{testText}' ***");
 
             bool canSend = await sendInputSink.CanSendAsync();
@@ -519,5 +520,85 @@ public partial class SettingsViewModel : ObservableObject
         {
             System.Diagnostics.Debug.WriteLine($"*** SendInput test failed: {ex.Message} ***");
         }
+    }
+
+    [RelayCommand]
+    private async Task TestImeControlAsync(string? testText)
+    {
+        if (string.IsNullOrEmpty(testText))
+        {
+            testText = "IME制御テスト：これはテスト用のテキストです。This is test text.";
+        }
+
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"*** Starting comprehensive IME Control test with text: '{testText}' ***");
+            
+            // Get current IME status report first
+            var statusReport = ImeTestHelper.GetImeStatusReport();
+            System.Diagnostics.Debug.WriteLine($"*** Pre-test IME Status:\n{statusReport} ***");
+            
+            // Run comprehensive IME test
+            var imeSettings = ConvertToSendInputSettings(Settings.Output.SendInput).Ime;
+            var testResult = await ImeTestHelper.TestImeControlAsync(testText, imeSettings);
+            
+            // Log all test steps
+            System.Diagnostics.Debug.WriteLine("*** IME Control Test Steps: ***");
+            foreach (var step in testResult.Steps)
+            {
+                System.Diagnostics.Debug.WriteLine($"  {step}");
+            }
+            
+            // Now test with actual text sending during suppression
+            System.Diagnostics.Debug.WriteLine("*** Testing text input during IME suppression... ***");
+            var sendInputSink = new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput));
+            bool canSend = await sendInputSink.CanSendAsync();
+            if (canSend)
+            {
+                await sendInputSink.SendAsync(testText);
+                System.Diagnostics.Debug.WriteLine("*** Text sent successfully with IME control integration ***");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("*** Cannot send text (SendInput not available or IME composing) ***");
+            }
+            
+            // Final status
+            if (testResult.Success)
+            {
+                System.Diagnostics.Debug.WriteLine("*** IME Control test completed successfully ***");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"*** IME Control test failed: {testResult.ErrorMessage} ***");
+            }
+            
+            // Show detailed report
+            System.Diagnostics.Debug.WriteLine("*** Full IME Test Report: ***");
+            System.Diagnostics.Debug.WriteLine(testResult.GetReport());
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** IME Control test failed with exception: {ex.Message} ***");
+        }
+    }
+
+    private static SendInputSettings ConvertToSendInputSettings(SendInputOutputSettings outputSettings)
+    {
+        return new SendInputSettings
+        {
+            RateLimitCps = outputSettings.RateLimitCps,
+            CommitKey = outputSettings.CommitKey,
+            Ime = new ImeSettings
+            {
+                EnableImeControl = outputSettings.Ime.EnableImeControl,
+                CloseImeWhenSending = outputSettings.Ime.CloseImeWhenSending,
+                SetAlphanumericMode = outputSettings.Ime.SetAlphanumericMode,
+                ClearCompositionString = outputSettings.Ime.ClearCompositionString,
+                RestoreImeStateAfterSending = outputSettings.Ime.RestoreImeStateAfterSending,
+                RestoreDelayMs = outputSettings.Ime.RestoreDelayMs,
+                SkipWhenImeComposing = outputSettings.Ime.SkipWhenImeComposing
+            }
+        };
     }
 }

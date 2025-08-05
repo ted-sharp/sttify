@@ -211,7 +211,17 @@ public class SettingsProvider
                 SendInput = new SendInputOutputSettings
                 {
                     RateLimitCps = 50,
-                    CommitKey = null
+                    CommitKey = null,
+                    Ime = new ImeOutputSettings
+                    {
+                        EnableImeControl = true,
+                        CloseImeWhenSending = true,
+                        SetAlphanumericMode = true,
+                        ClearCompositionString = true,
+                        RestoreImeStateAfterSending = true,
+                        RestoreDelayMs = 100,
+                        SkipWhenImeComposing = true
+                    }
                 }
             },
             Rtss = new RtssSettings
@@ -223,7 +233,10 @@ public class SettingsProvider
             Hotkeys = new HotkeySettings
             {
                 ToggleUi = "Win+Alt+H",
-                ToggleMic = "Win+Alt+M"
+                ToggleMic = "Win+Alt+M",
+                TestSendInput = "Win+Shift+F1",
+                TestExternalProcess = "Win+Shift+F2",
+                TestImeControl = "Win+Shift+F4"
             },
             Privacy = new PrivacySettings
             {
@@ -363,6 +376,19 @@ public class SendInputOutputSettings
 {
     public int RateLimitCps { get; set; } = 50;
     public int? CommitKey { get; set; }
+    public ImeOutputSettings Ime { get; set; } = new ImeOutputSettings();
+}
+
+[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
+public class ImeOutputSettings
+{
+    public bool EnableImeControl { get; set; } = true;
+    public bool CloseImeWhenSending { get; set; } = true;
+    public bool SetAlphanumericMode { get; set; } = true;
+    public bool ClearCompositionString { get; set; } = true;
+    public bool RestoreImeStateAfterSending { get; set; } = true;
+    public int RestoreDelayMs { get; set; } = 100;
+    public bool SkipWhenImeComposing { get; set; } = true;
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
@@ -380,6 +406,9 @@ public class HotkeySettings
     public string ToggleMic { get; set; } = "Win+Alt+M";
     public string PushToTalk { get; set; } = "Ctrl+Space";
     public string EmergencyStop { get; set; } = "Ctrl+Alt+X";
+    public string TestSendInput { get; set; } = "Win+Shift+F1";
+    public string TestExternalProcess { get; set; } = "Win+Shift+F2";
+    public string TestImeControl { get; set; } = "Win+Shift+F3";
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

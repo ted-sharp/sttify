@@ -135,11 +135,45 @@
                     <Label Content="Primary Output:"/>
                     <ComboBox SelectedIndex="{Binding Settings.Output.PrimaryOutputIndex}" 
                              Margin="0,5,0,10">
-                        <ComboBoxItem Content="SendInput"/>
+                        <ComboBoxItem Content="SendInput (with IME Control)"/>
                         <ComboBoxItem Content="External Process"/>
                         <ComboBoxItem Content="Stream Output"/>
                     </ComboBox>
                     
+                    <!-- IME Control Settings -->
+                    <GroupBox Header="IME Control Settings" Margin="0,0,0,15">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Automatic Input Method Editor (IME) control to prevent conflicts during text input" 
+                                      Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic"/>
+                            
+                            <CheckBox Content="Enable IME control" 
+                                     IsChecked="True" 
+                                     Margin="0,5"/>
+                            <TextBlock Text="Automatically manage IME state during text input" 
+                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+                            
+                            <CheckBox Content="Close IME when sending text" 
+                                     IsChecked="True" 
+                                     Margin="0,5"/>
+                            <TextBlock Text="Temporarily close IME to prevent interference" 
+                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+                            
+                            <CheckBox Content="Set alphanumeric mode" 
+                                     IsChecked="True" 
+                                     Margin="0,5"/>
+                            <TextBlock Text="Switch IME to alphanumeric mode for direct text input" 
+                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+                            
+                            <CheckBox Content="Skip when IME is composing" 
+                                     IsChecked="True" 
+                                     Margin="0,5"/>
+                            <TextBlock Text="Skip text input if IME is actively composing text" 
+                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+                                      
+                            <TextBlock Text="💡 Use Win+Shift+F4 to test IME control functionality with detailed debug information" 
+                                      Background="LightBlue" Padding="8" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </GroupBox>
                     
                     <!-- Test Section -->
                     <GroupBox Header="Output Test" Margin="0,0,0,15">
@@ -158,6 +192,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
                                 
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1:" FontWeight="Bold" Margin="0,2,10,2"/>
@@ -168,9 +203,12 @@
                                 
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
+                                
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Win+Shift+F4:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" Text="Test IME Control (detailed debug output)" Margin="0,2"/>
                             </Grid>
                             
-                            <TextBlock Text="1. Focus a text editor (like Notepad)&#10;2. Press the desired global shortcut key (Win+Shift+F1/F2/F3)&#10;3. The test text will be sent to the focused application" 
+                            <TextBlock Text="1. Focus a text editor (like Notepad)&#10;2. Press the desired global shortcut key (Win+Shift+F1/F2/F3/F4)&#10;3. The test text will be sent to the focused application (F4 provides detailed IME control debug output)" 
                                       Foreground="Gray" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </GroupBox>
@@ -178,15 +216,59 @@
             </TabItem>
             
             <TabItem Header="Hotkeys">
-                <StackPanel Margin="10">
-                    <Label Content="Toggle UI:"/>
-                    <TextBox Text="{Binding Settings.Hotkeys.ToggleUi}" 
-                            Margin="0,5,0,10"/>
-                    
-                    <Label Content="Toggle Microphone:"/>
-                    <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}" 
-                            Margin="0,5,0,10"/>
-                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="10">
+                        <GroupBox Header="Application Hotkeys" Margin="0,0,0,15">
+                            <StackPanel Margin="10">
+                                <Label Content="Toggle UI:"/>
+                                <TextBox Text="{Binding Settings.Hotkeys.ToggleUi}" 
+                                        Margin="0,5,0,10"/>
+                                
+                                <Label Content="Toggle Microphone:"/>
+                                <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}" 
+                                        Margin="0,5,0,10"/>
+                            </StackPanel>
+                        </GroupBox>
+                        
+                        <GroupBox Header="Test Functions" Margin="0,0,0,15">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="Built-in test functions for debugging and troubleshooting" 
+                                          Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic"/>
+                                
+                                <Grid Margin="0,5,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1" 
+                                              FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Test SendInput functionality" 
+                                              Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                    
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2" 
+                                              FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process functionality" 
+                                              Margin="10,5,0,0" VerticalAlignment="Center"/>
+                                    
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F4" 
+                                              FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Test IME Control functionality" 
+                                              Margin="10,5,0,0" VerticalAlignment="Center"/>
+                                </Grid>
+                                
+                                <TextBlock Text="💡 How to use: Open any text editor (like Notepad) and press these keys to test text input functionality. Check Visual Studio Output or console for detailed test results."
+                                          Margin="0,5,0,0" TextWrapping="Wrap" 
+                                          Background="LightYellow" Padding="8"/>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
             <TabItem Header="Interface">

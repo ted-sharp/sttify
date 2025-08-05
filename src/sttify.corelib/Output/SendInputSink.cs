@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
+using Sttify.Corelib.Ime;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Output;
 
@@ -14,15 +16,27 @@ public class SendInputSink : ITextOutputSink
     public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     private readonly SendInputSettings _settings;
+    private readonly ImeController _imeController;
 
     public SendInputSink(SendInputSettings? settings = null)
     {
         _settings = settings ?? new SendInputSettings();
+        _imeController = new ImeController(_settings.Ime);
     }
 
     public async Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {
-        return await Task.FromResult(IsAvailable);
+        if (!IsAvailable)
+            return false;
+
+        // Check if IME is currently composing and we should skip
+        if (_settings.Ime.SkipWhenImeComposing && _imeController.IsImeComposing())
+        {
+            Telemetry.LogEvent("SendInputSkippedDueToImeComposition");
+            return false;
+        }
+
+        return true;
     }
 
     public async Task SendAsync(string text, CancellationToken cancellationToken = default)
@@ -31,6 +45,13 @@ public class SendInputSink : ITextOutputSink
             return;
 
         System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Text: '{text}', Length: {text.Length} ***");
+
+        // Check if we can send (this also checks IME composition status)
+        if (!await CanSendAsync(cancellationToken))
+        {
+            System.Diagnostics.Debug.WriteLine("*** SendInputSink: Cannot send - skipping ***");
+            return;
+        }
         
         // Debug: Check structure sizes
         int inputSize = Marshal.SizeOf<INPUT>();
@@ -70,26 +91,61 @@ public class SendInputSink : ITextOutputSink
             ChangeWindowMessageFilter(0x0302, 1); // WM_PASTE
         }
         
-        // Try direct SendInput first
-        bool success = await SendTextViaInputAsync(text, cancellationToken);
-        
-        // If SendInput fails, try alternative methods
-        if (!success)
+        // Suppress IME before sending text to prevent conflicts
+        IDisposable? imeRestorer = null;
+        try
         {
-            // For UIPI case, try direct WM_CHAR messages first
-            if (isElevated && !targetElevated)
+            if (_settings.Ime.EnableImeControl)
             {
-                System.Diagnostics.Debug.WriteLine("*** SendInput failed due to UIPI, trying direct WM_CHAR messages ***");
-                bool charSuccess = await SendTextViaWmCharAsync(text, targetWindow, cancellationToken);
-                if (charSuccess)
+                imeRestorer = _imeController.SuppressImeTemporarily();
+                System.Diagnostics.Debug.WriteLine("*** IME suppression activated ***");
+                
+                // Add small delay to ensure IME state change takes effect
+                if (_settings.Ime.RestoreDelayMs > 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("*** WM_CHAR method succeeded ***");
-                    return;
+                    await Task.Delay(Math.Min(_settings.Ime.RestoreDelayMs / 2, 50), cancellationToken);
                 }
             }
-            
-            System.Diagnostics.Debug.WriteLine("*** SendInput failed, trying Win32 clipboard fallback ***");
-            await SendTextViaWin32ClipboardAsync(text, cancellationToken);
+
+            // Try direct SendInput first
+            bool success = await SendTextViaInputAsync(text, cancellationToken);
+        
+            // If SendInput fails, try alternative methods
+            if (!success)
+            {
+                // For UIPI case, try direct WM_CHAR messages first
+                if (isElevated && !targetElevated)
+                {
+                    System.Diagnostics.Debug.WriteLine("*** SendInput failed due to UIPI, trying direct WM_CHAR messages ***");
+                    bool charSuccess = await SendTextViaWmCharAsync(text, targetWindow, cancellationToken);
+                    if (charSuccess)
+                    {
+                        System.Diagnostics.Debug.WriteLine("*** WM_CHAR method succeeded ***");
+                        // Don't return here - we still need to restore IME
+                        success = true;
+                    }
+                }
+                
+                if (!success)
+                {
+                    System.Diagnostics.Debug.WriteLine("*** SendInput failed, trying Win32 clipboard fallback ***");
+                    await SendTextViaWin32ClipboardAsync(text, cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            // Restore IME state after sending text
+            if (imeRestorer != null)
+            {
+                if (_settings.Ime.RestoreDelayMs > 0)
+                {
+                    await Task.Delay(_settings.Ime.RestoreDelayMs, cancellationToken);
+                }
+                
+                imeRestorer.Dispose();
+                System.Diagnostics.Debug.WriteLine("*** IME state restored ***");
+            }
         }
         
         System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Completed sending '{text}' ***");
@@ -492,4 +548,5 @@ public class SendInputSettings
 {
     public int RateLimitCps { get; set; } = 50;
     public int? CommitKey { get; set; } = null;
+    public ImeSettings Ime { get; set; } = new ImeSettings();
 }

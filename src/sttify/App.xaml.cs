@@ -5,6 +5,7 @@ using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Hotkey;
+using Sttify.Corelib.Ime;
 using Sttify.Corelib.Output;
 using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
@@ -172,7 +173,7 @@ public partial class App : System.Windows.Application
                 {
                     var sinks = new List<ITextOutputSink>
                     {
-                        new SendInputSink(new SendInputSettings()),
+                        new SendInputSink(new SendInputSettings { Ime = new ImeSettings() }),
                         new ExternalProcessSink(new ExternalProcessSettings()),
                         new StreamSink(new StreamSinkSettings())
                     };
