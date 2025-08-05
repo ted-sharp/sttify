@@ -330,6 +330,8 @@ public class VoskEngineSettings
     public bool Punctuation { get; set; } = true;
     public int EndpointSilenceMs { get; set; } = 800;
     public int TokensPerPartial { get; set; } = 5;
+    public int SampleRate { get; set; } = 16000;
+    public string Grammar { get; set; } = "";
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
