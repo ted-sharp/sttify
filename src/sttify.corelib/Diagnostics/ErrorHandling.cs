@@ -23,7 +23,7 @@ public enum ErrorCategory
     Hardware,
     
     /// <summary>
-    /// Integration errors with external systems (TSF TIP failures, external process errors)
+    /// Integration errors with external systems (external process errors, API failures)
     /// </summary>
     Integration,
     

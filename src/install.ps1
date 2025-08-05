@@ -17,19 +17,6 @@ $ErrorActionPreference = "Stop"
 # Check if running as administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 
-if (-not $isAdmin) {
-    Write-Warning "This script should be run as Administrator to properly register the TSF TIP."
-    Write-Host "Attempting to restart as Administrator..." -ForegroundColor Yellow
-    
-    $scriptPath = $MyInvocation.MyCommand.Path
-    $arguments = "-File `"$scriptPath`""
-    if ($Uninstall) { $arguments += " -Uninstall" }
-    if ($Force) { $arguments += " -Force" }
-    $arguments += " -InstallPath `"$InstallPath`""
-    
-    Start-Process PowerShell -Verb RunAs -ArgumentList $arguments
-    exit
-}
 
 Write-Host "=== Sttify Installation Script ===" -ForegroundColor Green
 Write-Host "Install Path: $InstallPath" -ForegroundColor Yellow
@@ -45,17 +32,6 @@ if ($Uninstall) {
         Start-Sleep -Seconds 2
     }
     
-    # Unregister TSF TIP
-    $tipPath = Join-Path $InstallPath "sttify_tip.dll"
-    if (Test-Path $tipPath) {
-        Write-Host "Unregistering TSF TIP..." -ForegroundColor Yellow
-        try {
-            & regsvr32 /u /s $tipPath
-            Write-Host "TSF TIP unregistered successfully" -ForegroundColor Green
-        } catch {
-            Write-Warning "Failed to unregister TSF TIP: $($_.Exception.Message)"
-        }
-    }
     
     # Remove installation directory
     if (Test-Path $InstallPath) {
@@ -105,20 +81,6 @@ if (-not (Test-Path $packagePath)) {
 Write-Host "Copying application files..." -ForegroundColor Yellow
 Copy-Item "$packagePath\*" $InstallPath -Recurse -Force
 
-# Register TSF TIP
-$tipPath = Join-Path $InstallPath "sttify_tip.dll"
-if (Test-Path $tipPath) {
-    Write-Host "Registering TSF TIP..." -ForegroundColor Yellow
-    try {
-        & regsvr32 /s $tipPath
-        Write-Host "TSF TIP registered successfully" -ForegroundColor Green
-    } catch {
-        Write-Error "Failed to register TSF TIP: $($_.Exception.Message)"
-        exit 1
-    }
-} else {
-    Write-Warning "TSF TIP DLL not found at $tipPath"
-}
 
 # Create startup shortcut
 Write-Host "Creating startup shortcut..." -ForegroundColor Yellow

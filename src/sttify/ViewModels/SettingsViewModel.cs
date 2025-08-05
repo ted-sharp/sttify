@@ -464,9 +464,10 @@ public partial class SettingsViewModel : ObservableObject
             // Create output sink based on current settings
             ITextOutputSink outputSink = Settings.Output.PrimaryOutputIndex switch
             {
-                0 => new TsfTipSink(), // TSF TIP
-                1 => new SendInputSink(), // SendInput
-                _ => new SendInputSink() // Default to SendInput
+                0 => new SendInputSink(new SendInputSettings()), // SendInput
+                1 => new ExternalProcessSink(new ExternalProcessSettings()), // External Process
+                2 => new StreamSink(new StreamSinkSettings()), // Stream
+                _ => new SendInputSink(new SendInputSettings()) // Default to SendInput
             };
 
             System.Diagnostics.Debug.WriteLine($"*** Testing {outputSink.Name} with text: '{testText}' ***");
@@ -488,36 +489,6 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private async Task TestTsfAsync(string? testText)
-    {
-        if (string.IsNullOrEmpty(testText))
-        {
-            System.Diagnostics.Debug.WriteLine("*** Test TSF TIP: No test text provided ***");
-            return;
-        }
-
-        try
-        {
-            var tsfSink = new TsfTipSink();
-            System.Diagnostics.Debug.WriteLine($"*** Testing TSF TIP with text: '{testText}' ***");
-
-            bool canSend = await tsfSink.CanSendAsync();
-            if (canSend)
-            {
-                await tsfSink.SendAsync(testText);
-                System.Diagnostics.Debug.WriteLine($"*** TSF TIP test completed successfully ***");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"*** TSF TIP is not available ***");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"*** TSF TIP test failed: {ex.Message} ***");
-        }
-    }
 
     [RelayCommand]
     private async Task TestSendInputAsync(string? testText)

@@ -11,9 +11,9 @@
 - **Real-time Processing**: Low-latency audio capture and recognition
 
 ### 🖥️ **Smart Text Insertion**
-- **TSF Text Input Processor**: Direct text insertion into any application via Windows Text Services Framework
-- **SendInput Fallback**: Automatic fallback for applications that don't support TSF
-- **IME Composition Awareness**: Intelligent suppression when other IMEs are active
+- **SendInput Integration**: Virtual keyboard input to applications using Windows SendInput API
+- **External Process Support**: Launch external applications with recognized text
+- **Stream Output**: File, stdout, or shared memory output options
 - **RDP Support**: Optimized text insertion for Remote Desktop sessions
 
 ### 🎮 **Gaming Integration**
@@ -87,7 +87,7 @@ cd sttify
 # Build the solution (supports Debug/Release, x64 platform)
 .\src\build.ps1 -Configuration Release -Platform x64 -Test -Package
 
-# Install with admin privileges for TSF TIP registration
+# Install application
 .\src\install.ps1
 ```
 
@@ -110,8 +110,8 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
     "mode": "ptt"
   },
   "output": {
-    "primary": "tsf-tip",
-    "fallbacks": ["sendinput"]
+    "primary": "sendinput",
+    "fallbacks": ["external-process", "stream"]
   },
   "hotkeys": {
     "toggleUi": "Win+Alt+H",
@@ -171,8 +171,8 @@ Sttify can run in two modes, each with distinct advantages and limitations:
 • Better compatibility with modern Windows security
 
 ❌ Cons:
-• TSF TIP component requires one-time admin installation
-• Cannot interact with elevated applications
+• SendInput may be blocked by some security software
+• Cannot interact with elevated applications when running as normal user
 ```
 
 #### ⚠️ **Administrator Privileges**
@@ -226,7 +226,7 @@ The application manifest is configured with `level="asInvoker"`, which means:
 │                     Sttify Application                     │
 ├─────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ WPF GUI App │  │ Corelib     │  │ TSF TIP (VC++)     │  │
+│  │ WPF GUI App │  │ Corelib     │  │ Output Sinks       │  │
 │  │ (System     │  │ (Engine &   │  │ (Text Insertion)   │  │
 │  │ Tray)       │  │ Processing) │  │                    │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
@@ -245,7 +245,7 @@ The application manifest is configured with `level="asInvoker"`, which means:
 - **Audio Processing**: WASAPI capture with ArrayPool optimization
 - **Speech Recognition**: Vosk integration with FFT caching
 - **Voice Activity Detection**: Optimized spectral analysis
-- **Output Handling**: Multiple sink abstractions (TSF, SendInput, Stream)
+- **Output Handling**: Multiple sink abstractions (SendInput, External Process, Stream)
 - **Configuration**: Hierarchical settings with file watching
 - **Telemetry**: Batched structured logging with Serilog
 
@@ -281,10 +281,6 @@ sttify/
 │   │   ├── ViewModels/           # MVVM view models
 │   │   ├── Tray/                 # System tray integration
 │   │   └── Hotkey/               # Global hotkey handling
-│   ├── sttify.tip/               # TSF TIP (VC++/ATL x64)
-│   │   ├── TextService.cpp       # Main TSF implementation
-│   │   ├── CompositionController.cpp # Text composition
-│   │   └── TipIpcServer.cpp      # IPC with C# corelib
 │   ├── tests/
 │   │   ├── Sttify.Corelib.Tests/ # Unit tests
 │   │   └── Sttify.Integration.Tests/ # Integration tests
@@ -333,9 +329,9 @@ dotnet test --collect:"XPlat Code Coverage"
 - Test audio input levels in Sttify settings
 
 **Text not inserting**
-- Ensure TSF TIP is properly registered (restart application as admin)
 - Check if target application supports text input
-- Try switching to SendInput mode in output settings
+- Verify SendInput is not blocked by security software
+- Try switching to External Process or Stream output modes
 - Verify RDP scenario: application automatically falls back to SendInput in Remote Desktop
 - Check IME composition awareness: Sttify suppresses output when other IMEs are active
 
@@ -392,7 +388,7 @@ Application logs are stored in `%AppData%\sttify\logs\` in NDJSON format for str
 2. **Voice Activity Detection**: FFT-based spectral analysis with caching
 3. **Speech Recognition**: Vosk engine integration with bounded queues
 4. **Text Processing**: Recognition session with boundary detection
-5. **Output Delivery**: TSF TIP or SendInput with rate limiting
+5. **Output Delivery**: SendInput, External Process, or Stream with rate limiting
 
 ### Performance Architecture
 - **Memory**: ArrayPool<T> for zero-allocation audio processing
@@ -401,9 +397,9 @@ Application logs are stored in `%AppData%\sttify\logs\` in NDJSON format for str
 - **Network**: LRU response caching for cloud engines
 
 ### Platform Integration
-- **Windows TSF**: Native text input processor for seamless insertion
+- **Windows SendInput**: Virtual keyboard input for text insertion
 - **WASAPI**: Low-latency audio capture with format conversion
-- **Named Pipes**: IPC between C# corelib and VC++ TSF component
+- **External Process**: Launch applications with recognized text
 - **System Tray**: Persistent background operation with hotkey support
 
 ## License

@@ -285,29 +285,13 @@
                         
                         <Label Content="Primary Output:"/>
                         <ComboBox Margin="0,5,0,10" SelectedIndex="0">
-                            <ComboBoxItem Content="TSF Text Input Processor (Recommended)"/>
-                            <ComboBoxItem Content="SendInput (Fallback)"/>
+                            <ComboBoxItem Content="SendInput (Primary)"/>
                             <ComboBoxItem Content="External Process"/>
                             <ComboBoxItem Content="File/Stream Output"/>
                         </ComboBox>
-                        <TextBlock Text="TSF provides the most accurate text insertion into applications"
+                        <TextBlock Text="SendInput provides virtual keyboard input to applications"
                                   Style="{StaticResource DescriptionStyle}"/>
                         
-                        <TextBlock Text="TSF Settings" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <CheckBox Content="Suppress when IME is composing" 
-                                 IsChecked="{Binding Settings.Output.Tsf.SuppressWhenImeComposing}" 
-                                 Margin="0,5"/>
-                        <TextBlock Text="Prevent text insertion when another IME is actively composing text"
-                                  Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <Label Content="Composition Mode:"/>
-                        <ComboBox Margin="0,5,0,10" SelectedIndex="0">
-                            <ComboBoxItem Content="Final text only (Recommended)"/>
-                            <ComboBoxItem Content="Show composition preview"/>
-                        </ComboBox>
-                        <TextBlock Text="Final text only provides the cleanest insertion experience"
-                                  Style="{StaticResource DescriptionStyle}"/>
                         
                         <TextBlock Text="SendInput Settings" Style="{StaticResource SectionHeaderStyle}"/>
                         

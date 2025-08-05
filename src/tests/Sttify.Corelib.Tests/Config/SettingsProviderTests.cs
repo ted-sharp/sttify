@@ -31,7 +31,7 @@ public class SettingsProviderTests : IDisposable
         Assert.NotNull(settings);
         Assert.Equal("vosk", settings.Engine.Profile);
         Assert.Equal("ptt", settings.Session.Mode);
-        Assert.Equal("tsf-tip", settings.Output.Primary);
+        Assert.Equal("sendinput", settings.Output.Primary);
     }
 
     [Fact]

@@ -206,13 +206,8 @@ public class SettingsProvider
             },
             Output = new OutputSettings
             {
-                Primary = "tsf-tip",
-                Fallbacks = ["sendinput"],
-                Tsf = new TsfOutputSettings
-                {
-                    CompositionMode = "final-only",
-                    SuppressWhenImeComposing = true
-                },
+                Primary = "sendinput",
+                Fallbacks = ["external-process", "stream"],
                 SendInput = new SendInputOutputSettings
                 {
                     RateLimitCps = 50,
@@ -356,19 +351,12 @@ public class BoundarySettings
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class OutputSettings
 {
-    public string Primary { get; set; } = "tsf-tip";
-    public string[] Fallbacks { get; set; } = ["sendinput"];
-    public int PrimaryOutputIndex { get; set; } = 0; // 0=TSF, 1=SendInput, 2=External Process
-    public TsfOutputSettings Tsf { get; set; } = new();
+    public string Primary { get; set; } = "sendinput";
+    public string[] Fallbacks { get; set; } = ["external-process", "stream"];
+    public int PrimaryOutputIndex { get; set; } = 0; // 0=SendInput, 1=External Process, 2=Stream
     public SendInputOutputSettings SendInput { get; set; } = new();
 }
 
-[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
-public class TsfOutputSettings
-{
-    public string CompositionMode { get; set; } = "final-only";
-    public bool SuppressWhenImeComposing { get; set; } = true;
-}
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class SendInputOutputSettings

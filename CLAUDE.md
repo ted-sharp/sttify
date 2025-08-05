@@ -48,13 +48,11 @@ Sttify is a Windows speech-to-text application with a modular three-project arch
 ### Core Projects
 - **`sttify.corelib`** (C# .NET 9): Core speech recognition, audio processing, and output handling
 - **`sttify`** (WPF): GUI application with system tray integration
-- **`sttify.tip`** (VC++/ATL x64): Text Services Framework Text Input Processor for direct text insertion
 
 ### Key Architectural Patterns
 - **Engine abstraction**: `ISttEngine` interface allows pluggable STT engines (currently Vosk, cloud engines)
 - **Output sink abstraction**: `ITextOutputSink` interface supports multiple text output methods
 - **Hierarchical configuration**: Default → Engine-specific → Application-specific settings merging
-- **IPC communication**: Named pipes between C# corelib and VC++ TSF TIP
 - **Performance optimization**: ArrayPool, bounded queues, FFT caching, response caching throughout
 
 ### Audio Pipeline
@@ -63,11 +61,10 @@ WASAPI Audio Input → AudioCapture (ArrayPool) → STT Engine (Vosk) → Recogn
 ```
 
 ### Output Methods (Priority Order)
-1. **TSF TIP** (primary): Direct text insertion via Windows Text Services Framework
-2. **SendInput** (fallback): Virtual keyboard input when TSF unavailable
-3. **External Process**: Launch external applications with recognized text
-4. **Stream Output**: File, stdout, or shared memory output
-5. **RTSS Integration**: On-screen display overlay for gaming
+1. **SendInput** (primary): Virtual keyboard input for text insertion
+2. **External Process**: Launch external applications with recognized text
+3. **Stream Output**: File, stdout, or shared memory output
+4. **RTSS Integration**: On-screen display overlay for gaming
 
 ### Recognition Modes
 - **PTT (Push-to-Talk)**: Manual activation via hotkey
@@ -101,7 +98,6 @@ The codebase includes comprehensive optimizations implemented throughout:
 
 - **C# 13** with **.NET 9** and nullable reference types
 - **WPF** for GUI with **CommunityToolkit.MVVM**
-- **VC++/ATL** for TSF TIP implementation (x64 only)
 - **Vosk** for offline speech recognition (Japanese models)
 - **NAudio** for WASAPI audio capture
 - **Serilog** for structured JSON logging (NDJSON format)
@@ -112,7 +108,7 @@ The codebase includes comprehensive optimizations implemented throughout:
 ### Test Coverage Strategy
 - Use `[ExcludeFromCodeCoverage]` attribute for:
   - Simple data classes (DTOs, settings, EventArgs)
-  - System integration code (WASAPI, TSF, Win32 APIs)
+  - System integration code (WASAPI, Win32 APIs)
   - External API wrappers (cloud engines)
 - Focus testing on business logic in core processing classes
 - Integration tests for end-to-end workflows
@@ -136,12 +132,10 @@ The codebase includes comprehensive optimizations implemented throughout:
 - **Log location**: `%AppData%\sttify\logs\`
 - **Default hotkeys**: Win+Alt+H (UI), Win+Alt+M (microphone)
 - **Platform**: Windows 10/11 x64 only
-- **TSF TIP registration**: Per-user (HKCU) registration, requires admin for install
 
 ## Development Notes
 
 - The build script requires Visual Studio Build Tools or Visual Studio 2022
-- TSF TIP component must be built as x64 and registered for text insertion to work
 - Japanese Vosk models must be manually downloaded and configured
 - The application supports RDP scenarios with automatic fallback to SendInput
 - RTSS integration provides real-time subtitle overlay for gaming applications
@@ -160,7 +154,6 @@ The codebase includes comprehensive optimizations implemented throughout:
 - Implement `ITextOutputSink` for new output methods
 - Use async/await patterns throughout
 - SendInput sink uses async delays instead of Thread.Sleep
-- TSF integration communicates via named pipes with the VC++ component
 
 ### Engine Integration
 - Implement `ISttEngine` for new recognition engines

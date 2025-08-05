@@ -172,8 +172,9 @@ public partial class App : System.Windows.Application
                 {
                     var sinks = new List<ITextOutputSink>
                     {
-                        new TsfTipSink(),
-                        new SendInputSink(new SendInputSettings())
+                        new SendInputSink(new SendInputSettings()),
+                        new ExternalProcessSink(new ExternalProcessSettings()),
+                        new StreamSink(new StreamSinkSettings())
                     };
                     
                     return sinks;

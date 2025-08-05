@@ -1,18 +1,14 @@
 # sttify 要件定義・最終ドキュメント（FINAL_DOC）
-> C# 13 / .NET 9 / WPF(+Forms Tray) / CommunityToolkit.MVVM / **VC++(TSF TIP)** / TDD 前提  
+> C# 13 / .NET 9 / WPF(+Forms Tray) / CommunityToolkit.MVVM / TDD 前提  
 > 本ドキュメントは「要件定義 → 詳細設計 ― 方針作成 → レビュー＆ブラッシュアップ → ドキュメントアウトプット」の最終成果物です。
 
 ---
 
 ## 1. プロジェクトルール抜粋
 - **アーキテクチャ**
-  - プロジェクト分割：`sttify.corelib`（コア） / `sttify`（GUI常駐） / `sttify.tip`（VC++ TSF TIP）。
+  - プロジェクト分割：`sttify.corelib`（コア） / `sttify`（GUI常駐）。
   - STT エンジン差し替え：`ISttEngine` 抽象。初期は **Vosk**（**日本語“大”モデル**、公式から手動DL・手動配置）。
-  - 出力先差し替え：`ITextOutputSink` 抽象。**既定＝TSF TIP**、不可時は **SendInput** に自動フォールバック（**RDPはSendInput既定**）。
-- **TSF/TIP 運用**
-  - TIP は **VC++/ATL（x64）**・**ユーザー単位（HKCU）登録**・**64-bitのみ**対応。
-  - 既定の挿入モード：**確定テキストのみ**（composition なし）。IME等が composition 中は**挿入抑制**（設定で切替可）。
-  - 挿入位置：**キャレット位置**。選択範囲がある場合は**置換**。
+  - 出力先差し替え：`ITextOutputSink` 抽象。**既定＝SendInput**、その他 **External Process**、**Stream Output** に対応。
 - **モード & 操作**
   - モード：**PTT**／**一文**／**常時**／（ウェイクワード＝「スティファイ」→一文送出）。
   - 既定ホットキー：`Win+Alt+H`（UI表示）／`Win+Alt+M`（マイク）。
@@ -31,8 +27,7 @@
 ## 2. 要件ジャッジ結果
 - **コア分離（corelib/GUI/TIP）**：**Yes / 高**
 - **STT プラガブル（初期 Vosk）**：**Yes / 高**
-- **出力：TSF TIP（既定）**：**Yes / 高**（IME編集中は挿入抑制、確定のみ）
-- **出力：SendInput（フォールバック）**：**Yes / 高**（RDPはSendInput既定）
+- **出力：SendInput（既定）**：**Yes / 高**（仮想キーボード入力）
 - **出力：外部 exe / ストリーム**：**Yes / 中**（初期は枠のみ）
 - **RTSS 直接連携**：**Yes / 中**（文単位推奨）
 - **ホットキー**：**Yes / 高**
@@ -47,7 +42,6 @@
   - `Engine/ISttEngine.cs`：`StartAsync/PushAudio/OnPartial/OnFinal/StopAsync`
   - `Engine/Vosk/VoskEngineAdapter.cs`：モデルロード・言語・句読点
   - `Output/ITextOutputSink.cs`：`CanSend/SendAsync`
-  - `Output/TsfTipSink.cs`：TIP 連携（IPC 経由で挿入）
   - `Output/SendInputSink.cs`：仮想キー送出・レート制御
   - `Output/ExternalProcessSink.cs`：引数テンプレート・スロットリング
   - `Output/StreamSink.cs`：ファイル/標準出力/共有メモリ
@@ -81,9 +75,8 @@
   - `engine.vosk`：`modelPath`, `language`, `punctuation`, `endpointSilenceMs`, `tokensPerPartial`
   - `session.mode`：`"ptt"|"single-utterance"|"continuous"|"wake"`
   - `session.boundary`：`delimiter`（句点/改行/無音ms）, `finalizeTimeoutMs`
-  - `output.primary`：`"tsf-tip"`（初期）／`"sendinput"`／`"external"`／`"stream"`
-  - `output.fallbacks`：例 `["sendinput"]`
-  - `output.tsf`：`compositionMode`（`"final-only"` 初期）, `suppressWhenImeComposing`（`true` 初期）
+  - `output.primary`：`"sendinput"`（初期）／`"external"`／`"stream"`
+  - `output.fallbacks`：例 `["external", "stream"]`
   - `output.sendInput`：`rateLimitCps`, `commitKey`
   - `rtss`：`enabled`, `updatePerSec`, `truncateLength`
   - `hotkeys`：`toggleUi`, `toggleMic`
@@ -101,7 +94,7 @@
   - **一般**（起動時常駐／ホットキー）
   - **音声**（デバイス選択・レベル・VAD）
   - **エンジン**（Vosk モデルパス・言語・句読点）
-  - **出力**（優先＝TSF TIP／フォールバック＝SendInput、IME編集中抑制）
+  - **出力**（優先＝SendInput／フォールバック＝External Process、Stream）
   - **モード**（PTT/一文/常時/ウェイク）
   - **RTSS**（有効／頻度／長さ）
   - **高度**（RDP時の自動ポリシー、ログ詳細化）
@@ -114,13 +107,8 @@ flowchart LR
   Mic[Audio Input\n(WASAPI)] --> AC[AudioCapture]
   AC --> ENG[ISttEngine\n(Vosk)]
   ENG --> SES[RecognitionSession\n区切り/確定/モード]
-  SES --> OUT{TSFで挿入可能?}
-
-  OUT -- はい --> IPC[IPC to TIP\n(Named Pipe)]
-  IPC --> TIP[TSF TIP (VC++)\nTextService/Composition]
-  TIP --> APP[ターゲットアプリ\nTSF Context]
-
-  OUT -- いいえ/禁止/RDP --> SI[SendInput Sink]
+  SES --> OUT[Output Sink\n(SendInput/External/Stream)]
+  OUT --> APP[ターゲットアプリ]
 
   SES -- 文/確定ごと --> RTSS[RTSS Bridge\n(直接OSD)]
   RTSS --> OSD[OSD Overlay]

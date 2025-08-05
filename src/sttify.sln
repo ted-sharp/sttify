@@ -6,8 +6,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sttify.corelib", "sttify.co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sttify", "sttify\sttify.csproj", "{37B60C03-47D5-4D55-90E9-89501B8126FA}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sttify.tip", "sttify.tip\sttify.tip.vcxproj", "{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sttify.Corelib.Tests", "tests\Sttify.Corelib.Tests\Sttify.Corelib.Tests.csproj", "{41311FC7-8C31-4416-AC28-79CA7881DF9D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sttify.Integration.Tests", "tests\Sttify.Integration.Tests\Sttify.Integration.Tests.csproj", "{1270FC03-2116-4EA9-8C72-164036B5BDE0}"
@@ -36,14 +34,6 @@ Global
 		{37B60C03-47D5-4D55-90E9-89501B8126FA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{37B60C03-47D5-4D55-90E9-89501B8126FA}.Release|x64.ActiveCfg = Release|x64
 		{37B60C03-47D5-4D55-90E9-89501B8126FA}.Release|x64.Build.0 = Release|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Debug|Any CPU.ActiveCfg = Debug|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Debug|Any CPU.Build.0 = Debug|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Debug|x64.ActiveCfg = Debug|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Debug|x64.Build.0 = Debug|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Release|Any CPU.ActiveCfg = Release|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Release|Any CPU.Build.0 = Release|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Release|x64.ActiveCfg = Release|x64
-		{64D1B6D4-C3A5-4C14-8793-88E6A2E1B313}.Release|x64.Build.0 = Release|x64
 		{41311FC7-8C31-4416-AC28-79CA7881DF9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{41311FC7-8C31-4416-AC28-79CA7881DF9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{41311FC7-8C31-4416-AC28-79CA7881DF9D}.Debug|x64.ActiveCfg = Debug|x64

@@ -47,7 +47,7 @@ public partial class SettingsWindow : Window
             
             // Register global hotkeys (using Win+Shift+F1/F2/F3 to avoid conflicts)
             bool success1 = _hotkeyManager.RegisterHotkey("Win+Shift+F1", "TestCurrentOutput");
-            bool success2 = _hotkeyManager.RegisterHotkey("Win+Shift+F2", "TestTsfTip");
+            bool success2 = _hotkeyManager.RegisterHotkey("Win+Shift+F2", "TestExternalProcess");
             bool success3 = _hotkeyManager.RegisterHotkey("Win+Shift+F3", "TestSendInput");
             
             System.Diagnostics.Debug.WriteLine($"*** Global hotkey registration results: F1={success1}, F2={success2}, F3={success3} ***");
@@ -101,9 +101,11 @@ public partial class SettingsWindow : Window
                     System.Diagnostics.Debug.WriteLine("*** Executing TestCurrentOutput ***");
                     await _viewModel.TestOutputCommand.ExecuteAsync(testText);
                     break;
-                case "TestTsfTip":
-                    System.Diagnostics.Debug.WriteLine("*** Executing TestTsfTip ***");
-                    await _viewModel.TestTsfCommand.ExecuteAsync(testText);
+                case "TestExternalProcess":
+                    System.Diagnostics.Debug.WriteLine("*** Executing TestExternalProcess ***");
+                    // Create external process sink for testing
+                    var externalSink = new Sttify.Corelib.Output.ExternalProcessSink(new Sttify.Corelib.Output.ExternalProcessSettings());
+                    await externalSink.SendAsync(testText);
                     break;
                 case "TestSendInput":
                     System.Diagnostics.Debug.WriteLine("*** Executing TestSendInput ***");

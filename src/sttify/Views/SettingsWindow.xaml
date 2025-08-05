@@ -135,14 +135,11 @@
                     <Label Content="Primary Output:"/>
                     <ComboBox SelectedIndex="{Binding Settings.Output.PrimaryOutputIndex}" 
                              Margin="0,5,0,10">
-                        <ComboBoxItem Content="TSF Text Input Processor"/>
                         <ComboBoxItem Content="SendInput"/>
                         <ComboBoxItem Content="External Process"/>
+                        <ComboBoxItem Content="Stream Output"/>
                     </ComboBox>
                     
-                    <CheckBox Content="Suppress when IME is composing" 
-                             IsChecked="{Binding Settings.Output.Tsf.SuppressWhenImeComposing}" 
-                             Margin="0,5,0,15"/>
                     
                     <!-- Test Section -->
                     <GroupBox Header="Output Test" Margin="0,0,0,15">
@@ -167,7 +164,7 @@
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
                                 
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="Test TSF TIP (direct text insertion)" Margin="0,2"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process" Margin="0,2"/>
                                 
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
@@ -274,7 +271,7 @@
                                     <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
                                     
                                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Test TSF TIP (direct text insertion)" Margin="0,2"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process" Margin="0,2"/>
                                     
                                     <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
                                     <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>

@@ -112,13 +112,6 @@ if ($Package) {
         Write-Host "Copied main application to package" -ForegroundColor Cyan
     }
     
-    # Copy TSF TIP DLL
-    $TipSource = Join-Path $OutputPath "sttify_tip.dll"
-    $TipDest = Join-Path $PackagePath "sttify_tip.dll"
-    if (Test-Path $TipSource) {
-        Copy-Item $TipSource $TipDest -Force
-        Write-Host "Copied TSF TIP to package" -ForegroundColor Cyan
-    }
     
     # Copy documentation
     $DocSource = Join-Path $PSScriptRoot "doc"
