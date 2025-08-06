@@ -24,39 +24,44 @@
         <!-- Settings Tabs -->
         <TabControl Grid.Row="1">
             <TabItem Header="General">
-                <StackPanel Margin="10">
-                    <CheckBox Content="Start with Windows" 
-                             IsChecked="{Binding Settings.Application.StartWithWindows}" 
-                             Margin="0,5"/>
-                    <CheckBox Content="Show in system tray" 
-                             IsChecked="{Binding Settings.Application.ShowInTray}" 
-                             Margin="0,5"/>
-                    <CheckBox Content="Start minimized" 
-                             IsChecked="{Binding Settings.Application.StartMinimized}" 
-                             Margin="0,5"/>
-                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10">
+                        <CheckBox Content="Start with Windows" 
+                                 IsChecked="{Binding Settings.Application.StartWithWindows}" 
+                                 Margin="0,5"/>
+                        <CheckBox Content="Show in system tray" 
+                                 IsChecked="{Binding Settings.Application.ShowInTray}" 
+                                 Margin="0,5"/>
+                        <CheckBox Content="Start minimized" 
+                                 IsChecked="{Binding Settings.Application.StartMinimized}" 
+                                 Margin="0,5"/>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
             <TabItem Header="Audio">
-                <StackPanel Margin="10">
-                    <Label Content="Audio Device:"/>
-                    <ComboBox ItemsSource="{Binding AudioDevices}"
-                             DisplayMemberPath="Name"
-                             SelectedValuePath="Id"
-                             SelectedValue="{Binding Settings.Audio.DeviceId}"
-                             Margin="0,5,0,10"/>
-                    
-                    <Label Content="Sample Rate:"/>
-                    <ComboBox Margin="0,5,0,10">
-                        <ComboBoxItem Content="16000 Hz" IsSelected="True"/>
-                        <ComboBoxItem Content="22050 Hz"/>
-                        <ComboBoxItem Content="44100 Hz"/>
-                    </ComboBox>
-                </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10">
+                        <Label Content="Audio Device:"/>
+                        <ComboBox ItemsSource="{Binding AudioDevices}"
+                                 DisplayMemberPath="Name"
+                                 SelectedValuePath="Id"
+                                 SelectedValue="{Binding Settings.Audio.DeviceId}"
+                                 Margin="0,5,0,10"/>
+                        
+                        <Label Content="Sample Rate:"/>
+                        <ComboBox Margin="0,5,0,10">
+                            <ComboBoxItem Content="16000 Hz" IsSelected="True"/>
+                            <ComboBoxItem Content="22050 Hz"/>
+                            <ComboBoxItem Content="44100 Hz"/>
+                        </ComboBox>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
             <TabItem Header="Engine">
-                <StackPanel Margin="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10">
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -127,11 +132,13 @@
                                    Width="120" HorizontalAlignment="Left" Margin="0,10,0,0"/>
                         </StackPanel>
                     </GroupBox>
-                </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
             <TabItem Header="Output">
-                <StackPanel Margin="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10">
                     <Label Content="Primary Output:"/>
                     <ComboBox SelectedIndex="{Binding Settings.Output.PrimaryOutputIndex}" 
                              Margin="0,5,0,10">
@@ -212,11 +219,12 @@
                                       Foreground="Gray" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </GroupBox>
-                </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
             <TabItem Header="Hotkeys">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
                         <GroupBox Header="Application Hotkeys" Margin="0,0,0,15">
                             <StackPanel Margin="10">
@@ -272,7 +280,8 @@
             </TabItem>
             
             <TabItem Header="Interface">
-                <StackPanel Margin="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10">
                     <GroupBox Header="Control Window" Margin="0,0,0,15">
                         <StackPanel Margin="10">
                             <TextBlock Text="Reset control window position to default location" 
@@ -303,11 +312,12 @@
                                    Width="150" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </GroupBox>
-                </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             
             <TabItem Header="System">
-                <ScrollViewer>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
                         <GroupBox Header="Privilege Information" Margin="0,0,0,15">
                             <StackPanel Margin="10">
