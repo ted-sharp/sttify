@@ -42,7 +42,7 @@
             <TabItem Header="Audio">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
-                        <Label Content="Audio Device:"/>
+                        <Label Content="Microphone (Audio Input Device):"/>
                         <ComboBox ItemsSource="{Binding AudioDevices}"
                                  DisplayMemberPath="Name"
                                  SelectedValuePath="Id"
