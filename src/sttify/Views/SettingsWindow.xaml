@@ -84,27 +84,36 @@
                                ToolTip="Open official documentation"/>
                     </Grid>
                     
-                    <Label Content="Vosk Model Path:"/>
-                    <Grid Margin="0,5,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" Text="{Binding Settings.Engine.Vosk.ModelPath}"/>
-                        <Button Grid.Column="1" Content="📁 Folder" 
-                               Command="{Binding BrowseForModelFolderCommand}" 
-                               Width="80" Margin="5,0,5,0"
-                               ToolTip="Select a model folder"/>
-                        <Button Grid.Column="2" Content="📦 ZIP" 
-                               Command="{Binding BrowseForModelZipCommand}" 
-                               Width="80" Margin="0,0,0,0"
-                               ToolTip="Select and extract a ZIP model file"/>
-                    </Grid>
-                    
-                    <CheckBox Content="Enable punctuation" 
-                             IsChecked="{Binding Settings.Engine.Vosk.Punctuation}" 
-                             Margin="0,5"/>
+                    <!-- Vosk Configuration -->
+                    <GroupBox Header="Vosk Configuration" Margin="0,15,0,0">
+                        <StackPanel Margin="10">
+                            <TextBlock Text="Download models from: https://alphacephei.com/vosk/models"
+                                      Margin="0,0,0,10" Foreground="Blue" TextDecorations="Underline"
+                                      MouseLeftButtonUp="OnVoskModelsUrlClick" Cursor="Hand"/>
+                            
+                            <Label Content="Vosk Model Path:"/>
+                            <Grid Margin="0,5,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Text="{Binding Settings.Engine.Vosk.ModelPath}"/>
+                                <Button Grid.Column="1" Content="📁 Folder" 
+                                       Command="{Binding BrowseForModelFolderCommand}" 
+                                       Width="80" Margin="5,0,5,0"
+                                       ToolTip="Select a model folder"/>
+                                <Button Grid.Column="2" Content="📦 ZIP" 
+                                       Command="{Binding BrowseForModelZipCommand}" 
+                                       Width="80" Margin="0,0,0,0"
+                                       ToolTip="Select and extract a ZIP model file"/>
+                            </Grid>
+                            
+                            <CheckBox Content="Enable punctuation" 
+                                     IsChecked="{Binding Settings.Engine.Vosk.Punctuation}" 
+                                     Margin="0,5"/>
+                        </StackPanel>
+                    </GroupBox>
                     
                     <!-- Vibe Configuration -->
                     <GroupBox Header="Vibe Configuration" Margin="0,15,0,0"

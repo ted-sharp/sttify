@@ -72,6 +72,10 @@ public partial class SettingsViewModel : ObservableObject
         {
             IsLoading = true;
             Settings = await _settingsProvider.GetSettingsAsync();
+            
+            // Explicitly notify dependent properties after settings load
+            OnPropertyChanged(nameof(IsVoskSelected));
+            OnPropertyChanged(nameof(IsVibeEngine));
         }
         catch (Exception ex)
         {
@@ -379,6 +383,8 @@ public partial class SettingsViewModel : ObservableObject
             var fileResult = openFileDialog.ShowDialog();
             if (fileResult == true)
             {
+                // Show status message for ZIP processing
+                System.Diagnostics.Debug.WriteLine($"*** Starting ZIP extraction for: {openFileDialog.FileName} ***");
                 await ProcessSelectedModelAsync(openFileDialog.FileName, true);
             }
         }
@@ -391,6 +397,10 @@ public partial class SettingsViewModel : ObservableObject
 
     private async Task ProcessSelectedModelAsync(string selectedPath, bool isZipFile)
     {
+        // Show wait cursor during processing
+        var originalCursor = System.Windows.Input.Mouse.OverrideCursor;
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        
         try
         {
             string finalModelPath;
@@ -422,7 +432,9 @@ public partial class SettingsViewModel : ObservableObject
                 try
                 {
                     // Extract to temporary directory first
+                    System.Diagnostics.Debug.WriteLine($"*** Extracting ZIP to temporary directory: {tempExtractionPath} ***");
                     System.IO.Compression.ZipFile.ExtractToDirectory(selectedPath, tempExtractionPath);
+                    System.Diagnostics.Debug.WriteLine("*** ZIP extraction completed ***");
                     
                     // Find the actual model directory within the extracted content
                     var extractedItems = Directory.GetDirectories(tempExtractionPath);
@@ -461,8 +473,7 @@ public partial class SettingsViewModel : ObservableObject
                     
                     finalModelPath = finalExtractionPath;
                     
-                    System.Windows.MessageBox.Show($"Model extracted successfully to: {finalExtractionPath}", 
-                        "Extraction Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                    System.Diagnostics.Debug.WriteLine($"*** Model extracted successfully to: {finalExtractionPath} ***");
                 }
                 catch (Exception ex)
                 {
@@ -480,6 +491,7 @@ public partial class SettingsViewModel : ObservableObject
             // Validate the final model path
             if (VoskModelManager.IsModelInstalled(finalModelPath))
             {
+                System.Diagnostics.Debug.WriteLine($"*** Model validation successful, updating path to: {finalModelPath} ***");
                 Settings.Engine.Vosk.ModelPath = finalModelPath;
                 
                 // Force multiple property change notifications to ensure UI updates
@@ -492,6 +504,8 @@ public partial class SettingsViewModel : ObservableObject
                 {
                     OnPropertyChanged(nameof(Settings));
                 });
+                
+                System.Diagnostics.Debug.WriteLine("*** Path update completed successfully ***");
             }
             else
             {
@@ -520,6 +534,11 @@ public partial class SettingsViewModel : ObservableObject
         {
             System.Windows.MessageBox.Show($"Failed to process model: {ex.Message}", 
                 "Processing Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            // Restore original cursor
+            System.Windows.Input.Mouse.OverrideCursor = originalCursor;
         }
     }
 

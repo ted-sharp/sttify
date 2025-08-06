@@ -249,4 +249,26 @@ public partial class SettingsWindow : Window
                 MessageBoxImage.Error);
         }
     }
+
+    private void OnVoskModelsUrlClick(object sender, MouseButtonEventArgs e)
+    {
+        try
+        {
+            var url = "https://alphacephei.com/vosk/models";
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+            {
+                UseShellExecute = true
+            });
+            System.Diagnostics.Debug.WriteLine($"*** Opened Vosk models URL: {url} ***");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** Failed to open Vosk models URL: {ex.Message} ***");
+            System.Windows.MessageBox.Show(
+                $"Failed to open URL: {ex.Message}",
+                "Open URL Failed",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
 }
