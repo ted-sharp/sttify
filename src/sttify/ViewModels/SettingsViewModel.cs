@@ -203,30 +203,11 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var voskConfig = GetVoskConfiguration();
-            if (voskConfig?.RecommendedModels?.Length > 0)
+            var dialog = new Sttify.Views.VoskModelInfoDialog
             {
-                var modelInfo = string.Join("\n\n", voskConfig.RecommendedModels.Select(m => 
-                    $"📦 {m.Name}\n" +
-                    $"   Size: {m.Size}\n" +
-                    $"   Language: {m.Language}\n" +
-                    $"   {m.Description}\n" +
-                    $"   Download: {m.DownloadUrl}"));
-
-                System.Windows.MessageBox.Show(
-                    $"Recommended Vosk Models:\n\n{modelInfo}\n\nFor more models, visit: {voskConfig.ModelsUrl}",
-                    "Vosk Models",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-            }
-            else
-            {
-                using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "https://alphacep.com/vosk/models",
-                    UseShellExecute = true
-                });
-            }
+                Owner = System.Windows.Application.Current.MainWindow
+            };
+            dialog.ShowDialog();
         }
         catch (Exception ex)
         {
@@ -361,26 +342,184 @@ public partial class SettingsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task BrowseForModelAsync()
+    private async Task BrowseForModelFolderAsync()
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog
+        try
         {
-            Title = "Select Vosk Model Directory"
-        };
-
-        if (dialog.ShowDialog() == true)
-        {
-            var selectedPath = dialog.FolderName;
-            if (VoskModelManager.IsModelInstalled(selectedPath))
+            var openFolderDialog = new Microsoft.Win32.OpenFolderDialog
             {
-                Settings.Engine.Vosk.ModelPath = selectedPath;
-                await SaveSettingsAsync();
+                Title = "Select Vosk Model Directory"
+            };
+
+            var folderResult = openFolderDialog.ShowDialog();
+            if (folderResult == true)
+            {
+                await ProcessSelectedModelAsync(openFolderDialog.FolderName, false);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Failed to browse for model folder: {ex.Message}", 
+                "Browse Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowseForModelZipAsync()
+    {
+        try
+        {
+            var openFileDialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Select Vosk Model ZIP file",
+                Filter = "ZIP Files (*.zip)|*.zip|All Files (*.*)|*.*",
+                CheckFileExists = true
+            };
+
+            var fileResult = openFileDialog.ShowDialog();
+            if (fileResult == true)
+            {
+                await ProcessSelectedModelAsync(openFileDialog.FileName, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Failed to browse for ZIP file: {ex.Message}", 
+                "Browse Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task ProcessSelectedModelAsync(string selectedPath, bool isZipFile)
+    {
+        try
+        {
+            string finalModelPath;
+
+            if (isZipFile)
+            {
+                // Extract ZIP to cache directory
+                var modelsDir = VoskModelManager.GetDefaultModelsDirectory();
+                Directory.CreateDirectory(modelsDir);
+                
+                var fileName = Path.GetFileNameWithoutExtension(selectedPath);
+                var tempExtractionPath = Path.Combine(modelsDir, "temp_" + Guid.NewGuid().ToString());
+                var finalExtractionPath = Path.Combine(modelsDir, fileName);
+
+                if (Directory.Exists(finalExtractionPath))
+                {
+                    var result = System.Windows.MessageBox.Show(
+                        $"Model '{fileName}' already exists. Do you want to overwrite it?",
+                        "Model Exists",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+                    
+                    if (result == MessageBoxResult.No)
+                        return;
+                    
+                    Directory.Delete(finalExtractionPath, true);
+                }
+
+                try
+                {
+                    // Extract to temporary directory first
+                    System.IO.Compression.ZipFile.ExtractToDirectory(selectedPath, tempExtractionPath);
+                    
+                    // Find the actual model directory within the extracted content
+                    var extractedItems = Directory.GetDirectories(tempExtractionPath);
+                    var extractedFiles = Directory.GetFiles(tempExtractionPath);
+                    
+                    string actualModelPath;
+                    
+                    // Check if files were extracted directly to temp directory
+                    if (VoskModelManager.IsModelInstalled(tempExtractionPath))
+                    {
+                        actualModelPath = tempExtractionPath;
+                    }
+                    // Check if there's a single subdirectory containing the model
+                    else if (extractedItems.Length == 1 && VoskModelManager.IsModelInstalled(extractedItems[0]))
+                    {
+                        actualModelPath = extractedItems[0];
+                    }
+                    // Look for any directory that contains a valid model
+                    else
+                    {
+                        actualModelPath = extractedItems.FirstOrDefault(VoskModelManager.IsModelInstalled) ?? tempExtractionPath;
+                    }
+                    
+                    // Move the actual model directory to the final location
+                    if (actualModelPath == tempExtractionPath)
+                    {
+                        Directory.Move(tempExtractionPath, finalExtractionPath);
+                    }
+                    else
+                    {
+                        Directory.Move(actualModelPath, finalExtractionPath);
+                        // Clean up remaining temp directory
+                        if (Directory.Exists(tempExtractionPath))
+                            Directory.Delete(tempExtractionPath, true);
+                    }
+                    
+                    finalModelPath = finalExtractionPath;
+                    
+                    System.Windows.MessageBox.Show($"Model extracted successfully to: {finalExtractionPath}", 
+                        "Extraction Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    // Clean up temp directory on failure
+                    if (Directory.Exists(tempExtractionPath))
+                        Directory.Delete(tempExtractionPath, true);
+                    throw new Exception($"Failed to extract ZIP file: {ex.Message}", ex);
+                }
             }
             else
             {
-                System.Windows.MessageBox.Show("The selected directory does not contain a valid Vosk model.", 
-                    "Invalid Model", MessageBoxButton.OK, MessageBoxImage.Warning);
+                finalModelPath = selectedPath;
             }
+
+            // Validate the final model path
+            if (VoskModelManager.IsModelInstalled(finalModelPath))
+            {
+                Settings.Engine.Vosk.ModelPath = finalModelPath;
+                
+                // Force multiple property change notifications to ensure UI updates
+                OnPropertyChanged(nameof(Settings));
+                
+                await SaveSettingsAsync();
+                
+                // Trigger additional refresh after save
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    OnPropertyChanged(nameof(Settings));
+                });
+            }
+            else
+            {
+                var errorMessage = $"The selected path does not contain a valid Vosk model.\n\nPath: {finalModelPath}\n\n" +
+                    "A valid Vosk model should contain these essential files:\n" +
+                    "• am/final.mdl (acoustic model)\n" +
+                    "• graph/HCLG.fst (large models) OR graph/HCLR.fst (small models)\n" +
+                    "• graph/words.txt (vocabulary)\n\n" +
+                    "Optional files:\n" +
+                    "• ivector/final.ie (i-vector extractor)\n" +
+                    "• conf/model.conf (configuration)";
+                    
+                System.Windows.MessageBox.Show(errorMessage, 
+                    "Invalid Model", 
+                    MessageBoxButton.OK, 
+                    MessageBoxImage.Warning);
+                    
+                // If this was from a ZIP extraction and it failed, clean up
+                if (isZipFile && Directory.Exists(finalModelPath) && finalModelPath != selectedPath)
+                {
+                    try { Directory.Delete(finalModelPath, true); } catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Failed to process model: {ex.Message}", 
+                "Processing Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

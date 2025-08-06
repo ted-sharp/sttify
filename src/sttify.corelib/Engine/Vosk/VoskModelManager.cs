@@ -151,14 +151,16 @@ public class VoskModelManager
             return false;
 
         // Check for essential Vosk model files
-        var requiredFiles = new[]
-        {
-            "am/final.mdl",
-            "graph/HCLG.fst", 
-            "graph/words.txt"
-        };
+        var acousticModel = Path.Combine(modelPath, "am/final.mdl");
+        var vocabulary = Path.Combine(modelPath, "graph/words.txt");
+        
+        // Check for decoding graph - either HCLG.fst (large models) or HCLR.fst (small models)
+        var largeGraph = Path.Combine(modelPath, "graph/HCLG.fst");
+        var smallGraph = Path.Combine(modelPath, "graph/HCLR.fst");
 
-        return requiredFiles.All(file => File.Exists(Path.Combine(modelPath, file)));
+        return File.Exists(acousticModel) && 
+               File.Exists(vocabulary) && 
+               (File.Exists(largeGraph) || File.Exists(smallGraph));
     }
 
     public static VoskModelInfo? GetModelInfo(string modelPath)
