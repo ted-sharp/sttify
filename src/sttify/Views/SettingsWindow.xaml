@@ -165,35 +165,38 @@
                     <!-- IME Control Settings -->
                     <GroupBox Header="IME Control Settings" Margin="0,0,0,15">
                         <StackPanel Margin="10">
-                            <TextBlock Text="Automatic Input Method Editor (IME) control to prevent conflicts during text input" 
-                                      Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic"/>
+                            <TextBlock Text="Japanese IME control for speech-to-text input (日本語IME制御)" 
+                                      Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic" FontWeight="Bold"/>
                             
                             <CheckBox Content="Enable IME control" 
-                                     IsChecked="True" 
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.EnableImeControl}" 
                                      Margin="0,5"/>
-                            <TextBlock Text="Automatically manage IME state during text input" 
+                            <TextBlock Text="Automatically manage IME during speech-to-text input to prevent conflicts" 
                                       Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
                             
                             <CheckBox Content="Close IME when sending text" 
-                                     IsChecked="True" 
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.CloseImeWhenSending}" 
                                      Margin="0,5"/>
-                            <TextBlock Text="Temporarily close IME to prevent interference" 
+                            <TextBlock Text="💡 Temporarily close IME during text input, then restore original state (recommended for Japanese)" 
                                       Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
                             
                             <CheckBox Content="Set alphanumeric mode" 
-                                     IsChecked="True" 
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.SetAlphanumericMode}" 
                                      Margin="0,5"/>
-                            <TextBlock Text="Switch IME to alphanumeric mode for direct text input" 
-                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+                            <TextBlock Text="⚠️ Alternative: Switch to alphanumeric mode instead of closing IME (use only if closing IME causes issues)" 
+                                      Foreground="DarkOrange" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
                             
                             <CheckBox Content="Skip when IME is composing" 
-                                     IsChecked="True" 
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.SkipWhenImeComposing}" 
                                      Margin="0,5"/>
-                            <TextBlock Text="Skip text input if IME is actively composing text" 
+                            <TextBlock Text="Skip text input if IME is actively composing to prevent conflicts" 
                                       Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
-                                      
+
+                            <TextBlock Text="🏮 How it works: Speech recognition sends Japanese text via Unicode SendInput. IME is temporarily managed to prevent composition conflicts, then restored to original state (日本語/ひらがな mode)." 
+                                      Background="LightYellow" Padding="8" Margin="0,10,0,5" TextWrapping="Wrap"/>
+                            
                             <TextBlock Text="💡 Use Win+Shift+F4 to test IME control functionality with detailed debug information" 
-                                      Background="LightBlue" Padding="8" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                                      Background="LightBlue" Padding="8" Margin="0,5,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </GroupBox>
                     
@@ -253,43 +256,6 @@
                             </StackPanel>
                         </GroupBox>
                         
-                        <GroupBox Header="Test Functions" Margin="0,0,0,15">
-                            <StackPanel Margin="10">
-                                <TextBlock Text="Built-in test functions for debugging and troubleshooting" 
-                                          Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic"/>
-                                
-                                <Grid Margin="0,5,0,10">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="150"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1" 
-                                              FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Test SendInput functionality" 
-                                              Margin="10,0,0,0" VerticalAlignment="Center"/>
-                                    
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2" 
-                                              FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process functionality" 
-                                              Margin="10,5,0,0" VerticalAlignment="Center"/>
-                                    
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F4" 
-                                              FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Test IME Control functionality" 
-                                              Margin="10,5,0,0" VerticalAlignment="Center"/>
-                                </Grid>
-                                
-                                <TextBlock Text="💡 How to use: Open any text editor (like Notepad) and press these keys to test text input functionality. Check Visual Studio Output or console for detailed test results."
-                                          Margin="0,5,0,0" TextWrapping="Wrap" 
-                                          Background="LightYellow" Padding="8"/>
-                            </StackPanel>
-                        </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -299,8 +265,42 @@
                     <StackPanel Margin="10">
                     <GroupBox Header="Control Window" Margin="0,0,0,15">
                         <StackPanel Margin="10">
+                            <Label Content="Current Window Position:"/>
+                            <Grid Margin="0,5,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="X Position:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,2">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}Left: {0}">
+                                            <Binding Path="Settings.Application.ControlWindow.Left"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Y Position:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,2">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}Top: {0}">
+                                            <Binding Path="Settings.Application.ControlWindow.Top"/>
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                                
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Display:" FontWeight="Bold" Margin="0,2,10,2"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Settings.Application.ControlWindow.DisplayConfiguration}" Margin="0,2"/>
+                            </Grid>
+                            
                             <TextBlock Text="Reset control window position to default location" 
-                                      Margin="0,0,0,10" TextWrapping="Wrap"/>
+                                      Margin="0,5,0,10" TextWrapping="Wrap"/>
                             <Button Content="Reset Window Position" 
                                    Command="{Binding ResetWindowPositionCommand}"
                                    Width="150" HorizontalAlignment="Left"/>
@@ -331,72 +331,6 @@
                 </ScrollViewer>
             </TabItem>
             
-            <TabItem Header="System">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="10">
-                        <GroupBox Header="Privilege Information" Margin="0,0,0,15">
-                            <StackPanel Margin="10">
-                                <TextBlock x:Name="PrivilegeStatusText" 
-                                          Text="Checking privilege level..." 
-                                          FontWeight="Bold" 
-                                          Margin="0,0,0,10"/>
-                                
-                                <TextBlock x:Name="PrivilegeDescriptionText" 
-                                          TextWrapping="Wrap" 
-                                          Margin="0,0,0,10"/>
-                                
-                                <Button x:Name="RestartNormalButton" 
-                                       Content="🔄 Restart Without Administrator" 
-                                       Width="200" 
-                                       HorizontalAlignment="Left" 
-                                       Margin="0,5,0,0"
-                                       Click="OnRestartNormal"
-                                       Visibility="Collapsed"/>
-                            </StackPanel>
-                        </GroupBox>
-                        
-                        <GroupBox Header="Input Test Status" Margin="0,0,0,15">
-                            <StackPanel Margin="10">
-                                <TextBlock Text="Use these global hotkeys to test text input functionality:" 
-                                          Margin="0,0,0,10" TextWrapping="Wrap"/>
-                                <TextBox x:Name="SystemTestTextBox" Text="Hello, this is a test from Sttify." 
-                                        Margin="0,0,0,10"/>
-                                
-                                <Grid Margin="0,0,0,10">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
-                                    
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process" Margin="0,2"/>
-                                    
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
-                                    
-                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="📝 Tip:" FontWeight="Bold" Margin="0,10,10,2"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Focus on a text editor (like Notepad) before pressing hotkeys" Margin="0,10,0,2" TextWrapping="Wrap"/>
-                                </Grid>
-                                
-                                <Button Content="🗒️ Open Notepad for Testing" 
-                                       Click="OnOpenNotepad"
-                                       Width="200" 
-                                       HorizontalAlignment="Left" 
-                                       Margin="0,5,0,0"/>
-                            </StackPanel>
-                        </GroupBox>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
         </TabControl>
         
         <!-- Buttons -->
