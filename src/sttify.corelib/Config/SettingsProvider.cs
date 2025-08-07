@@ -174,7 +174,7 @@ public class SettingsProvider
                 Profile = "vosk",
                 Vosk = new VoskEngineSettings
                 {
-                    ModelPath = Path.Combine(VoskModelManager.GetDefaultModelsDirectory(), "vosk-model-ja-0.22"),
+                    ModelPath = GetFirstAvailableModelPath(),
                     Language = "ja",
                     Punctuation = true,
                     EndpointSilenceMs = 800,
@@ -266,6 +266,36 @@ public class SettingsProvider
         {
             Telemetry.LogError("ConfigBackupFailed", ex, new { ConfigPath = _configPath });
         }
+    }
+    
+    /// <summary>
+    /// Gets the first available Vosk model path from installed models, or empty string if none found
+    /// </summary>
+    private static string GetFirstAvailableModelPath()
+    {
+        try
+        {
+            var modelsDirectory = VoskModelManager.GetDefaultModelsDirectory();
+            var installedModels = VoskModelManager.GetInstalledModels(modelsDirectory);
+            
+            if (installedModels.Length > 0)
+            {
+                // Prefer recommended models first, then any available model
+                var availableModels = VoskModelManager.AvailableModels;
+                var recommendedModel = installedModels.FirstOrDefault(installed =>
+                    availableModels.Any(available => 
+                        available.IsRecommended && 
+                        installed.EndsWith(available.Name, StringComparison.OrdinalIgnoreCase)));
+                
+                return recommendedModel ?? installedModels[0];
+            }
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("GetFirstAvailableModelPathFailed", ex);
+        }
+        
+        return ""; // Return empty string if no models found
     }
     
     public void Dispose()
