@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Engine.Vosk;
 using System.IO;
 
 namespace Sttify.Corelib.Config;
@@ -173,7 +174,7 @@ public class SettingsProvider
                 Profile = "vosk",
                 Vosk = new VoskEngineSettings
                 {
-                    ModelPath = "",
+                    ModelPath = Path.Combine(VoskModelManager.GetDefaultModelsDirectory(), "vosk-model-ja-0.22"),
                     Language = "ja",
                     Punctuation = true,
                     EndpointSilenceMs = 800,

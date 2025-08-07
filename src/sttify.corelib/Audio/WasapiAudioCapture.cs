@@ -183,7 +183,7 @@ public class WasapiAudioCapture : IDisposable
                             processedData = audioSpan.ToArray();
                         }
 
-                        var level = AudioConverter.CalculateAudioLevel(processedData, _waveFormat);
+                        var level = AudioConverter.CalculateAudioLevel(processedData, AudioConverter.GetVoskTargetFormat());
                         
                         Telemetry.LogAudioCapture(e.BytesRecorded, level);
                         OnFrame?.Invoke(this, new AudioFrameEventArgs(processedData));
@@ -224,46 +224,6 @@ public class WasapiAudioCapture : IDisposable
         }
     }
 
-    private double CalculateAudioLevel(byte[] audioData)
-    {
-        if (audioData.Length == 0 || _waveFormat == null)
-            return 0.0;
-
-        double sum = 0;
-        int sampleCount = 0;
-
-        if (_waveFormat.BitsPerSample == 16)
-        {
-            for (int i = 0; i < audioData.Length - 1; i += 2)
-            {
-                short sample = (short)(audioData[i] | (audioData[i + 1] << 8));
-                sum += Math.Abs(sample);
-                sampleCount++;
-            }
-            
-            if (sampleCount > 0)
-            {
-                double average = sum / sampleCount;
-                return average / 32768.0; // Normalize to 0-1 range
-            }
-        }
-        else if (_waveFormat.BitsPerSample == 32)
-        {
-            for (int i = 0; i < audioData.Length - 3; i += 4)
-            {
-                float sample = BitConverter.ToSingle(audioData, i);
-                sum += Math.Abs(sample);
-                sampleCount++;
-            }
-            
-            if (sampleCount > 0)
-            {
-                return sum / sampleCount; // Already normalized for float
-            }
-        }
-
-        return 0.0;
-    }
 
     public static List<AudioDeviceInfo> GetAvailableDevices()
     {

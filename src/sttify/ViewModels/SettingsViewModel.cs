@@ -21,6 +21,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVibeEngine))]
     [NotifyPropertyChangedFor(nameof(IsVoskSelected))]
+    [NotifyPropertyChangedFor(nameof(IsCloudEngine))]
+    [NotifyPropertyChangedFor(nameof(IsSendInputSelected))]
     private SttifySettings _settings = new();
 
     [ObservableProperty]
@@ -49,6 +51,44 @@ public partial class SettingsViewModel : ObservableObject
 
     public bool IsVibeEngine => Settings?.Engine?.Profile?.ToLowerInvariant() == "vibe";
     public bool IsVoskSelected => Settings?.Engine?.Profile?.ToLowerInvariant() == "vosk";
+    public bool IsCloudEngine => Settings?.Engine?.Profile?.ToLowerInvariant()?.Contains("cloud") == true ||
+                                 Settings?.Engine?.Profile?.ToLowerInvariant() == "azure" ||
+                                 Settings?.Engine?.Profile?.ToLowerInvariant() == "google" ||
+                                 Settings?.Engine?.Profile?.ToLowerInvariant() == "aws";
+    
+    public bool IsSendInputSelected => Settings?.Output?.PrimaryOutputIndex == 0;
+    
+    public string EngineProfile
+    {
+        get => Settings?.Engine?.Profile ?? "vosk";
+        set
+        {
+            if (Settings?.Engine != null && Settings.Engine.Profile != value)
+            {
+                Settings.Engine.Profile = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsVibeEngine));
+                OnPropertyChanged(nameof(IsVoskSelected));
+                OnPropertyChanged(nameof(IsCloudEngine));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+    
+    public int PrimaryOutputIndex
+    {
+        get => Settings?.Output?.PrimaryOutputIndex ?? 0;
+        set
+        {
+            if (Settings?.Output != null && Settings.Output.PrimaryOutputIndex != value)
+            {
+                Settings.Output.PrimaryOutputIndex = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsSendInputSelected));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
 
     public SettingsViewModel(SettingsProvider settingsProvider)
     {
@@ -74,8 +114,12 @@ public partial class SettingsViewModel : ObservableObject
             Settings = await _settingsProvider.GetSettingsAsync();
             
             // Explicitly notify dependent properties after settings load
+            OnPropertyChanged(nameof(EngineProfile));
             OnPropertyChanged(nameof(IsVoskSelected));
             OnPropertyChanged(nameof(IsVibeEngine));
+            OnPropertyChanged(nameof(IsCloudEngine));
+            OnPropertyChanged(nameof(PrimaryOutputIndex));
+            OnPropertyChanged(nameof(IsSendInputSelected));
         }
         catch (Exception ex)
         {

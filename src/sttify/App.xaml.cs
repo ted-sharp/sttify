@@ -52,7 +52,11 @@ public partial class App : System.Windows.Application
             }
             
             BuildHost();
+            Console.WriteLine("*** Starting InitializeServices ***");
+            System.Diagnostics.Debug.WriteLine("*** Starting InitializeServices ***");
             InitializeServices();
+            Console.WriteLine("*** InitializeServices completed ***");
+            System.Diagnostics.Debug.WriteLine("*** InitializeServices completed ***");
             
             Telemetry.LogEvent("ApplicationStarted");
             
@@ -235,10 +239,12 @@ public partial class App : System.Windows.Application
             // Make service provider globally accessible
             ServiceProvider = _host.Services;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Console.WriteLine($"InitializeServices failed: {ex.Message}");
-            // Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"InitializeServices failed: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            System.Diagnostics.Debug.WriteLine($"InitializeServices failed: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             throw;
         }
     }

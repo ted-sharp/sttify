@@ -71,7 +71,7 @@
                         </Grid.ColumnDefinitions>
                         <Label Grid.Column="0" Content="STT Engine:" VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableEngines}"
-                                 SelectedItem="{Binding Settings.Engine.Profile}"
+                                 SelectedItem="{Binding EngineProfile}"
                                  Margin="5,0,5,0" VerticalAlignment="Center"/>
                         <Button Grid.Column="2" Content="📦 Models" 
                                Command="{Binding ShowVoskModelInfoCommand}"
@@ -85,7 +85,8 @@
                     </Grid>
                     
                     <!-- Vosk Configuration -->
-                    <GroupBox Header="Vosk Configuration" Margin="0,15,0,0">
+                    <GroupBox Header="Vosk Configuration" Margin="0,15,0,0"
+                             Visibility="{Binding IsVoskSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel Margin="10">
                             <TextBlock Text="Download models from: https://alphacephei.com/vosk/models"
                                       Margin="0,0,0,10" Foreground="Blue" TextDecorations="Underline"
@@ -155,7 +156,7 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
                     <Label Content="Primary Output:"/>
-                    <ComboBox SelectedIndex="{Binding Settings.Output.PrimaryOutputIndex}" 
+                    <ComboBox SelectedIndex="{Binding PrimaryOutputIndex}" 
                              Margin="0,5,0,10">
                         <ComboBoxItem Content="SendInput (with IME Control)"/>
                         <ComboBoxItem Content="External Process"/>
@@ -163,7 +164,8 @@
                     </ComboBox>
                     
                     <!-- IME Control Settings -->
-                    <GroupBox Header="IME Control Settings" Margin="0,0,0,15">
+                    <GroupBox Header="IME Control Settings" Margin="0,0,0,15"
+                             Visibility="{Binding IsSendInputSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel Margin="10">
                             <TextBlock Text="Japanese IME control for speech-to-text input (日本語IME制御)" 
                                       Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic" FontWeight="Bold"/>

@@ -130,24 +130,50 @@ public class NotifyIconHost : IDisposable
 
     private Icon CreateMicrophoneIcon(Sttify.Corelib.Session.SessionState state = Sttify.Corelib.Session.SessionState.Idle)
     {
-        var bitmap = new Bitmap(16, 16);
-        using var graphics = Graphics.FromImage(bitmap);
-
-        var color = state switch
+        try
         {
-            Sttify.Corelib.Session.SessionState.Listening => Color.Green,
-            Sttify.Corelib.Session.SessionState.Processing => Color.Orange,
-            Sttify.Corelib.Session.SessionState.Error => Color.Red,
-            _ => Color.Gray
-        };
+            using var bitmap = new Bitmap(16, 16);
+            using var graphics = Graphics.FromImage(bitmap);
 
-        graphics.Clear(Color.Transparent);
-        using var brush = new SolidBrush(color);
-        graphics.FillEllipse(brush, 4, 2, 8, 10);
-        graphics.FillRectangle(brush, 7, 12, 2, 2);
-        graphics.FillRectangle(brush, 5, 14, 6, 1);
+            var color = state switch
+            {
+                Sttify.Corelib.Session.SessionState.Listening => Color.Green,
+                Sttify.Corelib.Session.SessionState.Processing => Color.Orange,
+                Sttify.Corelib.Session.SessionState.Error => Color.Red,
+                _ => Color.Gray
+            };
 
-        return Icon.FromHandle(bitmap.GetHicon());
+            graphics.Clear(Color.Transparent);
+            using var brush = new SolidBrush(color);
+            graphics.FillEllipse(brush, 4, 2, 8, 10);
+            graphics.FillRectangle(brush, 7, 12, 2, 2);
+            graphics.FillRectangle(brush, 5, 14, 6, 1);
+
+            var hIcon = bitmap.GetHicon();
+            var icon = Icon.FromHandle(hIcon);
+            
+            // Create a copy to avoid handle ownership issues
+            var iconCopy = new Icon(icon, icon.Size);
+            
+            // Clean up the original handle
+            icon.Dispose();
+            Win32.DestroyIcon(hIcon);
+            
+            return iconCopy;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to create microphone icon: {ex.Message}");
+            // Return a simple default icon if creation fails
+            return SystemIcons.Application;
+        }
+    }
+    
+    // Win32 API for proper icon cleanup
+    private static class Win32
+    {
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        public static extern bool DestroyIcon(IntPtr hIcon);
     }
 
     private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state)
