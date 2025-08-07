@@ -156,21 +156,34 @@ public partial class App : System.Windows.Application
                 
                 services.AddSingleton<ISttEngine>(provider =>
                 {
-                    // Use safe default settings for initialization to avoid dependency issues
-                    var defaultEngineSettings = new EngineSettings
+                    // Create a placeholder engine that will be reconfigured when ApplicationService initializes
+                    // This avoids DI container deadlocks while still allowing proper configuration
+                    var settingsProvider = provider.GetService<SettingsProvider>();
+                    EngineSettings engineSettings;
+                    
+                    if (settingsProvider != null)
                     {
-                        Profile = "vosk",
-                        Vosk = new VoskEngineSettings
+                        try
                         {
-                            ModelPath = "",
-                            Language = "ja",
-                            Punctuation = true,
-                            EndpointSilenceMs = 800,
-                            TokensPerPartial = 5
+                            // Try to get settings synchronously first
+                            var settings = settingsProvider.GetSettingsSync();
+                            engineSettings = settings.Engine;
+                            System.Diagnostics.Debug.WriteLine($"*** STT Engine Settings LOADED - Profile: {engineSettings.Profile}, ModelPath: '{engineSettings.Vosk.ModelPath}' ***");
                         }
-                    };
-                    System.Diagnostics.Debug.WriteLine($"*** STT Engine Settings - Profile: {defaultEngineSettings.Profile}, ModelPath: '{defaultEngineSettings.Vosk.ModelPath}' ***");
-                    return SttEngineFactory.CreateEngine(defaultEngineSettings);
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"*** Failed to load settings, using defaults: {ex.Message} ***");
+                            // Fallback to safe defaults if settings loading fails
+                            engineSettings = CreateDefaultEngineSettings();
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("*** SettingsProvider not available, using defaults ***");
+                        engineSettings = CreateDefaultEngineSettings();
+                    }
+                    
+                    return SttEngineFactory.CreateEngine(engineSettings);
                 });
                 
                 services.AddSingleton<IEnumerable<ITextOutputSink>>(provider =>
@@ -301,5 +314,21 @@ public partial class App : System.Windows.Application
             // If we can't check elevation, assume it's safe to continue
             return true;
         }
+    }
+    
+    private static EngineSettings CreateDefaultEngineSettings()
+    {
+        return new EngineSettings
+        {
+            Profile = "vosk",
+            Vosk = new VoskEngineSettings
+            {
+                ModelPath = "",
+                Language = "ja",
+                Punctuation = true,
+                EndpointSilenceMs = 800,
+                TokensPerPartial = 5
+            }
+        };
     }
 }

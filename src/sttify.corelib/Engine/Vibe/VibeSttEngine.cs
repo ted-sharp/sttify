@@ -44,7 +44,9 @@ public class VibeSttEngine : ISttEngine, IDisposable
 
         try
         {
-            await ValidateConnectionAsync(cancellationToken);
+            // Skip health check for now since /health endpoint may not exist
+            // await ValidateConnectionAsync(cancellationToken);
+            System.Diagnostics.Debug.WriteLine("*** VibeSttEngine.StartAsync - Skipping health check, proceeding with startup ***");
 
             lock (_lockObject)
             {
@@ -202,49 +204,70 @@ public class VibeSttEngine : ISttEngine, IDisposable
     {
         try
         {
-            using var content = new MultipartFormDataContent();
+            // Vibe expects JSON with file path, so we need to save audio to temp file
+            var tempAudioFile = Path.Combine(Path.GetTempPath(), $"sttify_audio_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.wav");
             
-            // Add audio file
-            var audioContent = new ByteArrayContent(audioData);
-            audioContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
-            content.Add(audioContent, "file", "audio.wav");
-            
-            // Add optional parameters
-            if (!string.IsNullOrEmpty(_settings.Language))
+            try
             {
-                content.Add(new StringContent(_settings.Language), "language");
+                // Save audio data to temporary WAV file
+                await File.WriteAllBytesAsync(tempAudioFile, CreateWavFile(audioData), cancellationToken);
+                
+                // Create JSON request matching Vibe API
+                var requestBody = new
+                {
+                    path = tempAudioFile,
+                    language = !string.IsNullOrEmpty(_settings.Language) ? _settings.Language : (object?)null,
+                    model = !string.IsNullOrEmpty(_settings.Model) ? _settings.Model : (object?)null,
+                    diarization = _settings.EnableDiarization,
+                    output_format = _settings.OutputFormat
+                };
+
+                var jsonContent = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull });
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                var endpoint = $"{_settings.Endpoint.TrimEnd('/')}/transcribe";
+                System.Diagnostics.Debug.WriteLine($"*** Sending Vibe request to: {endpoint} with file: {tempAudioFile} ***");
+                var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+                System.Diagnostics.Debug.WriteLine($"*** Vibe response: {jsonResponse} ***");
+                
+                var result = JsonSerializer.Deserialize<VibeApiResponse>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                return new VibeTranscriptionResult
+                {
+                    Text = result?.Text ?? "",
+                    Confidence = result?.Confidence ?? 0.0,
+                    Language = result?.Language,
+                    Duration = result?.Duration ?? 0.0,
+                    Segments = result?.Segments ?? Array.Empty<VibeSegment>()
+                };
             }
-            
-            if (!string.IsNullOrEmpty(_settings.Model))
+            finally
             {
-                content.Add(new StringContent(_settings.Model), "model");
+                // Clean up temporary file
+                try
+                {
+                    if (File.Exists(tempAudioFile))
+                    {
+                        File.Delete(tempAudioFile);
+                        System.Diagnostics.Debug.WriteLine($"*** Deleted temp audio file: {tempAudioFile} ***");
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"*** Failed to delete temp file {tempAudioFile}: {cleanupEx.Message} ***");
+                }
             }
-            
-            content.Add(new StringContent(_settings.EnableDiarization.ToString().ToLower()), "diarization");
-            content.Add(new StringContent(_settings.OutputFormat), "output_format");
-
-            var endpoint = $"{_settings.Endpoint.TrimEnd('/')}/transcribe";
-            var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
-            var result = JsonSerializer.Deserialize<VibeApiResponse>(jsonResponse, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
-
-            return new VibeTranscriptionResult
-            {
-                Text = result?.Text ?? "",
-                Confidence = result?.Confidence ?? 0.0,
-                Language = result?.Language,
-                Duration = result?.Duration ?? 0.0,
-                Segments = result?.Segments ?? Array.Empty<VibeSegment>()
-            };
         }
         catch (Exception ex)
         {
             Telemetry.LogError("VibeTranscriptionFailed", ex);
+            System.Diagnostics.Debug.WriteLine($"*** Vibe transcription error: {ex.Message} ***");
             throw;
         }
     }
@@ -341,6 +364,37 @@ public class VibeSttEngine : ISttEngine, IDisposable
         {
             throw new InvalidOperationException($"Failed to connect to Vibe service: {ex.Message}", ex);
         }
+    }
+    
+    /// <summary>
+    /// Creates a simple WAV file from raw PCM audio data
+    /// </summary>
+    private static byte[] CreateWavFile(byte[] pcmData, int sampleRate = 16000, short channels = 1, short bitsPerSample = 16)
+    {
+        using var wavStream = new MemoryStream();
+        using var writer = new BinaryWriter(wavStream);
+        
+        // WAV Header
+        writer.Write(Encoding.ASCII.GetBytes("RIFF"));
+        writer.Write(36 + pcmData.Length); // File size - 8 bytes
+        writer.Write(Encoding.ASCII.GetBytes("WAVE"));
+        
+        // Format chunk
+        writer.Write(Encoding.ASCII.GetBytes("fmt "));
+        writer.Write(16); // Format chunk size
+        writer.Write((short)1); // PCM format
+        writer.Write(channels);
+        writer.Write(sampleRate);
+        writer.Write(sampleRate * channels * bitsPerSample / 8); // Byte rate
+        writer.Write((short)(channels * bitsPerSample / 8)); // Block align
+        writer.Write(bitsPerSample);
+        
+        // Data chunk
+        writer.Write(Encoding.ASCII.GetBytes("data"));
+        writer.Write(pcmData.Length);
+        writer.Write(pcmData);
+        
+        return wavStream.ToArray();
     }
 
     public void Dispose()

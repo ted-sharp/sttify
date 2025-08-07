@@ -298,6 +298,34 @@ public class SettingsProvider
         return ""; // Return empty string if no models found
     }
     
+    /// <summary>
+    /// Synchronously gets the current settings, primarily for DI container initialization
+    /// </summary>
+    public SttifySettings GetSettingsSync()
+    {
+        try
+        {
+            if (!File.Exists(_configPath))
+            {
+                return CreateDefaultSettings();
+            }
+
+            var json = File.ReadAllText(_configPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return CreateDefaultSettings();
+            }
+
+            var settings = JsonSerializer.Deserialize<SttifySettings>(json, _jsonOptions);
+            return settings ?? CreateDefaultSettings();
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("GetSettingsSyncFailed", ex, new { ConfigPath = _configPath });
+            return CreateDefaultSettings();
+        }
+    }
+    
     public void Dispose()
     {
         _fileWatcher?.Dispose();

@@ -1,5 +1,6 @@
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine.Vosk;
+using Sttify.Corelib.Engine.Vibe;
 
 namespace Sttify.Corelib.Engine;
 
@@ -13,6 +14,7 @@ public static class SttEngineFactory
             "vosk" => CreateVoskEngine(engineSettings.Vosk),
             "vosk-real" => new RealVoskEngineAdapter(engineSettings.Vosk),
             "vosk-mock" => new VoskEngineAdapter(engineSettings.Vosk),
+            "vibe" => new VibeSttEngine(engineSettings.Vibe),
             _ => throw new NotSupportedException($"Engine profile '{engineSettings.Profile}' is not supported")
         };
         System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Created: {engine.GetType().Name} ***");
@@ -76,8 +78,9 @@ public static class SttEngineFactory
         return new[]
         {
             "vosk",
-            "vosk-real",
-            "vosk-mock"
+            "vosk-real", 
+            "vosk-mock",
+            "vibe"
         };
     }
 
@@ -88,6 +91,7 @@ public static class SttEngineFactory
             "vosk" => "Vosk (Auto-detect real/mock)",
             "vosk-real" => "Vosk (Real implementation)",
             "vosk-mock" => "Vosk (Mock implementation for testing)",
+            "vibe" => "Vibe (HTTP API-based speech recognition)",
             _ => "Unknown engine"
         };
     }
@@ -102,6 +106,11 @@ public static class SttEngineFactory
                 Vosk = new VoskEngineSettings
                 {
                     ModelPath = "",
+                    Language = "ja"
+                },
+                Vibe = new VibeEngineSettings
+                {
+                    Endpoint = "http://localhost:3022",
                     Language = "ja"
                 }
             };
