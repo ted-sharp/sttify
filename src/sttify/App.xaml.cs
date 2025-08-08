@@ -25,7 +25,7 @@ public partial class App : System.Windows.Application
     private IHost? _host;
     private NotifyIconHost? _notifyIconHost;
     private Mutex? _singleInstanceMutex;
-    
+
     public static IServiceProvider? ServiceProvider { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -41,37 +41,37 @@ public partial class App : System.Windows.Application
             // Required for Windows Forms components (NotifyIcon) in WPF
             System.Windows.Forms.Application.EnableVisualStyles();
             System.Windows.Forms.Application.SetCompatibleTextRenderingDefault(false);
-            
+
             InitializeTelemetry();
-            
+
             // Check for elevation and warn user about UIPI issues
             if (!CheckElevationAndWarnUser())
             {
                 Shutdown();
                 return;
             }
-            
+
             BuildHost();
             Console.WriteLine("*** Starting InitializeServices ***");
             System.Diagnostics.Debug.WriteLine("*** Starting InitializeServices ***");
             InitializeServices();
             Console.WriteLine("*** InitializeServices completed ***");
             System.Diagnostics.Debug.WriteLine("*** InitializeServices completed ***");
-            
+
             Telemetry.LogEvent("ApplicationStarted");
-            
+
             base.OnStartup(e);
         }
         catch (Exception ex)
         {
             Telemetry.LogError("ApplicationStartupFailed", ex);
-            
+
             // Output detailed error information to console
             System.Diagnostics.Debug.WriteLine("=== APPLICATION STARTUP ERROR ===");
             System.Diagnostics.Debug.WriteLine($"Exception Type: {ex.GetType().Name}");
             System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
-            
+
             if (ex.InnerException != null)
             {
                 System.Diagnostics.Debug.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
@@ -79,7 +79,7 @@ public partial class App : System.Windows.Application
                 System.Diagnostics.Debug.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
             }
             System.Diagnostics.Debug.WriteLine("==================================");
-            
+
             System.Windows.MessageBox.Show($"Failed to start application: {ex.Message}", "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
         }
@@ -88,29 +88,29 @@ public partial class App : System.Windows.Application
     protected override void OnExit(ExitEventArgs e)
     {
         Telemetry.LogEvent("ApplicationShutdown");
-        
+
         _notifyIconHost?.Dispose();
         _host?.Dispose();
         _singleInstanceMutex?.ReleaseMutex();
         _singleInstanceMutex?.Dispose();
-        
+
         Telemetry.Shutdown();
-        
+
         base.OnExit(e);
     }
 
     private bool EnsureSingleInstance()
     {
         const string mutexName = "Global\\Sttify_Single_Instance_Mutex";
-        
+
         _singleInstanceMutex = new Mutex(true, mutexName, out bool createdNew);
-        
+
         if (!createdNew)
         {
             System.Windows.MessageBox.Show("Sttify is already running.", "Sttify", MessageBoxButton.OK, MessageBoxImage.Information);
             return false;
         }
-        
+
         return true;
     }
 
@@ -121,16 +121,16 @@ public partial class App : System.Windows.Application
         // {
         //     AllocConsole();
         // }
-        
+
         var telemetrySettings = new TelemetrySettings
         {
             EnableConsoleLogging = false, // Debugger.IsAttached,
             MaskTextInLogs = false
         };
-        
+
         Telemetry.Initialize(telemetrySettings);
     }
-    
+
     [System.Runtime.InteropServices.DllImport("kernel32.dll")]
     private static extern bool AllocConsole();
 
@@ -146,21 +146,21 @@ public partial class App : System.Windows.Application
                     // Create HotkeyManager with default IntPtr (0) for window handle
                     return new HotkeyManager(IntPtr.Zero);
                 });
-                
+
                 // Use default settings for now - will be configured later
                 services.AddSingleton<RtssBridge>(provider =>
                 {
                     var defaultRtssSettings = new RtssSettings();
                     return new RtssBridge(defaultRtssSettings);
                 });
-                
+
                 services.AddSingleton<ISttEngine>(provider =>
                 {
                     // Create a placeholder engine that will be reconfigured when ApplicationService initializes
                     // This avoids DI container deadlocks while still allowing proper configuration
                     var settingsProvider = provider.GetService<SettingsProvider>();
                     EngineSettings engineSettings;
-                    
+
                     if (settingsProvider != null)
                     {
                         try
@@ -182,22 +182,13 @@ public partial class App : System.Windows.Application
                         System.Diagnostics.Debug.WriteLine("*** SettingsProvider not available, using defaults ***");
                         engineSettings = CreateDefaultEngineSettings();
                     }
-                    
+
                     return SttEngineFactory.CreateEngine(engineSettings);
                 });
-                
-                services.AddSingleton<IEnumerable<ITextOutputSink>>(provider =>
-                {
-                    var sinks = new List<ITextOutputSink>
-                    {
-                        new SendInputSink(new SendInputSettings { Ime = new ImeSettings() }),
-                        new ExternalProcessSink(new ExternalProcessSettings()),
-                        new StreamSink(new StreamSinkSettings())
-                    };
-                    
-                    return sinks;
-                });
-                
+
+                services.AddSingleton<IOutputSinkProvider, OutputSinkProvider>();
+                services.AddSingleton<IEnumerable<ITextOutputSink>>(provider => provider.GetRequiredService<IOutputSinkProvider>().GetSinks());
+
                 services.AddSingleton<RecognitionSessionSettings>(provider =>
                 {
                     return new RecognitionSessionSettings
@@ -213,10 +204,10 @@ public partial class App : System.Windows.Application
                         MinUtteranceLengthMs = 500
                     };
                 });
-                
+
                 services.AddSingleton<RecognitionSession>();
                 services.AddSingleton<ApplicationService>();
-                
+
                 services.AddTransient<MainViewModel>();
                 services.AddTransient<SettingsViewModel>();
                 services.AddTransient<ControlWindow>();
@@ -230,25 +221,25 @@ public partial class App : System.Windows.Application
         try
         {
             // Console.WriteLine("InitializeServices: Starting service initialization...");
-            
+
             // Console.WriteLine("InitializeServices: Getting ApplicationService...");
             var applicationService = _host!.Services.GetRequiredService<ApplicationService>();
             // Console.WriteLine("InitializeServices: ApplicationService obtained successfully");
-            
+
             // Console.WriteLine("InitializeServices: Calling ApplicationService.Initialize()...");
             applicationService.Initialize();
             // Console.WriteLine("InitializeServices: ApplicationService initialized successfully");
-            
+
             // Console.WriteLine("InitializeServices: Creating NotifyIconHost...");
             _notifyIconHost = new NotifyIconHost(_host.Services);
             // Console.WriteLine("InitializeServices: NotifyIconHost created");
-            
+
             // Console.WriteLine("InitializeServices: Initializing NotifyIconHost...");
             _notifyIconHost.Initialize();
             // Console.WriteLine("InitializeServices: NotifyIconHost initialized successfully");
-            
+
             // Console.WriteLine("InitializeServices: All services initialized successfully");
-            
+
             // Make service provider globally accessible
             ServiceProvider = _host.Services;
         }
@@ -269,13 +260,13 @@ public partial class App : System.Windows.Application
             using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
             var principal = new System.Security.Principal.WindowsPrincipal(identity);
             bool isElevated = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
-            
+
             if (isElevated)
             {
                 System.Diagnostics.Debug.WriteLine("*** WARNING: Sttify is running with administrator privileges ***");
                 System.Diagnostics.Debug.WriteLine("*** This will prevent input to non-elevated applications due to UIPI ***");
                 System.Diagnostics.Debug.WriteLine("*** Consider running Sttify without administrator privileges for better compatibility ***");
-                
+
                 // Show warning to user (force to foreground)
                 var result = System.Windows.MessageBox.Show(
                     "⚠️ Administrator Privileges Detected\n\n" +
@@ -292,20 +283,20 @@ public partial class App : System.Windows.Application
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Warning,
                     MessageBoxResult.No);
-                    
+
                 if (result == MessageBoxResult.No)
                 {
                     System.Diagnostics.Debug.WriteLine("*** User chose to exit due to elevation warning ***");
                     return false;
                 }
-                
+
                 System.Diagnostics.Debug.WriteLine("*** User chose to continue with elevation despite warnings ***");
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine("*** Sttify running with normal user privileges - optimal for text input ***");
             }
-            
+
             return true;
         }
         catch (Exception ex)
@@ -315,7 +306,7 @@ public partial class App : System.Windows.Application
             return true;
         }
     }
-    
+
     private static EngineSettings CreateDefaultEngineSettings()
     {
         return new EngineSettings

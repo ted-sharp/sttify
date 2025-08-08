@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine.Vosk;
 using System.IO;
+using Sttify.Corelib.Output;
 
 namespace Sttify.Corelib.Config;
 
@@ -66,7 +67,12 @@ public class SettingsProvider
         var backupPath = Path.ChangeExtension(_configPath, ".backup.json");
         if (File.Exists(_configPath))
         {
-            File.Copy(_configPath, backupPath, true);
+            // Backup with best-effort retry to handle transient locks
+            await TryWithRetryAsync(async () =>
+            {
+                File.Copy(_configPath, backupPath, true);
+                await Task.CompletedTask;
+            });
         }
 
         // Temporarily disable file watcher to avoid triggering change event for our own write
@@ -74,7 +80,7 @@ public class SettingsProvider
 
         try
         {
-            await File.WriteAllTextAsync(_configPath, json);
+            await WriteAllTextWithRetryAsync(_configPath, json);
 
             lock (_lockObject)
             {
@@ -86,6 +92,43 @@ public class SettingsProvider
         finally
         {
             SetupFileWatcher();
+        }
+    }
+
+    private static async Task TryWithRetryAsync(Func<Task> action, int maxAttempts = 5, int initialDelayMs = 50)
+    {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                await action();
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                await Task.Delay(initialDelayMs * attempt);
+            }
+        }
+    }
+
+    private static async Task WriteAllTextWithRetryAsync(string path, string contents, int maxAttempts = 5, int initialDelayMs = 50)
+    {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                // Explicit FileStream write to control sharing and atomic replace
+                using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var writer = new StreamWriter(fs))
+                {
+                    await writer.WriteAsync(contents);
+                }
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                await Task.Delay(initialDelayMs * attempt);
+            }
         }
     }
 
@@ -429,6 +472,8 @@ public class OutputSettings
     public string[] Fallbacks { get; set; } = ["external-process", "stream"];
     public int PrimaryOutputIndex { get; set; } = 0; // 0=SendInput, 1=External Process, 2=Stream
     public SendInputOutputSettings SendInput { get; set; } = new();
+    public ExternalProcessOutputSettings ExternalProcess { get; set; } = new();
+    public StreamOutputSettings Stream { get; set; } = new();
 }
 
 
@@ -450,6 +495,35 @@ public class ImeOutputSettings
     public bool RestoreImeStateAfterSending { get; set; } = true;
     public int RestoreDelayMs { get; set; } = 100;
     public bool SkipWhenImeComposing { get; set; } = true;
+}
+
+[ExcludeFromCodeCoverage]
+public class ExternalProcessOutputSettings
+{
+    public string ExecutablePath { get; set; } = "";
+    public string ArgumentTemplate { get; set; } = "{text_quoted}";
+    public bool WaitForExit { get; set; } = true;
+    public int ThrottleMs { get; set; } = 0;
+    public int TimeoutMs { get; set; } = 30000;
+    public Dictionary<string, string> EnvironmentVariables { get; set; } = new();
+    public bool LogArguments { get; set; } = false;
+    public bool LogOutput { get; set; } = false;
+    public string WorkingDirectory { get; set; } = "";
+}
+
+[ExcludeFromCodeCoverage]
+public class StreamOutputSettings
+{
+    public StreamOutputType OutputType { get; set; } = StreamOutputType.Console;
+    public string FilePath { get; set; } = "";
+    public bool AppendToFile { get; set; } = true;
+    public bool IncludeTimestamp { get; set; } = true;
+    public bool ForceFlush { get; set; } = true;
+    public long MaxFileSizeBytes { get; set; } = 10 * 1024 * 1024;
+    public string SharedMemoryName { get; set; } = "sttify_stream";
+    public int SharedMemorySize { get; set; } = 4096;
+    public string CustomPrefix { get; set; } = "";
+    public string CustomSuffix { get; set; } = "";
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

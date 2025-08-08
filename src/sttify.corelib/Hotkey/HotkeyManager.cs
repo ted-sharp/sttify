@@ -9,7 +9,7 @@ public class HotkeyManager : IDisposable
 {
     private const int WM_HOTKEY = 0x0312;
     private const int ERROR_HOTKEY_ALREADY_REGISTERED = 1409;
-    
+
     private readonly Dictionary<int, HotkeyInfo> _registeredHotkeys = new();
     private readonly Dictionary<string, int> _hotkeyNameToId = new();
     private readonly Random _random = new();
@@ -19,6 +19,7 @@ public class HotkeyManager : IDisposable
     public event EventHandler<HotkeyPressedEventArgs>? OnHotkeyPressed;
     public event EventHandler<HotkeyRegistrationEventArgs>? OnHotkeyRegistered;
     public event EventHandler<HotkeyRegistrationEventArgs>? OnHotkeyUnregistered;
+    public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
     public HotkeyManager(IntPtr windowHandle = default)
     {
@@ -48,7 +49,7 @@ public class HotkeyManager : IDisposable
         }
 
         var id = GenerateUniqueId();
-        
+
         try
         {
             if (RegisterHotKey(_windowHandle, id, (uint)modifiers, (uint)key))
@@ -56,33 +57,40 @@ public class HotkeyManager : IDisposable
                 var hotkeyInfo = new HotkeyInfo(name, hotkeyString, modifiers, key);
                 _registeredHotkeys[id] = hotkeyInfo;
                 _hotkeyNameToId[name] = id;
-                
+
                 OnHotkeyRegistered?.Invoke(this, new HotkeyRegistrationEventArgs(name, hotkeyString, true));
-                Telemetry.LogEvent("HotkeyRegistered", new 
-                { 
-                    Name = name, 
-                    HotkeyString = hotkeyString, 
+                Telemetry.LogEvent("HotkeyRegistered", new
+                {
+                    Name = name,
+                    HotkeyString = hotkeyString,
                     Id = id,
                     Modifiers = modifiers.ToString(),
                     Key = key.ToString()
                 });
-                
+
                 return true;
             }
             else
             {
                 var lastError = GetLastError();
-                var errorMessage = lastError == ERROR_HOTKEY_ALREADY_REGISTERED 
+                var errorMessage = lastError == ERROR_HOTKEY_ALREADY_REGISTERED
                     ? "Hotkey combination already in use by another application"
                     : $"Failed to register hotkey (Win32 Error: {lastError})";
-                
-                Telemetry.LogError("HotkeyRegistrationFailed", new Exception(errorMessage), new 
-                { 
-                    Name = name, 
+
+                Telemetry.LogError("HotkeyRegistrationFailed", new Exception(errorMessage), new
+                {
+                    Name = name,
                     HotkeyString = hotkeyString,
                     Win32Error = lastError
                 });
-                
+
+                OnHotkeyRegistrationFailed?.Invoke(this, new HotkeyRegistrationFailedEventArgs(
+                    name,
+                    hotkeyString,
+                    lastError,
+                    Array.Empty<string>()
+                ));
+
                 return false;
             }
         }
@@ -92,6 +100,8 @@ public class HotkeyManager : IDisposable
             return false;
         }
     }
+
+    // Alternative suggestions intentionally omitted per product policy
 
     private int GenerateUniqueId()
     {
@@ -124,7 +134,7 @@ public class HotkeyManager : IDisposable
                 var hotkeyInfo = _registeredHotkeys[id];
                 _registeredHotkeys.Remove(id);
                 _hotkeyNameToId.Remove(name);
-                
+
                 OnHotkeyUnregistered?.Invoke(this, new HotkeyRegistrationEventArgs(name, hotkeyInfo.HotkeyString, false));
                 Telemetry.LogEvent("HotkeyUnregistered", new { Name = name, Id = id });
             }
@@ -144,7 +154,7 @@ public class HotkeyManager : IDisposable
     {
         var hotkeysToRemove = _registeredHotkeys.Keys.ToList();
         var unregisteredCount = 0;
-        
+
         foreach (var id in hotkeysToRemove)
         {
             try
@@ -159,13 +169,13 @@ public class HotkeyManager : IDisposable
                 Telemetry.LogError("HotkeyUnregistrationException", ex, new { Id = id });
             }
         }
-        
+
         _registeredHotkeys.Clear();
         _hotkeyNameToId.Clear();
-        
-        Telemetry.LogEvent("AllHotkeysUnregistered", new 
-        { 
-            TotalHotkeys = hotkeysToRemove.Count, 
+
+        Telemetry.LogEvent("AllHotkeysUnregistered", new
+        {
+            TotalHotkeys = hotkeysToRemove.Count,
             SuccessfullyUnregistered = unregisteredCount
         });
     }
@@ -345,5 +355,22 @@ public class HotkeyRegistrationEventArgs : EventArgs
         HotkeyString = hotkeyString;
         IsRegistered = isRegistered;
         Timestamp = DateTime.UtcNow;
+    }
+}
+
+[ExcludeFromCodeCoverage] // Simple data container EventArgs class
+public class HotkeyRegistrationFailedEventArgs : EventArgs
+{
+    public string Name { get; }
+    public string HotkeyString { get; }
+    public uint Win32Error { get; }
+    public string[] Suggestions { get; }
+
+    public HotkeyRegistrationFailedEventArgs(string name, string hotkeyString, uint win32Error, string[] suggestions)
+    {
+        Name = name;
+        HotkeyString = hotkeyString;
+        Win32Error = win32Error;
+        Suggestions = suggestions;
     }
 }

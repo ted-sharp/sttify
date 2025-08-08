@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
@@ -11,6 +12,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using Sttify.Services;
 
 namespace Sttify.ViewModels;
 
@@ -55,9 +57,9 @@ public partial class SettingsViewModel : ObservableObject
                                  Settings?.Engine?.Profile?.ToLowerInvariant() == "azure" ||
                                  Settings?.Engine?.Profile?.ToLowerInvariant() == "google" ||
                                  Settings?.Engine?.Profile?.ToLowerInvariant() == "aws";
-    
+
     public bool IsSendInputSelected => Settings?.Output?.PrimaryOutputIndex == 0;
-    
+
     public string EngineProfile
     {
         get => Settings?.Engine?.Profile ?? "vosk";
@@ -74,7 +76,7 @@ public partial class SettingsViewModel : ObservableObject
             }
         }
     }
-    
+
     public int PrimaryOutputIndex
     {
         get => Settings?.Output?.PrimaryOutputIndex ?? 0;
@@ -93,7 +95,7 @@ public partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(SettingsProvider settingsProvider)
     {
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
-        
+
         _ = InitializeAsync();
     }
 
@@ -112,7 +114,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             IsLoading = true;
             Settings = await _settingsProvider.GetSettingsAsync();
-            
+
             // Explicitly notify dependent properties after settings load
             OnPropertyChanged(nameof(EngineProfile));
             OnPropertyChanged(nameof(IsVoskSelected));
@@ -138,6 +140,26 @@ public partial class SettingsViewModel : ObservableObject
         {
             IsLoading = true;
             await _settingsProvider.SaveSettingsAsync(Settings);
+
+            // Apply settings immediately: refresh output sinks and hotkeys
+            try
+            {
+                var sinkProvider = App.ServiceProvider?.GetService<IOutputSinkProvider>();
+                if (sinkProvider != null)
+                {
+                    await sinkProvider.RefreshAsync();
+                }
+
+                var appService = App.ServiceProvider?.GetService<ApplicationService>();
+                if (appService != null)
+                {
+                    await appService.ReinitializeHotkeysAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply settings immediately: {ex.Message}");
+            }
         }
         catch (Exception ex)
         {
@@ -163,21 +185,21 @@ public partial class SettingsViewModel : ObservableObject
             Settings.Application.ControlWindow.Left = double.NaN;
             Settings.Application.ControlWindow.Top = double.NaN;
             Settings.Application.ControlWindow.DisplayConfiguration = "";
-            
+
             await SaveSettingsAsync();
-            
+
             System.Windows.MessageBox.Show(
-                "Control window position has been reset. The window will appear at the default location on next startup.", 
-                "Position Reset", 
-                MessageBoxButton.OK, 
+                "Control window position has been reset. The window will appear at the default location on next startup.",
+                "Position Reset",
+                MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
-                $"Failed to reset window position: {ex.Message}", 
-                "Reset Failed", 
-                MessageBoxButton.OK, 
+                $"Failed to reset window position: {ex.Message}",
+                "Reset Failed",
+                MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -189,10 +211,10 @@ public partial class SettingsViewModel : ObservableObject
         {
             var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var logDirectory = Path.Combine(appDataPath, "sttify", "logs");
-            
+
             // Create directory if it doesn't exist
             Directory.CreateDirectory(logDirectory);
-            
+
             // Open directory in Windows Explorer using modern C# syntax
             using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
@@ -204,9 +226,9 @@ public partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
-                $"Failed to open log directory: {ex.Message}", 
-                "Open Failed", 
-                MessageBoxButton.OK, 
+                $"Failed to open log directory: {ex.Message}",
+                "Open Failed",
+                MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -218,7 +240,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             var selectedEngine = Settings?.Engine?.Profile?.ToLowerInvariant();
             var url = GetEngineDocumentationUrl(selectedEngine);
-            
+
             if (!string.IsNullOrEmpty(url))
             {
                 using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -230,18 +252,18 @@ public partial class SettingsViewModel : ObservableObject
             else
             {
                 System.Windows.MessageBox.Show(
-                    "No documentation URL available for the selected engine.", 
-                    "Documentation", 
-                    MessageBoxButton.OK, 
+                    "No documentation URL available for the selected engine.",
+                    "Documentation",
+                    MessageBoxButton.OK,
                     MessageBoxImage.Information);
             }
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
-                $"Failed to open documentation: {ex.Message}", 
-                "Open Failed", 
-                MessageBoxButton.OK, 
+                $"Failed to open documentation: {ex.Message}",
+                "Open Failed",
+                MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -362,9 +384,9 @@ public partial class SettingsViewModel : ObservableObject
             DownloadStatus = "Starting download...";
 
             var modelsDir = VoskModelManager.GetDefaultModelsDirectory();
-            
+
             var modelPath = await VoskModelManager.DownloadModelAsync(
-                modelInfo, 
+                modelInfo,
                 modelsDir,
                 OnDownloadProgress);
 
@@ -373,12 +395,12 @@ public partial class SettingsViewModel : ObservableObject
             await SaveSettingsAsync();
             await LoadVoskModelsAsync();
 
-            System.Windows.MessageBox.Show($"Model '{modelInfo.Name}' downloaded and configured successfully!", 
+            System.Windows.MessageBox.Show($"Model '{modelInfo.Name}' downloaded and configured successfully!",
                 "Download Complete", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to download model: {ex.Message}", 
+            System.Windows.MessageBox.Show($"Failed to download model: {ex.Message}",
                 "Download Failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -407,7 +429,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to browse for model folder: {ex.Message}", 
+            System.Windows.MessageBox.Show($"Failed to browse for model folder: {ex.Message}",
                 "Browse Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -434,7 +456,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to browse for ZIP file: {ex.Message}", 
+            System.Windows.MessageBox.Show($"Failed to browse for ZIP file: {ex.Message}",
                 "Browse Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -444,7 +466,7 @@ public partial class SettingsViewModel : ObservableObject
         // Show wait cursor during processing
         var originalCursor = System.Windows.Input.Mouse.OverrideCursor;
         System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
-        
+
         try
         {
             string finalModelPath;
@@ -454,7 +476,7 @@ public partial class SettingsViewModel : ObservableObject
                 // Extract ZIP to cache directory
                 var modelsDir = VoskModelManager.GetDefaultModelsDirectory();
                 Directory.CreateDirectory(modelsDir);
-                
+
                 var fileName = Path.GetFileNameWithoutExtension(selectedPath);
                 var tempExtractionPath = Path.Combine(modelsDir, "temp_" + Guid.NewGuid().ToString());
                 var finalExtractionPath = Path.Combine(modelsDir, fileName);
@@ -466,10 +488,10 @@ public partial class SettingsViewModel : ObservableObject
                         "Model Exists",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Question);
-                    
+
                     if (result == MessageBoxResult.No)
                         return;
-                    
+
                     Directory.Delete(finalExtractionPath, true);
                 }
 
@@ -479,13 +501,13 @@ public partial class SettingsViewModel : ObservableObject
                     System.Diagnostics.Debug.WriteLine($"*** Extracting ZIP to temporary directory: {tempExtractionPath} ***");
                     System.IO.Compression.ZipFile.ExtractToDirectory(selectedPath, tempExtractionPath);
                     System.Diagnostics.Debug.WriteLine("*** ZIP extraction completed ***");
-                    
+
                     // Find the actual model directory within the extracted content
                     var extractedItems = Directory.GetDirectories(tempExtractionPath);
                     var extractedFiles = Directory.GetFiles(tempExtractionPath);
-                    
+
                     string actualModelPath;
-                    
+
                     // Check if files were extracted directly to temp directory
                     if (VoskModelManager.IsModelInstalled(tempExtractionPath))
                     {
@@ -501,7 +523,7 @@ public partial class SettingsViewModel : ObservableObject
                     {
                         actualModelPath = extractedItems.FirstOrDefault(VoskModelManager.IsModelInstalled) ?? tempExtractionPath;
                     }
-                    
+
                     // Move the actual model directory to the final location
                     if (actualModelPath == tempExtractionPath)
                     {
@@ -514,9 +536,9 @@ public partial class SettingsViewModel : ObservableObject
                         if (Directory.Exists(tempExtractionPath))
                             Directory.Delete(tempExtractionPath, true);
                     }
-                    
+
                     finalModelPath = finalExtractionPath;
-                    
+
                     System.Diagnostics.Debug.WriteLine($"*** Model extracted successfully to: {finalExtractionPath} ***");
                 }
                 catch (Exception ex)
@@ -537,18 +559,18 @@ public partial class SettingsViewModel : ObservableObject
             {
                 System.Diagnostics.Debug.WriteLine($"*** Model validation successful, updating path to: {finalModelPath} ***");
                 Settings.Engine.Vosk.ModelPath = finalModelPath;
-                
+
                 // Force multiple property change notifications to ensure UI updates
                 OnPropertyChanged(nameof(Settings));
-                
+
                 await SaveSettingsAsync();
-                
+
                 // Trigger additional refresh after save
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     OnPropertyChanged(nameof(Settings));
                 });
-                
+
                 System.Diagnostics.Debug.WriteLine("*** Path update completed successfully ***");
             }
             else
@@ -561,12 +583,12 @@ public partial class SettingsViewModel : ObservableObject
                     "Optional files:\n" +
                     "• ivector/final.ie (i-vector extractor)\n" +
                     "• conf/model.conf (configuration)";
-                    
-                System.Windows.MessageBox.Show(errorMessage, 
-                    "Invalid Model", 
-                    MessageBoxButton.OK, 
+
+                System.Windows.MessageBox.Show(errorMessage,
+                    "Invalid Model",
+                    MessageBoxButton.OK,
                     MessageBoxImage.Warning);
-                    
+
                 // If this was from a ZIP extraction and it failed, clean up
                 if (isZipFile && Directory.Exists(finalModelPath) && finalModelPath != selectedPath)
                 {
@@ -576,7 +598,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to process model: {ex.Message}", 
+            System.Windows.MessageBox.Show($"Failed to process model: {ex.Message}",
                 "Processing Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -592,20 +614,20 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             var engine = EngineFactory.CreateEngine(Settings.Engine);
-            
+
             // Basic test - try to initialize
             await engine.StartAsync();
             await Task.Delay(100);
             await engine.StopAsync();
-            
+
             engine.Dispose();
 
-            System.Windows.MessageBox.Show("Engine test successful!", "Test Result", 
+            System.Windows.MessageBox.Show("Engine test successful!", "Test Result",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Engine test failed: {ex.Message}", "Test Result", 
+            System.Windows.MessageBox.Show($"Engine test failed: {ex.Message}", "Test Result",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -617,7 +639,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(10);
-            
+
             if (!string.IsNullOrEmpty(Settings.Engine.Vibe.ApiKey))
             {
                 httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {Settings.Engine.Vibe.ApiKey}");
@@ -625,21 +647,21 @@ public partial class SettingsViewModel : ObservableObject
 
             var endpoint = $"{Settings.Engine.Vibe.Endpoint.TrimEnd('/')}/health";
             var response = await httpClient.GetAsync(endpoint);
-            
+
             if (response.IsSuccessStatusCode)
             {
-                System.Windows.MessageBox.Show("Vibe connection test successful!", "Test Result", 
+                System.Windows.MessageBox.Show("Vibe connection test successful!", "Test Result",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {
-                System.Windows.MessageBox.Show($"Vibe connection test failed: HTTP {response.StatusCode}", "Test Result", 
+                System.Windows.MessageBox.Show($"Vibe connection test failed: HTTP {response.StatusCode}", "Test Result",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Vibe connection test failed: {ex.Message}", "Test Result", 
+            System.Windows.MessageBox.Show($"Vibe connection test failed: {ex.Message}", "Test Result",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -735,22 +757,22 @@ public partial class SettingsViewModel : ObservableObject
         try
         {
             System.Diagnostics.Debug.WriteLine($"*** Starting comprehensive IME Control test with text: '{testText}' ***");
-            
+
             // Get current IME status report first
             var statusReport = ImeTestHelper.GetImeStatusReport();
             System.Diagnostics.Debug.WriteLine($"*** Pre-test IME Status:\n{statusReport} ***");
-            
+
             // Run comprehensive IME test
             var imeSettings = ConvertToSendInputSettings(Settings.Output.SendInput).Ime;
             var testResult = await ImeTestHelper.TestImeControlAsync(testText, imeSettings);
-            
+
             // Log all test steps
             System.Diagnostics.Debug.WriteLine("*** IME Control Test Steps: ***");
             foreach (var step in testResult.Steps)
             {
                 System.Diagnostics.Debug.WriteLine($"  {step}");
             }
-            
+
             // Now test with actual text sending during suppression
             System.Diagnostics.Debug.WriteLine("*** Testing text input during IME suppression... ***");
             var sendInputSink = new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput));
@@ -764,7 +786,7 @@ public partial class SettingsViewModel : ObservableObject
             {
                 System.Diagnostics.Debug.WriteLine("*** Cannot send text (SendInput not available or IME composing) ***");
             }
-            
+
             // Final status
             if (testResult.Success)
             {
@@ -774,7 +796,7 @@ public partial class SettingsViewModel : ObservableObject
             {
                 System.Diagnostics.Debug.WriteLine($"*** IME Control test failed: {testResult.ErrorMessage} ***");
             }
-            
+
             // Show detailed report
             System.Diagnostics.Debug.WriteLine("*** Full IME Test Report: ***");
             System.Diagnostics.Debug.WriteLine(testResult.GetReport());

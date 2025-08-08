@@ -1,6 +1,8 @@
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine.Vosk;
 using Sttify.Corelib.Engine.Vibe;
+using Sttify.Corelib.Engine.Cloud;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Engine;
 
@@ -8,14 +10,20 @@ public static class SttEngineFactory
 {
     public static ISttEngine CreateEngine(EngineSettings engineSettings)
     {
-        System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Profile: {engineSettings.Profile} ***");
-        var engine = engineSettings.Profile.ToLowerInvariant() switch
+        var profile = engineSettings.Profile?.ToLowerInvariant() ?? "vosk";
+        System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Profile: {profile} ***");
+        var engine = profile switch
         {
             "vosk" => CreateVoskEngine(engineSettings.Vosk),
+            "vosk-multi" => new MultiLanguageVoskAdapter(engineSettings.Vosk),
             "vosk-real" => new RealVoskEngineAdapter(engineSettings.Vosk),
             "vosk-mock" => new VoskEngineAdapter(engineSettings.Vosk),
             "vibe" => new VibeSttEngine(engineSettings.Vibe),
-            _ => throw new NotSupportedException($"Engine profile '{engineSettings.Profile}' is not supported")
+            // Delegate cloud-related profiles to the consolidated EngineFactory to avoid duplication
+            "azure" or "cloud" => EngineFactory.CreateEngine(engineSettings),
+            // Accept direct cloud provider names for convenience
+            "google" or "aws" => EngineFactory.CreateEngine(engineSettings),
+            _ => FallbackToDefault(engineSettings, profile)
         };
         System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Created: {engine.GetType().Name} ***");
         return engine;
@@ -27,7 +35,7 @@ public static class SttEngineFactory
         // Check if Vosk model exists and is valid, then decide which implementation to use
         bool isValidModel = IsValidVoskModel(voskSettings.ModelPath);
         System.Diagnostics.Debug.WriteLine($"*** CreateVoskEngine - IsValidModel: {isValidModel} ***");
-        
+
         if (isValidModel)
         {
             System.Diagnostics.Debug.WriteLine("*** CreateVoskEngine - Using RealVoskEngineAdapter ***");
@@ -78,8 +86,11 @@ public static class SttEngineFactory
         return new[]
         {
             "vosk",
-            "vosk-real", 
+            "vosk-multi",
+            "vosk-real",
             "vosk-mock",
+            "azure",
+            "cloud",
             "vibe"
         };
     }
@@ -89,11 +100,23 @@ public static class SttEngineFactory
         return engineProfile.ToLowerInvariant() switch
         {
             "vosk" => "Vosk (Auto-detect real/mock)",
+            "vosk-multi" => "Vosk (Multi-language adapter)",
             "vosk-real" => "Vosk (Real implementation)",
             "vosk-mock" => "Vosk (Mock implementation for testing)",
+            "google" => "Google Cloud Speech (via Cloud settings)",
+            "aws" => "AWS Transcribe (via Cloud settings)",
+            "azure" => "Azure Cognitive Services (Cloud)",
+            "cloud" => "Cloud (Azure/Google/AWS via settings)",
             "vibe" => "Vibe (HTTP API-based speech recognition)",
             _ => "Unknown engine"
         };
+    }
+
+    private static ISttEngine FallbackToDefault(EngineSettings engineSettings, string invalidProfile)
+    {
+        Telemetry.LogWarning("EngineProfileUnsupported", $"Unsupported engine profile '{invalidProfile}', falling back to 'vosk'", new { Profile = invalidProfile });
+        // Do not mutate incoming settings; just use Vosk-safe creation based on current Vosk settings
+        return CreateVoskEngine(engineSettings.Vosk);
     }
 
     public static bool IsEngineAvailable(string engineProfile)

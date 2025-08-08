@@ -19,15 +19,15 @@ public class WasapiAudioCapture : IDisposable
     private AudioCaptureSettings _settings = new();
     private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
-    public bool IsCapturing 
-    { 
-        get 
-        { 
-            lock (_lockObject) 
-            { 
-                return _isCapturing; 
-            } 
-        } 
+    public bool IsCapturing
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _isCapturing;
+            }
+        }
     }
 
     public WaveFormat? CurrentWaveFormat => _waveFormat;
@@ -45,14 +45,14 @@ public class WasapiAudioCapture : IDisposable
         try
         {
             await Task.Run(() => InitializeCapture(), cancellationToken);
-            
+
             if (_wasapiCapture != null)
             {
                 _wasapiCapture.DataAvailable += OnDataAvailable;
                 _wasapiCapture.RecordingStopped += OnRecordingStopped;
-                
+
                 _wasapiCapture.StartRecording();
-                
+
                 lock (_lockObject)
                 {
                     _isCapturing = true;
@@ -119,17 +119,21 @@ public class WasapiAudioCapture : IDisposable
             }
             catch (Exception)
             {
-                Telemetry.LogWarning("AudioDeviceNotFound", 
-                    $"Specified device not found: {_settings.DeviceId}", 
+                Telemetry.LogWarning("AudioDeviceNotFound",
+                    $"Specified device not found: {_settings.DeviceId}",
                     new { DeviceId = _settings.DeviceId });
-                
-                captureDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+
+                // Fall back to default policy: Communications or Console based on Channels
+                var role = _settings.Channels == 1 ? Role.Communications : Role.Console;
+                captureDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, role);
             }
         }
         else
         {
             var deviceEnumerator = new MMDeviceEnumerator();
-            captureDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Communications);
+            // New policy: prefer Console for stereo, Communications for mono
+            var role = _settings.Channels == 1 ? Role.Communications : Role.Console;
+            captureDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, role);
         }
 
         if (captureDevice == null)
@@ -140,10 +144,10 @@ public class WasapiAudioCapture : IDisposable
         _waveFormat = new WaveFormat(_settings.SampleRate, _settings.BitsPerSample, _settings.Channels);
 
         _wasapiCapture = new WasapiCapture(captureDevice, true, 100);
-        
+
         System.Diagnostics.Debug.WriteLine($"*** WASAPI Capture Format - Requested: {_settings.SampleRate}Hz, {_settings.Channels}ch, {_settings.BitsPerSample}bit ***");
         System.Diagnostics.Debug.WriteLine($"*** WASAPI Capture Format - Actual: {_wasapiCapture.WaveFormat.SampleRate}Hz, {_wasapiCapture.WaveFormat.Channels}ch, {_wasapiCapture.WaveFormat.BitsPerSample}bit ***");
-        
+
         if (_wasapiCapture.WaveFormat.SampleRate != _settings.SampleRate ||
             _wasapiCapture.WaveFormat.Channels != _settings.Channels)
         {
@@ -188,7 +192,7 @@ public class WasapiAudioCapture : IDisposable
                         }
 
                         var level = AudioConverter.CalculateAudioLevel(processedData, AudioConverter.GetVoskTargetFormat());
-                        
+
                         Telemetry.LogAudioCapture(e.BytesRecorded, level);
                         OnFrame?.Invoke(this, new AudioFrameEventArgs(processedData));
                     }
@@ -232,7 +236,7 @@ public class WasapiAudioCapture : IDisposable
     public static List<AudioDeviceInfo> GetAvailableDevices()
     {
         var devices = new List<AudioDeviceInfo>();
-        
+
         try
         {
             var deviceEnumerator = new MMDeviceEnumerator();
@@ -266,7 +270,7 @@ public class WasapiAudioCapture : IDisposable
     public void Dispose()
     {
         StopAsync().Wait();
-        
+
         _wasapiCapture?.Dispose();
         _wasapiCapture = null;
     }

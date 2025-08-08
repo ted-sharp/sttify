@@ -19,6 +19,8 @@ public class ApplicationService : IDisposable
     private readonly RtssBridge _rtssService;
     private readonly ErrorRecovery _errorRecovery;
     private readonly HealthMonitor _healthMonitor;
+    private string? _lastHotkeyToggleUi;
+    private string? _lastHotkeyToggleMic;
 
     public event EventHandler<SessionStateChangedEventArgs>? SessionStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? TextRecognized;
@@ -41,6 +43,7 @@ public class ApplicationService : IDisposable
         _recognitionSession.OnStateChanged += OnSessionStateChanged;
         _recognitionSession.OnTextRecognized += OnTextRecognized;
         _hotkeyManager.OnHotkeyPressed += OnHotkeyPressed;
+        _hotkeyManager.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailed;
 
         _errorRecovery.OnRecoveryFailed += OnRecoveryFailed;
         _healthMonitor.OnHealthStatusChanged += OnHealthStatusChanged;
@@ -172,6 +175,10 @@ public class ApplicationService : IDisposable
             {
                 Telemetry.LogWarning("HotkeyRegistrationIssue", $"Some hotkeys failed to register. UI={uiOk}, MIC={micOk}");
             }
+
+            // Remember last successfully attempted configuration (regardless of success)
+            _lastHotkeyToggleUi = settings.Hotkeys.ToggleUi;
+            _lastHotkeyToggleMic = settings.Hotkeys.ToggleMic;
             // Console.WriteLine("ApplicationService: Hotkeys registered successfully");
         }
         catch (Exception ex)
@@ -183,8 +190,27 @@ public class ApplicationService : IDisposable
 
     public async Task ReinitializeHotkeysAsync()
     {
-        InitializeHotkeys();
-        await Task.CompletedTask;
+        try
+        {
+            var settings = await _settingsProvider.GetSettingsAsync();
+            var needsUpdate = settings.Hotkeys.ToggleUi != _lastHotkeyToggleUi ||
+                              settings.Hotkeys.ToggleMic != _lastHotkeyToggleMic;
+
+            if (!needsUpdate)
+            {
+                Telemetry.LogEvent("HotkeysReinitSkippedNoChange", new {
+                    ToggleUi = settings.Hotkeys.ToggleUi,
+                    ToggleMic = settings.Hotkeys.ToggleMic
+                });
+                return;
+            }
+
+            InitializeHotkeys();
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("HotkeysReinitFailed", ex);
+        }
     }
 
     private void InitializeRtss()
@@ -363,8 +389,40 @@ public class ApplicationService : IDisposable
     public void Dispose()
     {
         _healthMonitor?.Dispose();
-        _hotkeyManager?.Dispose();
+        if (_hotkeyManager != null)
+        {
+            _hotkeyManager.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
+            _hotkeyManager.Dispose();
+        }
         _recognitionSession?.Dispose();
         _rtssService?.Dispose();
+    }
+
+    private void OnHotkeyRegistrationFailed(object? sender, HotkeyRegistrationFailedEventArgs e)
+    {
+        try
+        {
+            var userMessage = $"ホットキー登録に失敗しました: {e.HotkeyString}\nエラーコード: {e.Win32Error}";
+
+            // Log the same user-facing message for traceability
+            Telemetry.LogWarning("HotkeyRegistrationUserMessage", userMessage, new {
+                e.Name,
+                e.HotkeyString,
+                e.Win32Error
+            });
+
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                System.Windows.MessageBox.Show(
+                    userMessage,
+                    "Sttify - Hotkey Registration",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            });
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("HotkeyRegistrationUserNotifyFailed", ex);
+        }
     }
 }
