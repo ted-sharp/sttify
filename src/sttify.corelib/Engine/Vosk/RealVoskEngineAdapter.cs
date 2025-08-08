@@ -13,12 +13,12 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
 
     private readonly VoskEngineSettings _settings;
     private global::Vosk.Model? _model;
+    private global::Vosk.VoskRecognizer? _recognizer;
     private bool _isRunning;
     private readonly object _lockObject = new();
     private DateTime _recognitionStartTime;
-    
-    // Voice Activity Detection (VAD) - Speech boundary detection
-    private readonly List<byte> _audioBuffer = new();
+
+    // Voice Activity Detection (VAD) - for forced finalization on silence
     private bool _isSpeaking = false;
     private DateTime _lastVoiceActivity = DateTime.MinValue;
     private readonly System.Timers.Timer _silenceTimer;
@@ -26,10 +26,13 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
     private const int SilenceThresholdMs = 800; // 800ms of silence to trigger processing
     private const double VoiceThreshold = 0.005; // Minimum voice level threshold (raised to allow silence detection)
 
+    // Track last partial text to avoid duplicate events
+    private string _currentPartialText = string.Empty;
+
     public RealVoskEngineAdapter(VoskEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        
+
         // Initialize silence timer for VAD
         _silenceTimer = new System.Timers.Timer(SilenceThresholdMs);
         _silenceTimer.Elapsed += OnSilenceDetected;
@@ -50,9 +53,12 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
                 _isRunning = true;
                 _recognitionStartTime = DateTime.UtcNow;
             }
-            
+
+            // Create a streaming recognizer
+            CreateStreamingRecognizer();
+
             System.Diagnostics.Debug.WriteLine("*** Voice Activity Detection (VAD) Vosk Engine Started ***");
-            
+
             Telemetry.LogEvent("VoskEngineStarted", new
             {
                 ModelPath = _settings.ModelPath,
@@ -78,17 +84,13 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
 
             _isRunning = false;
         }
-        
+
         // Stop VAD timer
         _silenceTimer?.Stop();
-        
-        // Process any remaining audio data
-        if (_audioBuffer.Count > 0)
-        {
-            System.Diagnostics.Debug.WriteLine($"*** Processing remaining {_audioBuffer.Count} bytes on stop ***");
-            await ProcessBufferedAudio();
-        }
-        
+
+        // Flush any pending result
+        ForceFinalizeRecognition();
+
         Telemetry.LogEvent("VoskEngineStopped");
     }
 
@@ -115,44 +117,49 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
 
             if (hasVoice)
             {
-                // Voice detected - update activity timestamp
                 _lastVoiceActivity = DateTime.UtcNow;
-                
                 if (!_isSpeaking)
                 {
-                    // Start of speech detected
                     _isSpeaking = true;
-                    _audioBuffer.Clear(); // Start fresh buffer
                     System.Diagnostics.Debug.WriteLine($"*** SPEECH STARTED - Level: {audioLevel:F4} ***");
                 }
-                
-                // Add audio data to buffer
-                _audioBuffer.AddRange(audioData.ToArray());
-                
-                // Stop silence timer (we have voice)
                 _silenceTimer.Stop();
             }
             else if (_isSpeaking)
             {
-                // Still in speech mode but current frame is silent
-                // Add to buffer and start/restart silence timer
-                _audioBuffer.AddRange(audioData.ToArray());
-                
-                // Restart silence timer
+                // Restart silence timer while in speaking mode and receiving silence
                 _silenceTimer.Stop();
                 _silenceTimer.Start();
-                
-                if (_frameCount % 50 == 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"*** VAD: Silent frame during speech - Buffer size: {_audioBuffer.Count} bytes ***");
-                }
             }
-            else
+
+            // Stream audio to Vosk recognizer for partial/final results
+            if (_recognizer != null)
             {
-                // Not speaking and no voice - ignore audio but log occasionally
-                if (_frameCount % 100 == 0)
+                try
                 {
-                    System.Diagnostics.Debug.WriteLine($"*** VAD: Background silence - Level: {audioLevel:F4} ***");
+                    bool hasResult = _recognizer.AcceptWaveform(audioData.ToArray(), audioData.Length);
+                    if (hasResult)
+                    {
+                        var resultJson = _recognizer.Result();
+                        ProcessVoskResult(resultJson);
+                        _recognitionStartTime = DateTime.UtcNow;
+                        _currentPartialText = string.Empty;
+                    }
+                    else
+                    {
+                        var partialJson = _recognizer.PartialResult();
+                        var partialText = ExtractPartialText(partialJson);
+                        if (!string.IsNullOrWhiteSpace(partialText) && !string.Equals(partialText, _currentPartialText, StringComparison.Ordinal))
+                        {
+                            _currentPartialText = partialText;
+                            OnPartial?.Invoke(this, new PartialRecognitionEventArgs(partialText, 0.5));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter - Error processing streaming audio: {ex.Message} ***");
+                    OnError?.Invoke(this, new SttErrorEventArgs(ex, $"Error processing audio: {ex.Message}"));
                 }
             }
         }
@@ -170,7 +177,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
             // Set Vosk log level (0 = no logs, 1 = info, 2 = debug)
             global::Vosk.Vosk.SetLogLevel(0);
 
-            // Load Vosk model only - VoskRecognizer will be created per speech recognition event
+            // Load Vosk model only - recognizer will be created for streaming
             _model = new global::Vosk.Model(_settings.ModelPath);
             System.Diagnostics.Debug.WriteLine($"*** Vosk Model loaded from: {_settings.ModelPath} ***");
 
@@ -210,59 +217,40 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         if (!_isRunning)
             return;
 
-        System.Diagnostics.Debug.WriteLine($"*** SILENCE DETECTED - Processing {_audioBuffer.Count} bytes with Vosk (Timer triggered after {SilenceThresholdMs}ms) ***");
-        
-        // Process the buffered audio
-        await ProcessBufferedAudio();
-        
+        System.Diagnostics.Debug.WriteLine($"*** SILENCE DETECTED - Forcing finalization (Timer triggered after {SilenceThresholdMs}ms) ***");
+
+        // Force finalize current utterance
+        ForceFinalizeRecognition();
+
         // Reset speech state
         lock (_lockObject)
         {
             _isSpeaking = false;
-            _audioBuffer.Clear();
         }
     }
 
-    private async Task ProcessBufferedAudio()
+    private void ForceFinalizeRecognition()
     {
-        if (_model == null || _audioBuffer.Count == 0)
-            return;
-
-        await Task.Run(() =>
+        try
         {
-            try
-            {
-                // Create new VoskRecognizer for this speech segment (like reference code)
-                using var voskRecognizer = new global::Vosk.VoskRecognizer(_model, 16000.0f);
-                voskRecognizer.SetMaxAlternatives(0);
+            if (_recognizer == null)
+                return;
 
-                // Process audio data in chunks (like reference code)
-                byte[] audioArray = _audioBuffer.ToArray();
-                int chunkSize = 4096;
-                
-                for (int offset = 0; offset < audioArray.Length; offset += chunkSize)
-                {
-                    int currentChunkSize = Math.Min(chunkSize, audioArray.Length - offset);
-                    byte[] chunk = new byte[currentChunkSize];
-                    Array.Copy(audioArray, offset, chunk, 0, currentChunkSize);
-                    
-                    voskRecognizer.AcceptWaveform(chunk, currentChunkSize);
-                }
+            var jsonResult = _recognizer.FinalResult();
+            System.Diagnostics.Debug.WriteLine($"*** Vosk FinalResult (forced): {jsonResult} ***");
+            ProcessVoskResult(jsonResult);
 
-                // Get final result from Vosk (like reference code)
-                string jsonResult = voskRecognizer.FinalResult();
-                System.Diagnostics.Debug.WriteLine($"*** Vosk FinalResult: {jsonResult} ***");
-
-                // Process the result
-                ProcessVoskResult(jsonResult);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"*** ProcessBufferedAudio Error: {ex.Message} ***");
-                Telemetry.LogError("ProcessBufferedAudioError", ex);
-                OnError?.Invoke(this, new SttErrorEventArgs(ex, $"Error processing buffered audio: {ex.Message}"));
-            }
-        });
+            // Recreate recognizer for next utterance to be safe after FinalResult
+            CreateStreamingRecognizer();
+            _recognitionStartTime = DateTime.UtcNow;
+            _currentPartialText = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** ForceFinalizeRecognition Error: {ex.Message} ***");
+            Telemetry.LogError("ForceFinalizeRecognitionError", ex);
+            OnError?.Invoke(this, new SttErrorEventArgs(ex, $"Error finalizing recognition: {ex.Message}"));
+        }
     }
 
     private void ProcessVoskResult(string jsonResult)
@@ -285,14 +273,14 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
                         text = ApplyPunctuation(text);
                     }
 
-                    var confidence = 0.95; // VAD + Vosk combination has high confidence
+                    var confidence = 0.95; // streaming Vosk confidence heuristic
                     var duration = DateTime.UtcNow - _recognitionStartTime;
-                    
+
                     System.Diagnostics.Debug.WriteLine($"*** FINAL RECOGNITION: '{text}' ***");
-                    
+
                     // Fire final recognition event
                     OnFinal?.Invoke(this, new FinalRecognitionEventArgs(text, confidence, duration));
-                    
+
                     _recognitionStartTime = DateTime.UtcNow;
                 }
             }
@@ -315,7 +303,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
 
         // Simple punctuation rules for Japanese
         var punctuatedText = text;
-        
+
         // Add period at the end if not present
         if (!punctuatedText.EndsWith("。") && !punctuatedText.EndsWith("？") && !punctuatedText.EndsWith("！"))
         {
@@ -341,10 +329,50 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
     public void Dispose()
     {
         StopAsync().Wait();
-        
+
         _silenceTimer?.Stop();
         _silenceTimer?.Dispose();
+        _recognizer?.Dispose();
         _model?.Dispose();
     }
 
+    private void CreateStreamingRecognizer()
+    {
+        if (_model == null)
+            return;
+
+        try
+        {
+            _recognizer?.Dispose();
+            var sampleRate = _settings.SampleRate > 0 ? _settings.SampleRate : 16000;
+            _recognizer = new global::Vosk.VoskRecognizer(_model, sampleRate);
+            _recognizer.SetMaxAlternatives(0);
+            if (_settings.Punctuation)
+            {
+                // Vosk doesn't add punctuation automatically for all models; this flag is kept for symmetry
+            }
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("VoskRecognizerCreateFailed", ex);
+            throw;
+        }
+    }
+
+    private string ExtractPartialText(string partialJson)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(partialJson)) return string.Empty;
+            using var doc = JsonDocument.Parse(partialJson);
+            if (doc.RootElement.TryGetProperty("partial", out var p))
+            {
+                return p.GetString() ?? string.Empty;
+            }
+        }
+        catch
+        {
+        }
+        return string.Empty;
+    }
 }
