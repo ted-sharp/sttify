@@ -101,10 +101,13 @@ public partial class SettingsViewModel : ObservableObject
 
     private async Task InitializeAsync()
     {
-        await LoadSettingsAsync();
-        await LoadAudioDevicesAsync();
-        await LoadEngineInfoAsync();
-        await LoadVoskModelsAsync();
+        // Parallelize startup loads for faster UI readiness
+        var loadSettingsTask = LoadSettingsAsync();
+        var loadDevicesTask = LoadAudioDevicesAsync();
+        var loadEngineTask = LoadEngineInfoAsync();
+        var loadModelsTask = LoadVoskModelsAsync();
+
+        await Task.WhenAll(loadSettingsTask, loadDevicesTask, loadEngineTask, loadModelsTask);
     }
 
     [RelayCommand]
@@ -690,8 +693,31 @@ public partial class SettingsViewModel : ObservableObject
             ITextOutputSink outputSink = Settings.Output.PrimaryOutputIndex switch
             {
                 0 => new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput)), // SendInput
-                1 => new ExternalProcessSink(new ExternalProcessSettings()), // External Process
-                2 => new StreamSink(new StreamSinkSettings()), // Stream
+                1 => new ExternalProcessSink(new ExternalProcessSettings
+                {
+                    ExecutablePath = Settings.Output.ExternalProcess.ExecutablePath,
+                    ArgumentTemplate = Settings.Output.ExternalProcess.ArgumentTemplate,
+                    WaitForExit = Settings.Output.ExternalProcess.WaitForExit,
+                    TimeoutMs = Settings.Output.ExternalProcess.TimeoutMs,
+                    ThrottleMs = Settings.Output.ExternalProcess.ThrottleMs,
+                    LogArguments = Settings.Output.ExternalProcess.LogArguments,
+                    LogOutput = Settings.Output.ExternalProcess.LogOutput,
+                    WorkingDirectory = Settings.Output.ExternalProcess.WorkingDirectory,
+                    EnvironmentVariables = new Dictionary<string, string>(Settings.Output.ExternalProcess.EnvironmentVariables ?? new())
+                }), // External Process
+                2 => new StreamSink(new StreamSinkSettings
+                {
+                    OutputType = Settings.Output.Stream.OutputType,
+                    FilePath = Settings.Output.Stream.FilePath,
+                    AppendToFile = Settings.Output.Stream.AppendToFile,
+                    IncludeTimestamp = Settings.Output.Stream.IncludeTimestamp,
+                    ForceFlush = Settings.Output.Stream.ForceFlush,
+                    MaxFileSizeBytes = Settings.Output.Stream.MaxFileSizeBytes,
+                    SharedMemoryName = Settings.Output.Stream.SharedMemoryName,
+                    SharedMemorySize = Settings.Output.Stream.SharedMemorySize,
+                    CustomPrefix = Settings.Output.Stream.CustomPrefix,
+                    CustomSuffix = Settings.Output.Stream.CustomSuffix
+                }), // Stream
                 _ => new SendInputSink(ConvertToSendInputSettings(Settings.Output.SendInput)) // Default to SendInput
             };
 

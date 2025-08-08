@@ -14,15 +14,16 @@ public class RecognitionSessionTests
     {
         // Arrange
         var mockAudioCapture = new Mock<AudioCapture>();
-        var mockSttEngine = new Mock<ISttEngine>();
-        var mockOutputSinks = new List<ITextOutputSink> { new Mock<ITextOutputSink>().Object };
+        var mockSettingsProvider = new Mock<Sttify.Corelib.Config.SettingsProvider>();
+        var mockSinkProvider = new Mock<IOutputSinkProvider>();
+        mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink> { new Mock<ITextOutputSink>().Object });
         var settings = new RecognitionSessionSettings();
 
         // Act
         var session = new RecognitionSession(
             mockAudioCapture.Object,
-            mockSttEngine.Object,
-            mockOutputSinks,
+            mockSettingsProvider.Object,
+            mockSinkProvider.Object,
             settings);
 
         // Assert
@@ -36,14 +37,15 @@ public class RecognitionSessionTests
     {
         // Arrange
         var mockSttEngine = new Mock<ISttEngine>();
-        var mockOutputSinks = new List<ITextOutputSink>();
+        var mockSinkProvider = new Mock<IOutputSinkProvider>();
+        mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink>());
         var settings = new RecognitionSessionSettings();
 
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new RecognitionSession(
             null!,
-            mockSttEngine.Object,
-            mockOutputSinks,
+            new Mock<Sttify.Corelib.Config.SettingsProvider>().Object,
+            mockSinkProvider.Object,
             settings));
     }
 
@@ -52,14 +54,15 @@ public class RecognitionSessionTests
     {
         // Arrange
         var mockAudioCapture = new Mock<AudioCapture>();
-        var mockSttEngine = new Mock<ISttEngine>();
-        var mockOutputSinks = new List<ITextOutputSink>();
+        var mockSettingsProvider = new Mock<Sttify.Corelib.Config.SettingsProvider>();
+        var mockSinkProvider = new Mock<IOutputSinkProvider>();
+        mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink>());
         var settings = new RecognitionSessionSettings();
-        
+
         var session = new RecognitionSession(
             mockAudioCapture.Object,
-            mockSttEngine.Object,
-            mockOutputSinks,
+            mockSettingsProvider.Object,
+            mockSinkProvider.Object,
             settings);
 
         // Act
@@ -74,14 +77,15 @@ public class RecognitionSessionTests
     {
         // Arrange
         var mockAudioCapture = new Mock<AudioCapture>();
-        var mockSttEngine = new Mock<ISttEngine>();
-        var mockOutputSinks = new List<ITextOutputSink>();
+        var mockSettingsProvider = new Mock<Sttify.Corelib.Config.SettingsProvider>();
+        var mockSinkProvider = new Mock<IOutputSinkProvider>();
+        mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink>());
         var settings = new RecognitionSessionSettings();
-        
+
         var session = new RecognitionSession(
             mockAudioCapture.Object,
-            mockSttEngine.Object,
-            mockOutputSinks,
+            mockSettingsProvider.Object,
+            mockSinkProvider.Object,
             settings);
 
         // Act & Assert (should not throw)

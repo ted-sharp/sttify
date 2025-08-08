@@ -19,9 +19,8 @@ public static class SttEngineFactory
             "vosk-real" => new RealVoskEngineAdapter(engineSettings.Vosk),
             "vosk-mock" => new VoskEngineAdapter(engineSettings.Vosk),
             "vibe" => new VibeSttEngine(engineSettings.Vibe),
-            // Delegate cloud-related profiles to the consolidated EngineFactory to avoid duplication
-            "azure" or "cloud" => EngineFactory.CreateEngine(engineSettings),
-            // Accept direct cloud provider names for convenience
+            "azure" => new AzureSpeechEngine(engineSettings.Cloud),
+            "cloud" => EngineFactory.CreateEngine(engineSettings),
             "google" or "aws" => EngineFactory.CreateEngine(engineSettings),
             _ => FallbackToDefault(engineSettings, profile)
         };

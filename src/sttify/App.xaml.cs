@@ -122,10 +122,23 @@ public partial class App : System.Windows.Application
         //     AllocConsole();
         // }
 
+        bool maskLogs = false;
+        try
+        {
+            // Load privacy setting early from user config
+            var tempSettingsProvider = new SettingsProvider();
+            var settings = tempSettingsProvider.GetSettingsSync();
+            maskLogs = settings.Privacy?.MaskInLogs ?? false;
+        }
+        catch
+        {
+            // Ignore and keep default
+        }
+
         var telemetrySettings = new TelemetrySettings
         {
             EnableConsoleLogging = false, // Debugger.IsAttached,
-            MaskTextInLogs = false
+            MaskTextInLogs = maskLogs
         };
 
         Telemetry.Initialize(telemetrySettings);
@@ -187,7 +200,6 @@ public partial class App : System.Windows.Application
                 });
 
                 services.AddSingleton<IOutputSinkProvider, OutputSinkProvider>();
-                services.AddSingleton<IEnumerable<ITextOutputSink>>(provider => provider.GetRequiredService<IOutputSinkProvider>().GetSinks());
 
                 services.AddSingleton<RecognitionSessionSettings>(provider =>
                 {
@@ -205,7 +217,15 @@ public partial class App : System.Windows.Application
                     };
                 });
 
-                services.AddSingleton<RecognitionSession>();
+                services.AddSingleton<RecognitionSession>(provider =>
+                {
+                    return new RecognitionSession(
+                        provider.GetRequiredService<AudioCapture>(),
+                        provider.GetRequiredService<SettingsProvider>(),
+                        provider.GetRequiredService<IOutputSinkProvider>(),
+                        provider.GetRequiredService<RecognitionSessionSettings>()
+                    );
+                });
                 services.AddSingleton<ApplicationService>();
 
                 services.AddTransient<MainViewModel>();

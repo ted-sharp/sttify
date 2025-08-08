@@ -4,17 +4,17 @@ using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Plugins;
-using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Session;
 
 public class RecognitionSession : IDisposable
 {
     private readonly AudioCapture _audioCapture;
-    private readonly ISttEngine _sttEngine;
-    private readonly IEnumerable<ITextOutputSink> _outputSinks;
+    private ISttEngine? _sttEngine;
+    private readonly IOutputSinkProvider _outputSinkProvider;
     private readonly RecognitionSessionSettings _settings;
     private readonly PluginManager? _pluginManager;
+    private readonly Sttify.Corelib.Config.SettingsProvider _settingsProvider;
 
     public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
@@ -54,21 +54,19 @@ public class RecognitionSession : IDisposable
 
     public RecognitionSession(
         AudioCapture audioCapture,
-        ISttEngine sttEngine,
-        IEnumerable<ITextOutputSink> outputSinks,
+        Sttify.Corelib.Config.SettingsProvider settingsProvider,
+        IOutputSinkProvider outputSinkProvider,
         RecognitionSessionSettings settings,
         PluginManager? pluginManager = null)
     {
         System.Diagnostics.Debug.WriteLine($"*** RecognitionSession Constructor - Instance ID: {GetHashCode()} ***");
         _audioCapture = audioCapture ?? throw new ArgumentNullException(nameof(audioCapture));
-        _sttEngine = sttEngine ?? throw new ArgumentNullException(nameof(sttEngine));
-        _outputSinks = outputSinks ?? throw new ArgumentNullException(nameof(outputSinks));
+        _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
+        _outputSinkProvider = outputSinkProvider ?? throw new ArgumentNullException(nameof(outputSinkProvider));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _pluginManager = pluginManager;
 
         _audioCapture.OnFrame += OnAudioFrame;
-        _sttEngine.OnPartial += OnPartialRecognition;
-        _sttEngine.OnFinal += OnFinalRecognition;
 
         // Initialize timers
         _silenceTimer = new Timer(OnSilenceTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
@@ -153,6 +151,13 @@ public class RecognitionSession : IDisposable
             CurrentState = SessionState.Starting;
             Telemetry.LogEvent("RecognitionSession_StateChangedToStarting");
 
+            // Create engine with latest settings on each start
+            var appSettings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
+            var engine = Sttify.Corelib.Engine.SttEngineFactory.CreateEngine(appSettings.Engine);
+            engine.OnPartial += OnPartialRecognition;
+            engine.OnFinal += OnFinalRecognition;
+            _sttEngine = engine;
+
             System.Diagnostics.Debug.WriteLine($"*** About to call _sttEngine.StartAsync() on {_sttEngine.GetType().Name} ***");
             Telemetry.LogEvent("RecognitionSession_StartingEngine");
             // Guard against engine start hanging indefinitely
@@ -229,7 +234,10 @@ public class RecognitionSession : IDisposable
         {
             CurrentState = SessionState.Stopping;
             await _audioCapture.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "AudioCapture.Stop");
-            await _sttEngine.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "SttEngine.Stop");
+            if (_sttEngine != null)
+            {
+                await _sttEngine.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "SttEngine.Stop");
+            }
         }
         catch (Exception ex)
         {
@@ -245,8 +253,10 @@ public class RecognitionSession : IDisposable
     {
         // Avoid taking state lock inside engine lock: read once without re-entrancy risk
         var stateSnapshot = CurrentState;
-        if (stateSnapshot == SessionState.Listening)
+        if (stateSnapshot == SessionState.Listening && _sttEngine != null)
+        {
             _sttEngine.PushAudio(e.AudioData.Span);
+        }
     }
 
     private void OnPartialRecognition(object? sender, PartialRecognitionEventArgs e)
@@ -402,12 +412,13 @@ public class RecognitionSession : IDisposable
 
     private async Task SendTextToOutputSinksAsync(string text)
     {
-        System.Diagnostics.Debug.WriteLine($"*** SendTextToOutputSinksAsync - Text: '{text}', Sinks Count: {_outputSinks.Count()} ***");
+        var sinks = _outputSinkProvider.GetSinks();
+        System.Diagnostics.Debug.WriteLine($"*** SendTextToOutputSinksAsync - Text: '{text}', Sinks Count: {sinks.Count()} ***");
 
         bool textSentSuccessfully = false;
         var failedSinks = new List<string>();
 
-        foreach (var sink in _outputSinks)
+        foreach (var sink in sinks)
         {
             System.Diagnostics.Debug.WriteLine($"*** Trying output sink: {sink.Name} ({sink.GetType().Name}) ***");
             try
@@ -474,8 +485,11 @@ public class RecognitionSession : IDisposable
 
             // Unsubscribe events to prevent memory leaks
             _audioCapture.OnFrame -= OnAudioFrame;
-            _sttEngine.OnPartial -= OnPartialRecognition;
-            _sttEngine.OnFinal -= OnFinalRecognition;
+            if (_sttEngine != null)
+            {
+                _sttEngine.OnPartial -= OnPartialRecognition;
+                _sttEngine.OnFinal -= OnFinalRecognition;
+            }
 
             StopAsync().Wait(5000); // Wait max 5 seconds
         }
@@ -486,6 +500,7 @@ public class RecognitionSession : IDisposable
         finally
         {
             _audioCapture.Dispose();
+            _sttEngine?.Dispose();
         }
     }
 }

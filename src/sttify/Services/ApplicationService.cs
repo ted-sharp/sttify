@@ -8,7 +8,7 @@ using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using System.Windows;
 using System.Windows.Interop;
-using Sttify.Corelib.Diagnostics;
+// duplicate using removed
 
 namespace Sttify.Services;
 

@@ -13,7 +13,8 @@ public class SendInputSink : ITextOutputSink
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
-    public string Name => "SendInput";
+        public string Id => "sendinput";
+        public string Name => "SendInput";
     public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     private readonly SendInputSettings _settings;

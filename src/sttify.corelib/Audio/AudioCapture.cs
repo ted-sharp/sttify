@@ -197,7 +197,8 @@ public class AudioCapture : IDisposable
 
     public void Dispose()
     {
-        StopAsync().Wait();
+        // Avoid blocking the calling thread (UI) on dispose
+        AsyncHelper.FireAndForget(() => StopAsync(), nameof(AudioCapture) + ".Dispose");
     }
 }
 

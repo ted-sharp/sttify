@@ -17,6 +17,7 @@ public class StreamSink : ITextOutputSink, IDisposable
     private long _totalWrites;
     private long _totalBytesWritten;
 
+    public string Id => "stream";
     public string Name => "Stream";
     public bool IsAvailable => GetAvailability();
 

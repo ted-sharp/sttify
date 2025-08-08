@@ -10,8 +10,9 @@ public class ExternalProcessSink : ITextOutputSink
     private readonly ExternalProcessSettings _settings;
     private DateTime _lastSent = DateTime.MinValue;
 
+    public string Id => "external-process";
     public string Name => "External Process";
-    public bool IsAvailable => !string.IsNullOrEmpty(_settings.ExecutablePath) && 
+    public bool IsAvailable => !string.IsNullOrEmpty(_settings.ExecutablePath) &&
                               File.Exists(_settings.ExecutablePath);
 
     public ExternalProcessSink(ExternalProcessSettings settings)
@@ -40,13 +41,13 @@ public class ExternalProcessSink : ITextOutputSink
             return;
 
         var startTime = DateTime.UtcNow;
-        
+
         try
         {
             var arguments = ReplaceArgumentTemplate(_settings.ArgumentTemplate, text);
-            
-            Telemetry.LogEvent("ExternalProcessStarting", new 
-            { 
+
+            Telemetry.LogEvent("ExternalProcessStarting", new
+            {
                 ExecutablePath = _settings.ExecutablePath,
                 Arguments = _settings.LogArguments ? arguments : "[REDACTED]",
                 TextLength = text.Length,
@@ -60,7 +61,7 @@ public class ExternalProcessSink : ITextOutputSink
             process.StartInfo.CreateNoWindow = true;
             process.StartInfo.RedirectStandardOutput = true;
             process.StartInfo.RedirectStandardError = true;
-            
+
             // Set working directory if specified
             if (!string.IsNullOrEmpty(_settings.WorkingDirectory) && Directory.Exists(_settings.WorkingDirectory))
             {
@@ -83,7 +84,7 @@ public class ExternalProcessSink : ITextOutputSink
                 var timeout = _settings.TimeoutMs > 0 ? _settings.TimeoutMs : 30000; // Default 30s timeout
                 using var timeoutCts = new CancellationTokenSource(timeout);
                 using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-                
+
                 try
                 {
                     await process.WaitForExitAsync(combinedCts.Token);
@@ -93,22 +94,22 @@ public class ExternalProcessSink : ITextOutputSink
                     process.Kill(true);
                     throw new TextOutputFailedException($"External process timed out after {timeout}ms");
                 }
-                
+
                 if (process.ExitCode != 0)
                 {
                     var error = await process.StandardError.ReadToEndAsync(cancellationToken);
                     var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-                    
-                    Telemetry.LogEvent("ExternalProcessFailed", new 
-                    { 
+
+                    Telemetry.LogEvent("ExternalProcessFailed", new
+                    {
                         ExitCode = process.ExitCode,
                         StandardError = error,
                         StandardOutput = output
                     });
-                    
+
                     throw new TextOutputFailedException($"External process exited with code {process.ExitCode}: {error}");
                 }
-                
+
                 if (_settings.LogOutput)
                 {
                     var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
@@ -121,9 +122,9 @@ public class ExternalProcessSink : ITextOutputSink
 
             _lastSent = DateTime.UtcNow;
             var duration = _lastSent - startTime;
-            
-            Telemetry.LogEvent("ExternalProcessCompleted", new 
-            { 
+
+            Telemetry.LogEvent("ExternalProcessCompleted", new
+            {
                 DurationMs = duration.TotalMilliseconds,
                 ProcessId = process.Id
             });
@@ -131,12 +132,12 @@ public class ExternalProcessSink : ITextOutputSink
         catch (Exception ex) when (ex is not TextOutputFailedException)
         {
             var duration = DateTime.UtcNow - startTime;
-            Telemetry.LogError("ExternalProcessFailed", ex, new 
-            { 
+            Telemetry.LogError("ExternalProcessFailed", ex, new
+            {
                 DurationMs = duration.TotalMilliseconds,
                 ExecutablePath = _settings.ExecutablePath
             });
-            
+
             throw new TextOutputFailedException($"Failed to execute external process: {ex.Message}", ex);
         }
     }

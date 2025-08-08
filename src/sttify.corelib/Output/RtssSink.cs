@@ -7,6 +7,7 @@ namespace Sttify.Corelib.Output;
 [ExcludeFromCodeCoverage] // External RTSS application integration, difficult to mock effectively
 public class RtssSink : ITextOutputSink, IDisposable
 {
+    public string Id => "rtss";
     public string Name => "RTSS Overlay";
     public bool IsAvailable => _bridge.Initialize();
 

@@ -112,7 +112,7 @@ public class WasapiAudioCapture : IDisposable
 
         if (!string.IsNullOrEmpty(_settings.DeviceId))
         {
-            var deviceEnumerator = new MMDeviceEnumerator();
+            using var deviceEnumerator = new MMDeviceEnumerator();
             try
             {
                 captureDevice = deviceEnumerator.GetDevice(_settings.DeviceId);
@@ -130,7 +130,7 @@ public class WasapiAudioCapture : IDisposable
         }
         else
         {
-            var deviceEnumerator = new MMDeviceEnumerator();
+            using var deviceEnumerator = new MMDeviceEnumerator();
             // New policy: prefer Console for stereo, Communications for mono
             var role = _settings.Channels == 1 ? Role.Communications : Role.Console;
             captureDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, role);
@@ -239,7 +239,7 @@ public class WasapiAudioCapture : IDisposable
 
         try
         {
-            var deviceEnumerator = new MMDeviceEnumerator();
+            using var deviceEnumerator = new MMDeviceEnumerator();
             var captureDevices = deviceEnumerator.EnumerateAudioEndPoints(DataFlow.Capture, DeviceState.Active);
 
             foreach (var device in captureDevices)
@@ -269,10 +269,21 @@ public class WasapiAudioCapture : IDisposable
 
     public void Dispose()
     {
-        StopAsync().Wait();
-
-        _wasapiCapture?.Dispose();
-        _wasapiCapture = null;
+        // Avoid sync wait on UI thread; best-effort async stop
+        try
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await StopAsync(); } catch { }
+                try { _wasapiCapture?.Dispose(); } catch { }
+                _wasapiCapture = null;
+            });
+        }
+        catch
+        {
+            try { _wasapiCapture?.Dispose(); } catch { }
+            _wasapiCapture = null;
+        }
     }
 }
 

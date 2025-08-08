@@ -114,7 +114,7 @@ public class OutputSinkProvider : IOutputSinkProvider
         foreach (var fb in settings.Output.Fallbacks ?? Array.Empty<string>())
         {
             var lname = fb.ToLowerInvariant();
-            if (!sinks.Any(s => string.Equals(s.Name, lname, StringComparison.OrdinalIgnoreCase)))
+            if (!sinks.Any(s => string.Equals(s.Id, lname, StringComparison.OrdinalIgnoreCase)))
             {
                 AddSinkByName(lname);
             }

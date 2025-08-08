@@ -19,24 +19,17 @@ public class BasicIntegrationTests
     {
         // Arrange
         var services = new ServiceCollection();
-        
+
         services.AddSingleton<SettingsProvider>();
         services.AddSingleton<AudioCapture>();
-        services.AddSingleton<ISttEngine>(provider =>
+        // Engine is constructed on session start now; keep a dummy registration if required elsewhere
+        services.AddSingleton<ISttEngine>(provider => new RealVoskEngineAdapter(new VoskEngineSettings()));
+        services.AddSingleton<IOutputSinkProvider>(provider =>
         {
-            var settingsProvider = provider.GetRequiredService<SettingsProvider>();
-            // Suppress xUnit1031 warning for integration test that uses .Result for simplicity
-#pragma warning disable xUnit1031
-            var settings = settingsProvider.GetSettingsAsync().Result;
-#pragma warning restore xUnit1031
-            return new RealVoskEngineAdapter(settings.Engine.Vosk);
-        });
-        services.AddSingleton<IEnumerable<ITextOutputSink>>(provider =>
-        {
-            return new List<ITextOutputSink>
-            {
-                new SendInputSink()
-            };
+            // Minimal provider for integration test
+            var sp = new Mock<IOutputSinkProvider>();
+            sp.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink> { new SendInputSink() });
+            return sp.Object;
         });
         services.AddSingleton<RecognitionSessionSettings>();
         services.AddSingleton<RecognitionSession>();
@@ -53,9 +46,9 @@ public class BasicIntegrationTests
         var sttEngine = serviceProvider.GetRequiredService<ISttEngine>();
         Assert.NotNull(sttEngine);
 
-        var outputSinks = serviceProvider.GetRequiredService<IEnumerable<ITextOutputSink>>();
-        Assert.NotNull(outputSinks);
-        Assert.NotEmpty(outputSinks);
+        var sinkProvider = serviceProvider.GetRequiredService<IOutputSinkProvider>();
+        Assert.NotNull(sinkProvider);
+        Assert.NotEmpty(sinkProvider.GetSinks());
 
         var recognitionSession = serviceProvider.GetRequiredService<RecognitionSession>();
         Assert.NotNull(recognitionSession);
@@ -67,20 +60,22 @@ public class BasicIntegrationTests
         // Arrange
         var settingsProvider = new SettingsProvider();
         var settings = await settingsProvider.GetSettingsAsync();
-        
+
         var audioCapture = new AudioCapture();
-        var sttEngine = new RealVoskEngineAdapter(settings.Engine.Vosk);
-        var outputSinks = new List<ITextOutputSink> { new SendInputSink() };
+        var sttEngine = new RealVoskEngineAdapter(settings.Engine.Vosk); // not used by session ctor anymore
+        var mockSinkProvider = new Mock<IOutputSinkProvider>();
+        mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink> { new SendInputSink(new SendInputSettings()) });
+        var outputSinkProvider = mockSinkProvider.Object;
         var sessionSettings = new RecognitionSessionSettings();
 
         // Act
-        var session = new RecognitionSession(audioCapture, sttEngine, outputSinks, sessionSettings);
+        var session = new RecognitionSession(audioCapture, settingsProvider, outputSinkProvider, sessionSettings);
 
         // Assert
         Assert.NotNull(session);
         Assert.Equal(SessionState.Idle, session.CurrentState);
         Assert.Equal(RecognitionMode.Ptt, session.CurrentMode);
-        
+
         // Cleanup
         session.Dispose();
     }
@@ -94,7 +89,7 @@ public class BasicIntegrationTests
         // Act
         var originalSettings = await settingsProvider.GetSettingsAsync();
         originalSettings.Engine.Profile = "test-profile";
-        
+
         await settingsProvider.SaveSettingsAsync(originalSettings);
         var loadedSettings = await settingsProvider.GetSettingsAsync();
 
@@ -108,7 +103,7 @@ public class BasicIntegrationTests
         // Arrange
         var services = new ServiceCollection();
         var serviceProvider = services.BuildServiceProvider();
-        
+
         // Act
         var pluginManager = new PluginManager(serviceProvider);
 
@@ -121,7 +116,7 @@ public class BasicIntegrationTests
     {
         // Arrange
         var healthMonitor = new HealthMonitor();
-        
+
         // Act
         var results = await healthMonitor.GetHealthStatusAsync();
 

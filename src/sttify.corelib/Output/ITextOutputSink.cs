@@ -4,9 +4,10 @@ namespace Sttify.Corelib.Output;
 
 public interface ITextOutputSink
 {
+    string Id { get; }
     string Name { get; }
     bool IsAvailable { get; }
-    
+
     Task<bool> CanSendAsync(CancellationToken cancellationToken = default);
     Task SendAsync(string text, CancellationToken cancellationToken = default);
 }
