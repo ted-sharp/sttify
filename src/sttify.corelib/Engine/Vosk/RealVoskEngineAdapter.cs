@@ -1,5 +1,6 @@
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using Vosk;
 
@@ -149,10 +150,11 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
                     {
                         var partialJson = _recognizer.PartialResult();
                         var partialText = ExtractPartialText(partialJson);
-                        if (!string.IsNullOrWhiteSpace(partialText) && !string.Equals(partialText, _currentPartialText, StringComparison.Ordinal))
+                        var normalizedPartial = NormalizeJapaneseSpacing(partialText);
+                        if (!string.IsNullOrWhiteSpace(normalizedPartial) && !string.Equals(normalizedPartial, _currentPartialText, StringComparison.Ordinal))
                         {
-                            _currentPartialText = partialText;
-                            OnPartial?.Invoke(this, new PartialRecognitionEventArgs(partialText, 0.5));
+                            _currentPartialText = normalizedPartial;
+                            OnPartial?.Invoke(this, new PartialRecognitionEventArgs(normalizedPartial, 0.5));
                         }
                     }
                 }
@@ -273,6 +275,9 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
                         text = ApplyPunctuation(text);
                     }
 
+                    // Normalize spacing for Japanese output
+                    text = NormalizeJapaneseSpacing(text);
+
                     var confidence = 0.95; // streaming Vosk confidence heuristic
                     var duration = DateTime.UtcNow - _recognitionStartTime;
 
@@ -347,6 +352,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
             var sampleRate = _settings.SampleRate > 0 ? _settings.SampleRate : 16000;
             _recognizer = new global::Vosk.VoskRecognizer(_model, sampleRate);
             _recognizer.SetMaxAlternatives(0);
+            _recognizer.SetWords(true);
             if (_settings.Punctuation)
             {
                 // Vosk doesn't add punctuation automatically for all models; this flag is kept for symmetry
@@ -357,6 +363,50 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
             Telemetry.LogError("VoskRecognizerCreateFailed", ex);
             throw;
         }
+    }
+
+    private static bool IsJapaneseChar(int codePoint)
+    {
+        // Hiragana: 3040–309F, Katakana: 30A0–30FF, Katakana Phonetic Extensions: 31F0–31FF
+        // CJK Unified Ideographs: 4E00–9FFF, Halfwidth Katakana: FF61–FF9F, prolonged sound mark: 30FC/FF70
+        return (codePoint >= 0x3040 && codePoint <= 0x30FF) ||
+               (codePoint >= 0x31F0 && codePoint <= 0x31FF) ||
+               (codePoint >= 0x4E00 && codePoint <= 0x9FFF) ||
+               (codePoint >= 0xFF61 && codePoint <= 0xFF9F) ||
+               codePoint == 0x30FC || codePoint == 0xFF70;
+    }
+
+    private static string NormalizeJapaneseSpacing(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // Remove ASCII spaces between two Japanese chars only. Keep spaces elsewhere.
+        var sb = new StringBuilder(input.Length);
+        for (int i = 0; i < input.Length; i++)
+        {
+            char c = input[i];
+            if (c == ' ')
+            {
+                // Look at previous and next visible characters
+                int prev = i - 1;
+                while (prev >= 0 && char.IsWhiteSpace(input[prev])) prev--;
+                int next = i + 1;
+                while (next < input.Length && char.IsWhiteSpace(input[next])) next++;
+
+                if (prev >= 0 && next < input.Length)
+                {
+                    int prevCp = char.ConvertToUtf32(input, prev);
+                    int nextCp = char.ConvertToUtf32(input, next);
+                    if (IsJapaneseChar(prevCp) && IsJapaneseChar(nextCp))
+                    {
+                        // skip this space
+                        continue;
+                    }
+                }
+            }
+            sb.Append(c);
+        }
+        return sb.ToString();
     }
 
     private string ExtractPartialText(string partialJson)
