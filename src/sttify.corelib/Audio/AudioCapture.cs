@@ -82,27 +82,28 @@ public class AudioCapture : IDisposable
         OnFrame?.Invoke(this, e);
     }
 
-    private async void OnWasapiError(object? sender, AudioErrorEventArgs e)
+    private void OnWasapiError(object? sender, AudioErrorEventArgs e)
     {
-        lock (_lockObject)
+        AsyncHelper.FireAndForget(async () =>
         {
-            _isCapturing = false;
-        }
+            lock (_lockObject)
+            {
+                _isCapturing = false;
+            }
 
-        // Log the error with structured data
-        Telemetry.LogError("WasapiAudioError", e.Exception, new
-        {
-            Component = "AudioCapture",
-            Message = e.Message
-        });
+            Telemetry.LogError("WasapiAudioError", e.Exception, new
+            {
+                Component = "AudioCapture",
+                Message = e.Message
+            });
 
-        // Attempt automatic recovery for transient errors
-        if (IsTransientAudioError(e.Exception))
-        {
-            await AttemptAudioRecoveryAsync();
-        }
+            if (IsTransientAudioError(e.Exception))
+            {
+                await AttemptAudioRecoveryAsync().ConfigureAwait(false);
+            }
 
-        OnError?.Invoke(this, e);
+            OnError?.Invoke(this, e);
+        }, nameof(OnWasapiError));
     }
 
     private bool IsTransientAudioError(Exception exception)

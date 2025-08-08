@@ -5,6 +5,7 @@ using Sttify.Corelib.Hotkey;
 using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using Sttify.Services;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Views;
 
@@ -83,65 +84,70 @@ public partial class SettingsWindow : Window
         return IntPtr.Zero;
     }
 
-    private async void OnGlobalHotkeyPressed(object? sender, HotkeyPressedEventArgs e)
+    private void OnGlobalHotkeyPressed(object? sender, HotkeyPressedEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine($"*** Global hotkey pressed: {e.Name} ({e.HotkeyString}) ***");
 
         var testText = "Hello, this is a test from Sttify.";
 
-        try
+        AsyncHelper.FireAndForget(async () =>
         {
-            switch (e.Name)
-            {
-                case "TestCurrentOutput":
-                    System.Diagnostics.Debug.WriteLine("*** Executing TestCurrentOutput ***");
-                    await _viewModel.TestOutputCommand.ExecuteAsync(testText);
-                    break;
-                case "TestExternalProcess":
-                    System.Diagnostics.Debug.WriteLine("*** Executing TestExternalProcess ***");
-                    // Create external process sink for testing
-                    var externalSink = new Sttify.Corelib.Output.ExternalProcessSink(new Sttify.Corelib.Output.ExternalProcessSettings());
-                    await externalSink.SendAsync(testText);
-                    break;
-                case "TestSendInput":
-                    System.Diagnostics.Debug.WriteLine("*** Executing TestSendInput ***");
-                    await _viewModel.TestSendInputCommand.ExecuteAsync(testText);
-                    break;
-                case "TestImeControl":
-                    System.Diagnostics.Debug.WriteLine("*** Executing TestImeControl ***");
-                    await _viewModel.TestImeControlCommand.ExecuteAsync(testText);
-                    break;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"*** Error executing test command: {ex.Message} ***");
-        }
-    }
-
-    private async void OnOK(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            await _viewModel.SaveSettingsCommand.ExecuteAsync(null);
-
-            // Re-register hotkeys after settings change
             try
             {
-                var appSvc = App.ServiceProvider?.GetService<ApplicationService>();
-                if (appSvc != null)
+                switch (e.Name)
                 {
-                    await appSvc.ReinitializeHotkeysAsync();
+                    case "TestCurrentOutput":
+                        System.Diagnostics.Debug.WriteLine("*** Executing TestCurrentOutput ***");
+                        await _viewModel.TestOutputCommand.ExecuteAsync(testText).ConfigureAwait(false);
+                        break;
+                    case "TestExternalProcess":
+                        System.Diagnostics.Debug.WriteLine("*** Executing TestExternalProcess ***");
+                        var externalSink = new Sttify.Corelib.Output.ExternalProcessSink(new Sttify.Corelib.Output.ExternalProcessSettings());
+                        await externalSink.SendAsync(testText).ConfigureAwait(false);
+                        break;
+                    case "TestSendInput":
+                        System.Diagnostics.Debug.WriteLine("*** Executing TestSendInput ***");
+                        await _viewModel.TestSendInputCommand.ExecuteAsync(testText).ConfigureAwait(false);
+                        break;
+                    case "TestImeControl":
+                        System.Diagnostics.Debug.WriteLine("*** Executing TestImeControl ***");
+                        await _viewModel.TestImeControlCommand.ExecuteAsync(testText).ConfigureAwait(false);
+                        break;
                 }
             }
-            catch { }
-            Close();
-        }
-        catch (Exception ex)
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"*** Error executing test command: {ex.Message} ***");
+            }
+        }, nameof(OnGlobalHotkeyPressed), new { e.Name, e.HotkeyString });
+    }
+
+    private void OnOK(object sender, RoutedEventArgs e)
+    {
+        AsyncHelper.FireAndForget(async () =>
         {
-            System.Windows.MessageBox.Show($"Failed to save settings: {ex.Message}",
-                "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+            try
+            {
+                await _viewModel.SaveSettingsCommand.ExecuteAsync(null).ConfigureAwait(false);
+
+                try
+                {
+                    var appSvc = App.ServiceProvider?.GetService<ApplicationService>();
+                    if (appSvc != null)
+                    {
+                        await appSvc.ReinitializeHotkeysAsync().ConfigureAwait(false);
+                    }
+                }
+                catch { }
+
+                Dispatcher.Invoke(Close);
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => System.Windows.MessageBox.Show($"Failed to save settings: {ex.Message}",
+                    "Sttify", MessageBoxButton.OK, MessageBoxImage.Error));
+            }
+        }, nameof(OnOK));
     }
 
     private void OnCancel(object sender, RoutedEventArgs e)

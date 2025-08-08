@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Windows;
 using System.Windows.Forms;
 using Application = System.Windows.Application;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Tray;
 
@@ -24,16 +25,16 @@ public class NotifyIconHost : IDisposable
         try
         {
             Console.WriteLine("NotifyIconHost: Starting initialization...");
-            
+
             _applicationService = _serviceProvider.GetRequiredService<ApplicationService>();
             Console.WriteLine("NotifyIconHost: ApplicationService obtained");
-            
+
             CreateNotifyIcon();
             Console.WriteLine("NotifyIconHost: NotifyIcon created");
-            
+
             SetupContextMenu();
             Console.WriteLine("NotifyIconHost: Context menu setup complete");
-            
+
             _notifyIcon!.Visible = true;
             Console.WriteLine($"NotifyIconHost: Icon visibility set to true. Actually visible: {_notifyIcon.Visible}");
         }
@@ -52,7 +53,7 @@ public class NotifyIconHost : IDisposable
             Console.WriteLine("Creating microphone icon...");
             var icon = CreateMicrophoneIcon();
             Console.WriteLine($"Icon created successfully: {icon != null}");
-            
+
             _notifyIcon = new NotifyIcon
             {
                 Icon = icon,
@@ -151,14 +152,14 @@ public class NotifyIconHost : IDisposable
 
             var hIcon = bitmap.GetHicon();
             var icon = Icon.FromHandle(hIcon);
-            
+
             // Create a copy to avoid handle ownership issues
             var iconCopy = new Icon(icon, icon.Size);
-            
+
             // Clean up the original handle
             icon.Dispose();
             Win32.DestroyIcon(hIcon);
-            
+
             return iconCopy;
         }
         catch (Exception ex)
@@ -168,7 +169,7 @@ public class NotifyIconHost : IDisposable
             return SystemIcons.Application;
         }
     }
-    
+
     // Win32 API for proper icon cleanup
     private static class Win32
     {
@@ -218,28 +219,33 @@ public class NotifyIconHost : IDisposable
         });
     }
 
-    private async void OnToggleRecognition(object? sender, EventArgs e)
+    private void OnToggleRecognition(object? sender, EventArgs e)
     {
         if (_applicationService == null) return;
 
-        try
+        AsyncHelper.FireAndForget(async () =>
         {
-            var currentState = _applicationService.GetCurrentState();
-            
-            if (currentState == Sttify.Corelib.Session.SessionState.Listening)
+            try
             {
-                await _applicationService.StopRecognitionAsync();
+                var currentState = _applicationService.GetCurrentState();
+                if (currentState == Sttify.Corelib.Session.SessionState.Listening)
+                {
+                    await _applicationService.StopRecognitionAsync().ConfigureAwait(false);
+                }
+                else if (currentState == Sttify.Corelib.Session.SessionState.Idle)
+                {
+                    await _applicationService.StartRecognitionAsync().ConfigureAwait(false);
+                }
             }
-            else if (currentState == Sttify.Corelib.Session.SessionState.Idle)
+            catch (Exception ex)
             {
-                await _applicationService.StartRecognitionAsync();
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    System.Windows.MessageBox.Show($"Failed to toggle recognition: {ex.Message}",
+                        "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
             }
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show($"Failed to toggle recognition: {ex.Message}", 
-                "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        }, nameof(OnToggleRecognition));
     }
 
     private void OnShowSettings(object? sender, EventArgs e)

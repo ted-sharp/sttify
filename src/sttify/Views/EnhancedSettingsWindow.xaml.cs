@@ -1,5 +1,6 @@
 using Sttify.ViewModels;
 using System.Windows;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Views;
 
@@ -10,24 +11,30 @@ public partial class EnhancedSettingsWindow : Window
     public EnhancedSettingsWindow(SettingsViewModel viewModel)
     {
         InitializeComponent();
-        
+
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         DataContext = _viewModel;
     }
 
-    private async void OnApplyAndClose(object sender, RoutedEventArgs e)
+    private void OnApplyAndClose(object sender, RoutedEventArgs e)
     {
-        try
+        AsyncHelper.FireAndForget(async () =>
         {
-            await _viewModel.SaveSettingsCommand.ExecuteAsync(null);
-            DialogResult = true;
-            Close();
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show($"Failed to save settings: {ex.Message}", 
-                "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+            try
+            {
+                await _viewModel.SaveSettingsCommand.ExecuteAsync(null).ConfigureAwait(false);
+                Dispatcher.Invoke(() =>
+                {
+                    DialogResult = true;
+                    Close();
+                });
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => System.Windows.MessageBox.Show($"Failed to save settings: {ex.Message}",
+                    "Sttify", MessageBoxButton.OK, MessageBoxImage.Error));
+            }
+        }, nameof(OnApplyAndClose));
     }
 
     private void OnCancel(object sender, RoutedEventArgs e)

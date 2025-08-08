@@ -4,6 +4,7 @@ using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Plugins;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Session;
 
@@ -233,7 +234,7 @@ public class RecognitionSession : IDisposable
         OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(e.Text, false, e.Confidence));
     }
 
-    private async void OnFinalRecognition(object? sender, FinalRecognitionEventArgs e)
+    private void OnFinalRecognition(object? sender, FinalRecognitionEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine($"*** FINAL RECOGNITION: '{e.Text}' (Confidence: {e.Confidence}) ***");
 
@@ -243,16 +244,19 @@ public class RecognitionSession : IDisposable
             return;
         }
 
-        // Process text through plugins if available
-        var processedText = e.Text;
-        if (_pluginManager != null)
+        AsyncHelper.FireAndForget(async () =>
         {
-            processedText = await ProcessTextThroughPluginsAsync(e.Text);
-        }
+            // Process text through plugins if available
+            var processedText = e.Text;
+            if (_pluginManager != null)
+            {
+                processedText = await ProcessTextThroughPluginsAsync(e.Text).ConfigureAwait(false);
+            }
 
-        OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(processedText, true, e.Confidence));
+            OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(processedText, true, e.Confidence));
 
-        await SendTextToOutputSinksAsync(processedText);
+            await SendTextToOutputSinksAsync(processedText).ConfigureAwait(false);
+        }, nameof(OnFinalRecognition), new { e.Text, e.Confidence });
     }
 
     private async Task<string> ProcessTextThroughPluginsAsync(string text)
@@ -305,7 +309,7 @@ public class RecognitionSession : IDisposable
             if (CurrentMode == RecognitionMode.SingleUtterance && _utteranceStarted)
             {
                 // End single utterance on silence
-                _ = Task.Run(async () => await StopAsync());
+                AsyncHelper.FireAndForget(() => StopAsync(), "StopAfterSilence");
             }
         }
     }

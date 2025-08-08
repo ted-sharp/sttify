@@ -8,6 +8,7 @@ using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using System.Windows;
 using System.Windows.Interop;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Services;
 
@@ -151,41 +152,38 @@ public class ApplicationService : IDisposable
         return _recognitionSession.CurrentState;
     }
 
-    private async void InitializeHotkeys()
+    private void InitializeHotkeys()
     {
-        try
+        AsyncHelper.FireAndForget(async () =>
         {
-            // Console.WriteLine("ApplicationService: Getting settings for hotkeys...");
-            var settings = await _settingsProvider.GetSettingsAsync();
-            // Console.WriteLine($"ApplicationService: Settings loaded - ToggleUi: {settings.Hotkeys.ToggleUi}, ToggleMic: {settings.Hotkeys.ToggleMic}");
-
-            // Re-register from clean state
-            _hotkeyManager.UnregisterAllHotkeys();
-
-            var uiOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
-            var micOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
-
-            Telemetry.LogEvent("HotkeysRegistered", new {
-                ToggleUi = settings.Hotkeys.ToggleUi,
-                ToggleMic = settings.Hotkeys.ToggleMic,
-                ToggleUiRegistered = uiOk,
-                ToggleMicRegistered = micOk
-            });
-            if (!uiOk || !micOk)
+            try
             {
-                Telemetry.LogWarning("HotkeyRegistrationIssue", $"Some hotkeys failed to register. UI={uiOk}, MIC={micOk}");
-            }
+                var settings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
 
-            // Remember last successfully attempted configuration (regardless of success)
-            _lastHotkeyToggleUi = settings.Hotkeys.ToggleUi;
-            _lastHotkeyToggleMic = settings.Hotkeys.ToggleMic;
-            // Console.WriteLine("ApplicationService: Hotkeys registered successfully");
-        }
-        catch (Exception ex)
-        {
-            // Console.WriteLine($"ApplicationService: Hotkey initialization failed: {ex.Message}");
-            Telemetry.LogError("HotkeyInitializationFailed", ex);
-        }
+                _hotkeyManager.UnregisterAllHotkeys();
+
+                var uiOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
+                var micOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
+
+                Telemetry.LogEvent("HotkeysRegistered", new {
+                    ToggleUi = settings.Hotkeys.ToggleUi,
+                    ToggleMic = settings.Hotkeys.ToggleMic,
+                    ToggleUiRegistered = uiOk,
+                    ToggleMicRegistered = micOk
+                });
+                if (!uiOk || !micOk)
+                {
+                    Telemetry.LogWarning("HotkeyRegistrationIssue", $"Some hotkeys failed to register. UI={uiOk}, MIC={micOk}");
+                }
+
+                _lastHotkeyToggleUi = settings.Hotkeys.ToggleUi;
+                _lastHotkeyToggleMic = settings.Hotkeys.ToggleMic;
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("HotkeyInitializationFailed", ex);
+            }
+        }, nameof(InitializeHotkeys));
     }
 
     public async Task ReinitializeHotkeysAsync()
@@ -239,59 +237,63 @@ public class ApplicationService : IDisposable
         });
     }
 
-    private async void OnTextRecognized(object? sender, TextRecognizedEventArgs e)
+    private void OnTextRecognized(object? sender, TextRecognizedEventArgs e)
     {
         TextRecognized?.Invoke(this, e);
 
-        var settings = await _settingsProvider.GetSettingsAsync();
-
-        if (settings.Rtss.Enabled)
+        AsyncHelper.FireAndForget(async () =>
         {
-            // Update OSD for both partial and final to achieve streaming-like display
-            _rtssService.UpdateOsd(e.Text);
-        }
-
-        Telemetry.LogRecognition(e.Text, e.IsFinal, e.Confidence, settings.Privacy.MaskInLogs);
-    }
-
-    private async void OnHotkeyPressed(object? sender, HotkeyPressedEventArgs e)
-    {
-        try
-        {
-            switch (e.Name)
+            var settings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
+            if (settings.Rtss.Enabled)
             {
-                case "ToggleUi":
-                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        var controlWindow = System.Windows.Application.Current.Windows.OfType<Views.ControlWindow>().FirstOrDefault();
-                        if (controlWindow != null)
-                        {
-                            if (controlWindow.Visibility == Visibility.Visible)
-                                controlWindow.Hide();
-                            else
-                                controlWindow.Show();
-                        }
-                    });
-                    break;
-
-                case "ToggleMic":
-                    if (_recognitionSession.CurrentState == SessionState.Listening)
-                    {
-                        await StopRecognitionAsync();
-                    }
-                    else if (_recognitionSession.CurrentState == SessionState.Idle)
-                    {
-                        await StartRecognitionAsync();
-                    }
-                    break;
+                _rtssService.UpdateOsd(e.Text);
             }
 
-            Telemetry.LogEvent("HotkeyPressed", new { Name = e.Name, Hotkey = e.HotkeyString });
-        }
-        catch (Exception ex)
+            Telemetry.LogRecognition(e.Text, e.IsFinal, e.Confidence, settings.Privacy.MaskInLogs);
+        }, nameof(OnTextRecognized), new { e.Text, e.IsFinal });
+    }
+
+    private void OnHotkeyPressed(object? sender, HotkeyPressedEventArgs e)
+    {
+        AsyncHelper.FireAndForget(async () =>
         {
-            Telemetry.LogError("HotkeyProcessingFailed", ex, new { Name = e.Name });
-        }
+            try
+            {
+                switch (e.Name)
+                {
+                    case "ToggleUi":
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            var controlWindow = System.Windows.Application.Current.Windows.OfType<Views.ControlWindow>().FirstOrDefault();
+                            if (controlWindow != null)
+                            {
+                                if (controlWindow.Visibility == Visibility.Visible)
+                                    controlWindow.Hide();
+                                else
+                                    controlWindow.Show();
+                            }
+                        });
+                        break;
+
+                    case "ToggleMic":
+                        if (_recognitionSession.CurrentState == SessionState.Listening)
+                        {
+                            await StopRecognitionAsync().ConfigureAwait(false);
+                        }
+                        else if (_recognitionSession.CurrentState == SessionState.Idle)
+                        {
+                            await StartRecognitionAsync().ConfigureAwait(false);
+                        }
+                        break;
+                }
+
+                Telemetry.LogEvent("HotkeyPressed", new { Name = e.Name, Hotkey = e.HotkeyString });
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("HotkeyProcessingFailed", ex, new { Name = e.Name });
+            }
+        }, nameof(OnHotkeyPressed), new { e.Name, e.HotkeyString });
     }
 
     private void SetupHealthChecks()
