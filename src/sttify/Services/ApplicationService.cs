@@ -7,6 +7,7 @@ using Sttify.Corelib.Output;
 using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using System.Windows;
+using System.Windows.Interop;
 
 namespace Sttify.Services;
 
@@ -62,6 +63,9 @@ public class ApplicationService : IDisposable
             InitializeRtss();
             // Console.WriteLine("ApplicationService: RTSS initialized");
 
+            // Hook WM_HOTKEY for global hotkeys when no explicit window handle is used
+            RegisterHotkeyMessageHook();
+
             Telemetry.LogEvent("ApplicationServiceInitialized");
             // Console.WriteLine("ApplicationService: Initialization completed successfully");
         }
@@ -71,6 +75,26 @@ public class ApplicationService : IDisposable
             // Console.WriteLine($"Stack trace: {ex.StackTrace}");
             Telemetry.LogError("ApplicationServiceInitializationFailed", ex);
             throw;
+        }
+    }
+
+    private void RegisterHotkeyMessageHook()
+    {
+        try
+        {
+            ComponentDispatcher.ThreadPreprocessMessage += (ref MSG msg, ref bool handled) =>
+            {
+                // WM_HOTKEY = 0x0312
+                if (msg.message == 0x0312)
+                {
+                    _hotkeyManager.ProcessWindowMessage(msg.hwnd, (int)msg.message, msg.wParam, msg.lParam);
+                }
+            };
+            Telemetry.LogEvent("HotkeyMessageHookRegistered");
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("HotkeyMessageHookRegisterFailed", ex);
         }
     }
 
@@ -132,15 +156,22 @@ public class ApplicationService : IDisposable
             var settings = await _settingsProvider.GetSettingsAsync();
             // Console.WriteLine($"ApplicationService: Settings loaded - ToggleUi: {settings.Hotkeys.ToggleUi}, ToggleMic: {settings.Hotkeys.ToggleMic}");
 
-            // Console.WriteLine("ApplicationService: Registering ToggleUi hotkey...");
-            _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
-            // Console.WriteLine("ApplicationService: Registering ToggleMic hotkey...");
-            _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
+            // Re-register from clean state
+            _hotkeyManager.UnregisterAllHotkeys();
+
+            var uiOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
+            var micOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
 
             Telemetry.LogEvent("HotkeysRegistered", new {
                 ToggleUi = settings.Hotkeys.ToggleUi,
-                ToggleMic = settings.Hotkeys.ToggleMic
+                ToggleMic = settings.Hotkeys.ToggleMic,
+                ToggleUiRegistered = uiOk,
+                ToggleMicRegistered = micOk
             });
+            if (!uiOk || !micOk)
+            {
+                Telemetry.LogWarning("HotkeyRegistrationIssue", $"Some hotkeys failed to register. UI={uiOk}, MIC={micOk}");
+            }
             // Console.WriteLine("ApplicationService: Hotkeys registered successfully");
         }
         catch (Exception ex)
@@ -148,6 +179,12 @@ public class ApplicationService : IDisposable
             // Console.WriteLine($"ApplicationService: Hotkey initialization failed: {ex.Message}");
             Telemetry.LogError("HotkeyInitializationFailed", ex);
         }
+    }
+
+    public async Task ReinitializeHotkeysAsync()
+    {
+        InitializeHotkeys();
+        await Task.CompletedTask;
     }
 
     private void InitializeRtss()

@@ -23,9 +23,9 @@ public class SettingsProvider
         var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var sttifyDir = Path.Combine(appDataPath, "sttify");
         Directory.CreateDirectory(sttifyDir);
-        
+
         _configPath = Path.Combine(sttifyDir, "config.json");
-        
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -33,7 +33,7 @@ public class SettingsProvider
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
         };
-        
+
         SetupFileWatcher();
     }
 
@@ -46,36 +46,36 @@ public class SettingsProvider
                 return _cachedSettings;
             }
         }
-        
+
         var settings = await LoadSettingsAsync();
-        
+
         lock (_lockObject)
         {
             _cachedSettings = settings;
             _configChanged = false;
             _lastModified = File.Exists(_configPath) ? File.GetLastWriteTime(_configPath) : DateTime.MinValue;
         }
-        
+
         return settings;
     }
 
     public async Task SaveSettingsAsync(SttifySettings settings)
     {
         var json = JsonSerializer.Serialize(settings, _jsonOptions);
-        
+
         var backupPath = Path.ChangeExtension(_configPath, ".backup.json");
         if (File.Exists(_configPath))
         {
             File.Copy(_configPath, backupPath, true);
         }
-        
+
         // Temporarily disable file watcher to avoid triggering change event for our own write
         _fileWatcher?.Dispose();
-        
+
         try
         {
             await File.WriteAllTextAsync(_configPath, json);
-            
+
             lock (_lockObject)
             {
                 _cachedSettings = settings;
@@ -102,29 +102,29 @@ public class SettingsProvider
         {
             var json = await File.ReadAllTextAsync(_configPath);
             var settings = JsonSerializer.Deserialize<SttifySettings>(json, _jsonOptions);
-            
+
             if (settings == null)
             {
-                Telemetry.LogError("SettingsDeserializationFailed", 
+                Telemetry.LogError("SettingsDeserializationFailed",
                     new InvalidOperationException("Settings deserialization returned null"),
                     new { ConfigPath = _configPath });
                 return CreateDefaultSettings();
             }
-            
+
             return settings;
         }
         catch (JsonException ex)
         {
-            Telemetry.LogError("SettingsJsonParsingFailed", ex, 
+            Telemetry.LogError("SettingsJsonParsingFailed", ex,
                 new { ConfigPath = _configPath });
-            
+
             // Try to backup corrupted file and create new defaults
             await BackupCorruptedConfigAsync();
             return CreateDefaultSettings();
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("SettingsLoadFailed", ex, 
+            Telemetry.LogError("SettingsLoadFailed", ex,
                 new { ConfigPath = _configPath });
             return CreateDefaultSettings();
         }
@@ -136,7 +136,7 @@ public class SettingsProvider
         {
             var directory = Path.GetDirectoryName(_configPath);
             var fileName = Path.GetFileName(_configPath);
-            
+
             if (directory != null && Directory.Exists(directory))
             {
                 _fileWatcher = new FileSystemWatcher(directory, fileName)
@@ -144,7 +144,7 @@ public class SettingsProvider
                     NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
                     EnableRaisingEvents = true
                 };
-                
+
                 _fileWatcher.Changed += OnConfigFileChanged;
                 _fileWatcher.Created += OnConfigFileChanged;
             }
@@ -154,14 +154,14 @@ public class SettingsProvider
             Telemetry.LogError("FileWatcherSetupFailed", ex, new { ConfigPath = _configPath });
         }
     }
-    
+
     private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
     {
         lock (_lockObject)
         {
             _configChanged = true;
         }
-        
+
         Telemetry.LogEvent("ConfigFileChanged", new { Path = e.FullPath, ChangeType = e.ChangeType.ToString() });
     }
 
@@ -234,7 +234,7 @@ public class SettingsProvider
             Hotkeys = new HotkeySettings
             {
                 ToggleUi = "Win+Alt+H",
-                ToggleMic = "Win+Alt+M",
+                ToggleMic = "Alt+Win+N",
                 TestSendInput = "Win+Shift+F1",
                 TestExternalProcess = "Win+Shift+F2",
                 TestImeControl = "Win+Shift+F4"
@@ -254,9 +254,9 @@ public class SettingsProvider
             {
                 var backupPath = $"{_configPath}.corrupted.{DateTime.UtcNow:yyyyMMdd-HHmmss}.bak";
                 await File.WriteAllTextAsync(backupPath, await File.ReadAllTextAsync(_configPath));
-                
-                Telemetry.LogEvent("CorruptedConfigBackedUp", new 
-                { 
+
+                Telemetry.LogEvent("CorruptedConfigBackedUp", new
+                {
                     OriginalPath = _configPath,
                     BackupPath = backupPath
                 });
@@ -267,7 +267,7 @@ public class SettingsProvider
             Telemetry.LogError("ConfigBackupFailed", ex, new { ConfigPath = _configPath });
         }
     }
-    
+
     /// <summary>
     /// Gets the first available Vosk model path from installed models, or empty string if none found
     /// </summary>
@@ -277,16 +277,16 @@ public class SettingsProvider
         {
             var modelsDirectory = VoskModelManager.GetDefaultModelsDirectory();
             var installedModels = VoskModelManager.GetInstalledModels(modelsDirectory);
-            
+
             if (installedModels.Length > 0)
             {
                 // Prefer recommended models first, then any available model
                 var availableModels = VoskModelManager.AvailableModels;
                 var recommendedModel = installedModels.FirstOrDefault(installed =>
-                    availableModels.Any(available => 
-                        available.IsRecommended && 
+                    availableModels.Any(available =>
+                        available.IsRecommended &&
                         installed.EndsWith(available.Name, StringComparison.OrdinalIgnoreCase)));
-                
+
                 return recommendedModel ?? installedModels[0];
             }
         }
@@ -294,10 +294,10 @@ public class SettingsProvider
         {
             Telemetry.LogError("GetFirstAvailableModelPathFailed", ex);
         }
-        
+
         return ""; // Return empty string if no models found
     }
-    
+
     /// <summary>
     /// Synchronously gets the current settings, primarily for DI container initialization
     /// </summary>
@@ -325,7 +325,7 @@ public class SettingsProvider
             return CreateDefaultSettings();
         }
     }
-    
+
     public void Dispose()
     {
         _fileWatcher?.Dispose();
@@ -464,7 +464,7 @@ public class RtssSettings
 public class HotkeySettings
 {
     public string ToggleUi { get; set; } = "Win+Alt+H";
-    public string ToggleMic { get; set; } = "Win+Alt+M";
+    public string ToggleMic { get; set; } = "Alt+Win+N";
     public string PushToTalk { get; set; } = "Ctrl+Space";
     public string EmergencyStop { get; set; } = "Ctrl+Alt+X";
     public string TestSendInput { get; set; } = "Win+Shift+F1";
