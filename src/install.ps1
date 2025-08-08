@@ -1,5 +1,5 @@
 # Sttify Installation Script
-# Installs Sttify application and registers TSF TIP
+# Installs Sttify application
 
 param(
     [Parameter(Mandatory=$false)]
