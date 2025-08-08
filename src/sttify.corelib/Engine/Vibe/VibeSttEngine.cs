@@ -30,14 +30,14 @@ public class VibeSttEngine : ISttEngine, IDisposable
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _httpClient = new HttpClient();
         _httpClient.Timeout = TimeSpan.FromSeconds(_settings.TimeoutSeconds);
-        
+
         if (!string.IsNullOrEmpty(_settings.ApiKey))
         {
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.ApiKey}");
         }
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
+    public Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_isRunning)
             throw new InvalidOperationException("Vibe engine is already running");
@@ -56,7 +56,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
             }
 
             _processingTask = Task.Run(() => ProcessAudioLoop(_processingCancellation.Token), cancellationToken);
-            
+
             Telemetry.LogEvent("VibeEngineStarted", new
             {
                 Endpoint = _settings.Endpoint,
@@ -70,6 +70,8 @@ public class VibeSttEngine : ISttEngine, IDisposable
             OnError?.Invoke(this, new SttErrorEventArgs(ex, $"Failed to start Vibe engine: {ex.Message}"));
             throw;
         }
+
+        return Task.CompletedTask;
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
@@ -124,7 +126,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
         lock (_audioQueue)
         {
             _audioQueue.Enqueue(buffer);
-            
+
             // Prevent queue from growing too large
             while (_audioQueue.Count > 30) // Smaller queue for API-based processing
             {
@@ -136,13 +138,13 @@ public class VibeSttEngine : ISttEngine, IDisposable
     private async Task ProcessAudioLoop(CancellationToken cancellationToken)
     {
         var lastProcessTime = DateTime.UtcNow;
-        
+
         try
         {
             while (!cancellationToken.IsCancellationRequested && _isRunning)
             {
                 byte[]? audioChunk = null;
-                
+
                 lock (_audioQueue)
                 {
                     if (_audioQueue.Count > 0)
@@ -158,8 +160,8 @@ public class VibeSttEngine : ISttEngine, IDisposable
 
                 // Process accumulated audio every few seconds or when buffer is large enough
                 var timeSinceLastProcess = DateTime.UtcNow - lastProcessTime;
-                var shouldProcess = _audioBuffer.Length > 0 && 
-                    (timeSinceLastProcess.TotalSeconds >= _settings.ProcessingIntervalSeconds || 
+                var shouldProcess = _audioBuffer.Length > 0 &&
+                    (timeSinceLastProcess.TotalSeconds >= _settings.ProcessingIntervalSeconds ||
                      _audioBuffer.Length > _settings.MaxBufferSize);
 
                 if (shouldProcess)
@@ -168,12 +170,12 @@ public class VibeSttEngine : ISttEngine, IDisposable
                     {
                         var audioBytes = _audioBuffer.ToArray();
                         var result = await TranscribeAudioAsync(audioBytes, cancellationToken);
-                        
+
                         if (!string.IsNullOrEmpty(result.Text))
                         {
                             ProcessVibeResult(result);
                         }
-                        
+
                         _audioBuffer.SetLength(0);
                         lastProcessTime = DateTime.UtcNow;
                     }
@@ -181,7 +183,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
                     {
                         Telemetry.LogError("VibeAudioProcessingError", ex);
                         OnError?.Invoke(this, new SttErrorEventArgs(ex, "Error processing audio with Vibe"));
-                        
+
                         // Clear buffer on error to prevent infinite retry
                         _audioBuffer.SetLength(0);
                     }
@@ -206,12 +208,12 @@ public class VibeSttEngine : ISttEngine, IDisposable
         {
             // Vibe expects JSON with file path, so we need to save audio to temp file
             var tempAudioFile = Path.Combine(Path.GetTempPath(), $"sttify_audio_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.wav");
-            
+
             try
             {
                 // Save audio data to temporary WAV file
                 await File.WriteAllBytesAsync(tempAudioFile, CreateWavFile(audioData), cancellationToken);
-                
+
                 // Create JSON request matching Vibe API
                 var requestBody = new
                 {
@@ -232,7 +234,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
 
                 var jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
                 System.Diagnostics.Debug.WriteLine($"*** Vibe response: {jsonResponse} ***");
-                
+
                 var result = JsonSerializer.Deserialize<VibeApiResponse>(jsonResponse, new JsonSerializerOptions
                 {
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -279,7 +281,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
 
         var audioBytes = _audioBuffer.ToArray();
         var result = await TranscribeAudioAsync(audioBytes, CancellationToken.None);
-        
+
         if (!string.IsNullOrEmpty(result.Text))
         {
             ProcessVibeResult(result, true);
@@ -328,7 +330,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
 
         // Basic post-processing
         text = text.Trim();
-        
+
         // Capitalize first letter if enabled
         if (_settings.AutoCapitalize && text.Length > 0)
         {
@@ -350,7 +352,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
         {
             var endpoint = $"{_settings.Endpoint.TrimEnd('/')}/health";
             var response = await _httpClient.GetAsync(endpoint, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 throw new HttpRequestException($"Vibe service is not available. Status: {response.StatusCode}");
@@ -365,7 +367,7 @@ public class VibeSttEngine : ISttEngine, IDisposable
             throw new InvalidOperationException($"Failed to connect to Vibe service: {ex.Message}", ex);
         }
     }
-    
+
     /// <summary>
     /// Creates a simple WAV file from raw PCM audio data
     /// </summary>
@@ -373,12 +375,12 @@ public class VibeSttEngine : ISttEngine, IDisposable
     {
         using var wavStream = new MemoryStream();
         using var writer = new BinaryWriter(wavStream);
-        
+
         // WAV Header
         writer.Write(Encoding.ASCII.GetBytes("RIFF"));
         writer.Write(36 + pcmData.Length); // File size - 8 bytes
         writer.Write(Encoding.ASCII.GetBytes("WAVE"));
-        
+
         // Format chunk
         writer.Write(Encoding.ASCII.GetBytes("fmt "));
         writer.Write(16); // Format chunk size
@@ -388,12 +390,12 @@ public class VibeSttEngine : ISttEngine, IDisposable
         writer.Write(sampleRate * channels * bitsPerSample / 8); // Byte rate
         writer.Write((short)(channels * bitsPerSample / 8)); // Block align
         writer.Write(bitsPerSample);
-        
+
         // Data chunk
         writer.Write(Encoding.ASCII.GetBytes("data"));
         writer.Write(pcmData.Length);
         writer.Write(pcmData);
-        
+
         return wavStream.ToArray();
     }
 

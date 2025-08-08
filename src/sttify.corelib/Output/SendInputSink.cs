@@ -24,19 +24,19 @@ public class SendInputSink : ITextOutputSink
         _imeController = new ImeController(_settings.Ime);
     }
 
-    public async Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
+    public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
-            return false;
+            return Task.FromResult(false);
 
         // Check if IME is currently composing and we should skip
         if (_settings.Ime.SkipWhenImeComposing && _imeController.IsImeComposing())
         {
             Telemetry.LogEvent("SendInputSkippedDueToImeComposition");
-            return false;
+            return Task.FromResult(false);
         }
 
-        return true;
+        return Task.FromResult(true);
     }
 
     public async Task SendAsync(string text, CancellationToken cancellationToken = default)
@@ -52,18 +52,19 @@ public class SendInputSink : ITextOutputSink
             System.Diagnostics.Debug.WriteLine("*** SendInputSink: Cannot send - skipping ***");
             return;
         }
-        
+
         // Debug: Check structure sizes
         int inputSize = Marshal.SizeOf<INPUT>();
         int expectedSize = IntPtr.Size == 8 ? 40 : 28; // x64 vs x86
         System.Diagnostics.Debug.WriteLine($"*** INPUT structure size: {inputSize} bytes (expected: {expectedSize}) ***");
-        
+
         // Check if we're running elevated and target app privileges
-        bool isElevated = IsProcessElevated();
-        IntPtr targetWindow = GetForegroundWindow();
+        // This code path runs only on Windows. Mark as Windows-specific to satisfy CA1416 when cross-targeting.
+        bool isElevated = OperatingSystem.IsWindows() && IsProcessElevated();
+        IntPtr targetWindow = OperatingSystem.IsWindows() ? GetForegroundWindow() : IntPtr.Zero;
         bool targetElevated = IsWindowElevated(targetWindow);
         System.Diagnostics.Debug.WriteLine($"*** Sttify elevated: {isElevated}, Target window elevated: {targetElevated} ***");
-        
+
         // Get target window information
         if (targetWindow != IntPtr.Zero)
         {
@@ -73,13 +74,13 @@ public class SendInputSink : ITextOutputSink
             GetClassName(targetWindow, className, className.Capacity);
             System.Diagnostics.Debug.WriteLine($"*** Target window: '{windowTitle}' (class: '{className}', handle: {targetWindow}) ***");
         }
-        
+
         // UIPI Issue Detection
-        if (isElevated && !targetElevated)
+        if (OperatingSystem.IsWindows() && isElevated && !targetElevated)
         {
             System.Diagnostics.Debug.WriteLine("*** UIPI BLOCKING: Elevated process cannot send input to non-elevated process ***");
             System.Diagnostics.Debug.WriteLine("*** Trying ChangeWindowMessageFilter to bypass UIPI ***");
-            
+
             // Try to bypass UIPI by allowing specific messages
             ChangeWindowMessageFilter(0x0100, 1); // WM_KEYDOWN
             ChangeWindowMessageFilter(0x0101, 1); // WM_KEYUP
@@ -90,7 +91,7 @@ public class SendInputSink : ITextOutputSink
             ChangeWindowMessageFilter(0x0106, 1); // WM_SYSCHAR
             ChangeWindowMessageFilter(0x0302, 1); // WM_PASTE
         }
-        
+
         // Suppress IME before sending text to prevent conflicts
         IDisposable? imeRestorer = null;
         try
@@ -99,7 +100,7 @@ public class SendInputSink : ITextOutputSink
             {
                 imeRestorer = _imeController.SuppressImeTemporarily();
                 System.Diagnostics.Debug.WriteLine("*** IME suppression activated ***");
-                
+
                 // Add small delay to ensure IME state change takes effect
                 if (_settings.Ime.RestoreDelayMs > 0)
                 {
@@ -109,7 +110,7 @@ public class SendInputSink : ITextOutputSink
 
             // Try direct SendInput first
             bool success = await SendTextViaInputAsync(text, cancellationToken);
-        
+
             // If SendInput fails, try alternative methods
             if (!success)
             {
@@ -125,7 +126,7 @@ public class SendInputSink : ITextOutputSink
                         success = true;
                     }
                 }
-                
+
                 if (!success)
                 {
                     System.Diagnostics.Debug.WriteLine("*** SendInput failed, trying Win32 clipboard fallback ***");
@@ -142,12 +143,12 @@ public class SendInputSink : ITextOutputSink
                 {
                     await Task.Delay(_settings.Ime.RestoreDelayMs, cancellationToken);
                 }
-                
+
                 imeRestorer.Dispose();
                 System.Diagnostics.Debug.WriteLine("*** IME state restored ***");
             }
         }
-        
+
         System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Completed sending '{text}' ***");
     }
 
@@ -178,7 +179,7 @@ public class SendInputSink : ITextOutputSink
                     }
                 }
             };
-            
+
             inputs.Add(unicodeInput);
 
             // Send character immediately for better responsiveness
@@ -203,7 +204,7 @@ public class SendInputSink : ITextOutputSink
                     anySuccess = true;
                 }
                 inputs.Clear();
-                
+
                 if (delayMs > 0)
                 {
                     await Task.Delay(delayMs, cancellationToken);
@@ -239,20 +240,20 @@ public class SendInputSink : ITextOutputSink
         {
             // Use Win32 clipboard APIs directly
             bool clipboardSet = SetClipboardText(text);
-            
+
             if (clipboardSet)
             {
                 System.Diagnostics.Debug.WriteLine("*** Win32 clipboard set successfully ***");
-                
+
                 // Check active window before sending Ctrl+V
                 IntPtr activeWindow = GetForegroundWindow();
                 System.Diagnostics.Debug.WriteLine($"*** Active window handle: {activeWindow} ***");
-                
+
                 // Try alternative: Send VK_INSERT with Shift (Shift+Insert = Paste)
                 System.Diagnostics.Debug.WriteLine("*** Trying Shift+Insert (alternative paste) ***");
                 var shiftDown = CreateKeyInput(0x10, false);  // Shift down
                 var insertDown = CreateKeyInput(0x2D, false); // Insert down
-                var insertUp = CreateKeyInput(0x2D, true);    // Insert up  
+                var insertUp = CreateKeyInput(0x2D, true);    // Insert up
                 var shiftUp = CreateKeyInput(0x10, true);     // Shift up
 
                 uint sr1 = SendInput(1, new[] { shiftDown }, Marshal.SizeOf<INPUT>());
@@ -262,21 +263,21 @@ public class SendInputSink : ITextOutputSink
                 uint sr3 = SendInput(1, new[] { insertUp }, Marshal.SizeOf<INPUT>());
                 await Task.Delay(10, cancellationToken);
                 uint sr4 = SendInput(1, new[] { shiftUp }, Marshal.SizeOf<INPUT>());
-                
+
                 System.Diagnostics.Debug.WriteLine($"*** Shift+Insert results: Shift={sr1}, Insert_down={sr2}, Insert_up={sr3}, Shift_up={sr4} ***");
-                
+
                 await Task.Delay(100, cancellationToken);
-                
+
                 // Also try Ctrl+V as backup
                 System.Diagnostics.Debug.WriteLine("*** Also trying Ctrl+V ***");
                 var ctrlDown = CreateKeyInput(0x11, false); // Ctrl down
-                var vDown = CreateKeyInput(0x56, false);     // V down  
+                var vDown = CreateKeyInput(0x56, false);     // V down
                 var vUp = CreateKeyInput(0x56, true);        // V up
                 var ctrlUp = CreateKeyInput(0x11, true);     // Ctrl up
 
                 uint result1 = SendInput(1, new[] { ctrlDown }, Marshal.SizeOf<INPUT>());
                 await Task.Delay(10, cancellationToken);
-                uint result2 = SendInput(1, new[] { vDown }, Marshal.SizeOf<INPUT>()); 
+                uint result2 = SendInput(1, new[] { vDown }, Marshal.SizeOf<INPUT>());
                 await Task.Delay(10, cancellationToken);
                 uint result3 = SendInput(1, new[] { vUp }, Marshal.SizeOf<INPUT>());
                 await Task.Delay(10, cancellationToken);
@@ -285,7 +286,7 @@ public class SendInputSink : ITextOutputSink
                 System.Diagnostics.Debug.WriteLine($"*** Ctrl+V results: Ctrl={result1}, V_down={result2}, V_up={result3}, Ctrl_up={result4} ***");
 
                 await Task.Delay(100, cancellationToken);
-                
+
                 // Final attempt: Send WM_PASTE message directly to active window
                 System.Diagnostics.Debug.WriteLine("*** Trying direct WM_PASTE message ***");
                 IntPtr currentWindow = GetForegroundWindow();
@@ -361,7 +362,7 @@ public class SendInputSink : ITextOutputSink
 
                 const int WM_CHAR = 0x0102;
                 IntPtr result = SendMessage(targetWindow, WM_CHAR, new IntPtr(c), IntPtr.Zero);
-                
+
                 if (result != IntPtr.Zero)
                 {
                     System.Diagnostics.Debug.WriteLine($"*** WM_CHAR SUCCESS for '{c}': result={result} ***");
@@ -385,13 +386,14 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
-    private static bool IsProcessElevated()
+        private static bool IsProcessElevated()
     {
         try
         {
-            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-            var principal = new System.Security.Principal.WindowsPrincipal(identity);
-            return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+                if (!OperatingSystem.IsWindows()) return false;
+                using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+                var principal = new System.Security.Principal.WindowsPrincipal(identity);
+                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
         }
         catch
         {
@@ -399,10 +401,11 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
-    private static bool IsWindowElevated(IntPtr windowHandle)
+        private static bool IsWindowElevated(IntPtr windowHandle)
     {
         try
         {
+                if (!OperatingSystem.IsWindows()) return false;
             GetWindowThreadProcessId(windowHandle, out uint processId);
             IntPtr processHandle = OpenProcess(0x1000, false, processId); // PROCESS_QUERY_LIMITED_INFORMATION
             if (processHandle == IntPtr.Zero)
@@ -417,10 +420,10 @@ public class SendInputSink : ITextOutputSink
 
             const int TokenElevationType = 18;
             bool elevated = GetTokenInformation(tokenHandle, TokenElevationType, IntPtr.Zero, 0, out uint returnLength);
-            
+
             CloseHandle(tokenHandle);
             CloseHandle(processHandle);
-            
+
             return elevated;
         }
         catch

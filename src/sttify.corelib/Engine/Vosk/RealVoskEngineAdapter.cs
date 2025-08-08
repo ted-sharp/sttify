@@ -76,12 +76,12 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         }
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken = default)
+    public Task StopAsync(CancellationToken cancellationToken = default)
     {
         lock (_lockObject)
         {
             if (!_isRunning)
-                return;
+                return Task.CompletedTask;
 
             _isRunning = false;
         }
@@ -93,6 +93,8 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         ForceFinalizeRecognition();
 
         Telemetry.LogEvent("VoskEngineStopped");
+
+        return Task.CompletedTask;
     }
 
     public void PushAudio(ReadOnlySpan<byte> audioData)
@@ -214,7 +216,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         return Math.Sqrt(sum / sampleCount) / 32768.0; // Normalize to 0.0-1.0 range
     }
 
-    private async void OnSilenceDetected(object? sender, System.Timers.ElapsedEventArgs e)
+    private void OnSilenceDetected(object? sender, System.Timers.ElapsedEventArgs e)
     {
         if (!_isRunning)
             return;
