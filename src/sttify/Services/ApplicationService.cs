@@ -40,10 +40,10 @@ public class ApplicationService : IDisposable
         _recognitionSession.OnStateChanged += OnSessionStateChanged;
         _recognitionSession.OnTextRecognized += OnTextRecognized;
         _hotkeyManager.OnHotkeyPressed += OnHotkeyPressed;
-        
+
         _errorRecovery.OnRecoveryFailed += OnRecoveryFailed;
         _healthMonitor.OnHealthStatusChanged += OnHealthStatusChanged;
-        
+
         SetupHealthChecks();
     }
 
@@ -53,15 +53,15 @@ public class ApplicationService : IDisposable
         {
             // Console.WriteLine("ApplicationService: Starting initialization...");
             Telemetry.LogEvent("ApplicationServiceInitializing");
-            
+
             // Console.WriteLine("ApplicationService: Initializing hotkeys...");
             InitializeHotkeys();
             // Console.WriteLine("ApplicationService: Hotkeys initialized");
-            
+
             // Console.WriteLine("ApplicationService: Initializing RTSS...");
             InitializeRtss();
             // Console.WriteLine("ApplicationService: RTSS initialized");
-            
+
             Telemetry.LogEvent("ApplicationServiceInitialized");
             // Console.WriteLine("ApplicationService: Initialization completed successfully");
         }
@@ -79,7 +79,7 @@ public class ApplicationService : IDisposable
         System.Diagnostics.Debug.WriteLine("*** ApplicationService.StartRecognitionAsync CALLED - VERSION 2024-DEBUG ***");
         System.Diagnostics.Debug.WriteLine($"*** RecognitionSession Instance ID: {_recognitionSession.GetHashCode()} ***");
         Telemetry.LogEvent("ApplicationService_StartRecognitionRequested");
-        
+
         try
         {
             await _errorRecovery.ExecuteWithRetryAsync(async () =>
@@ -131,13 +131,13 @@ public class ApplicationService : IDisposable
             // Console.WriteLine("ApplicationService: Getting settings for hotkeys...");
             var settings = await _settingsProvider.GetSettingsAsync();
             // Console.WriteLine($"ApplicationService: Settings loaded - ToggleUi: {settings.Hotkeys.ToggleUi}, ToggleMic: {settings.Hotkeys.ToggleMic}");
-            
+
             // Console.WriteLine("ApplicationService: Registering ToggleUi hotkey...");
             _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
             // Console.WriteLine("ApplicationService: Registering ToggleMic hotkey...");
             _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
-            
-            Telemetry.LogEvent("HotkeysRegistered", new { 
+
+            Telemetry.LogEvent("HotkeysRegistered", new {
                 ToggleUi = settings.Hotkeys.ToggleUi,
                 ToggleMic = settings.Hotkeys.ToggleMic
             });
@@ -169,7 +169,7 @@ public class ApplicationService : IDisposable
     private void OnSessionStateChanged(object? sender, SessionStateChangedEventArgs e)
     {
         SessionStateChanged?.Invoke(this, e);
-        
+
         Telemetry.LogEvent("SessionStateChanged", new {
             OldState = e.OldState.ToString(),
             NewState = e.NewState.ToString()
@@ -179,14 +179,15 @@ public class ApplicationService : IDisposable
     private async void OnTextRecognized(object? sender, TextRecognizedEventArgs e)
     {
         TextRecognized?.Invoke(this, e);
-        
+
         var settings = await _settingsProvider.GetSettingsAsync();
-        
-        if (settings.Rtss.Enabled && e.IsFinal)
+
+        if (settings.Rtss.Enabled)
         {
+            // Update OSD for both partial and final to achieve streaming-like display
             _rtssService.UpdateOsd(e.Text);
         }
-        
+
         Telemetry.LogRecognition(e.Text, e.IsFinal, e.Confidence, settings.Privacy.MaskInLogs);
     }
 
@@ -221,7 +222,7 @@ public class ApplicationService : IDisposable
                     }
                     break;
             }
-            
+
             Telemetry.LogEvent("HotkeyPressed", new { Name = e.Name, Hotkey = e.HotkeyString });
         }
         catch (Exception ex)
@@ -240,7 +241,7 @@ public class ApplicationService : IDisposable
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy("Recognition session is in error state"));
             }
-            
+
             return Task.FromResult(HealthCheckResult.Healthy($"Recognition session state: {state}"));
         });
 
@@ -254,7 +255,7 @@ public class ApplicationService : IDisposable
                 {
                     return HealthCheckResult.Degraded("Vosk model path not configured");
                 }
-                
+
                 return HealthCheckResult.Healthy("Settings loaded successfully");
             }
             catch (Exception ex)
@@ -306,7 +307,7 @@ public class ApplicationService : IDisposable
         if (!e.IsHealthy)
         {
             var unhealthyChecks = e.Results.Where(r => r.Value.Status != HealthStatus.Healthy);
-            var message = "Application health degraded:\n" + 
+            var message = "Application health degraded:\n" +
                          string.Join("\n", unhealthyChecks.Select(c => $"- {c.Key}: {c.Value.Description}"));
 
             Telemetry.LogWarning("ApplicationHealthDegraded", message);
