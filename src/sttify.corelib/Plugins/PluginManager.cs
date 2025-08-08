@@ -13,6 +13,7 @@ public class PluginManager : IDisposable
     private readonly string _pluginsDirectory;
     private readonly IServiceProvider _serviceProvider;
     private readonly object _lockObject = new();
+    private readonly PluginSecurity _pluginSecurity = new();
 
     public event EventHandler<PluginEventArgs>? OnPluginLoaded;
     public event EventHandler<PluginEventArgs>? OnPluginUnloaded;
@@ -22,7 +23,7 @@ public class PluginManager : IDisposable
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _pluginsDirectory = pluginsDirectory ?? GetDefaultPluginsDirectory();
-        
+
         Directory.CreateDirectory(_pluginsDirectory);
     }
 
@@ -31,15 +32,15 @@ public class PluginManager : IDisposable
         try
         {
             var pluginDirs = Directory.GetDirectories(_pluginsDirectory);
-            
+
             foreach (var pluginDir in pluginDirs)
             {
                 await LoadPluginFromDirectoryAsync(pluginDir);
             }
 
-            Telemetry.LogEvent("AllPluginsLoaded", new { 
+            Telemetry.LogEvent("AllPluginsLoaded", new {
                 PluginsDirectory = _pluginsDirectory,
-                LoadedCount = _loadedPlugins.Count 
+                LoadedCount = _loadedPlugins.Count
             });
         }
         catch (Exception ex)
@@ -62,7 +63,7 @@ public class PluginManager : IDisposable
 
             var manifestJson = await File.ReadAllTextAsync(manifestPath);
             var metadata = JsonSerializer.Deserialize<PluginMetadata>(manifestJson);
-            
+
             if (metadata == null)
             {
                 Telemetry.LogWarning("PluginManifestInvalid", $"Invalid manifest in {pluginDirectory}");
@@ -82,10 +83,39 @@ public class PluginManager : IDisposable
                 return false;
             }
 
+            // Security validation before loading
+            try
+            {
+                var discovery = new PluginDiscoveryInfo
+                {
+                    Directory = pluginDirectory,
+                    DirectoryName = Path.GetFileName(pluginDirectory),
+                    ManifestPath = manifestPath,
+                    AssemblyPath = assemblyPath,
+                    Metadata = metadata
+                };
+
+                var validation = await _pluginSecurity.ValidatePluginAsync(discovery);
+                if (!validation.IsAllowed)
+                {
+                    Telemetry.LogWarning(
+                        "PluginSecurityValidationFailed",
+                        $"Plugin '{metadata.Name}' rejected by security policy",
+                        new { Plugin = metadata.Name, Issues = validation.SecurityIssues.ToArray(), Threat = validation.ThreatLevel.ToString() }
+                    );
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("PluginSecurityValidationException", ex, new { Plugin = metadata.Name });
+                return false;
+            }
+
             // Create isolated load context for the plugin
             var loadContext = new AssemblyLoadContext($"Plugin_{metadata.Name}", isCollectible: true);
             var assembly = loadContext.LoadFromAssemblyPath(assemblyPath);
-            
+
             var pluginType = assembly.GetType(metadata.MainClass);
             if (pluginType == null)
             {
@@ -105,7 +135,7 @@ public class PluginManager : IDisposable
             // Create plugin context
             var pluginDataDir = Path.Combine(_pluginsDirectory, ".data", metadata.Name);
             Directory.CreateDirectory(pluginDataDir);
-            
+
             var context = new PluginContext(_serviceProvider, pluginDataDir, metadata.Name);
 
             // Initialize the plugin
@@ -119,8 +149,8 @@ public class PluginManager : IDisposable
             }
 
             OnPluginLoaded?.Invoke(this, new PluginEventArgs(metadata.Name, plugin));
-            
-            Telemetry.LogEvent("PluginLoaded", new { 
+
+            Telemetry.LogEvent("PluginLoaded", new {
                 Name = metadata.Name,
                 Version = metadata.Version,
                 Capabilities = metadata.Capabilities.ToString()
@@ -160,9 +190,9 @@ public class PluginManager : IDisposable
             }
 
             OnPluginUnloaded?.Invoke(this, new PluginEventArgs(pluginName, plugin));
-            
+
             Telemetry.LogEvent("PluginUnloaded", new { Name = pluginName });
-            
+
             return true;
         }
         catch (Exception ex)
@@ -208,7 +238,7 @@ public class PluginManager : IDisposable
     public async Task StartAllPluginsAsync()
     {
         var plugins = _loadedPlugins.Values.ToArray();
-        
+
         foreach (var plugin in plugins)
         {
             try
@@ -229,7 +259,7 @@ public class PluginManager : IDisposable
     public async Task StopAllPluginsAsync()
     {
         var plugins = _loadedPlugins.Values.ToArray();
-        
+
         foreach (var plugin in plugins)
         {
             try
@@ -297,7 +327,7 @@ public class PluginContext : IPluginContext
         ServiceProvider = serviceProvider;
         PluginDataDirectory = pluginDataDirectory;
         _pluginName = pluginName;
-        
+
         LoadConfiguration();
     }
 
@@ -310,7 +340,7 @@ public class PluginContext : IPluginContext
     {
         if (_services.TryGetValue(typeof(T), out var service))
             return service as T;
-            
+
         return ServiceProvider.GetService(typeof(T)) as T;
     }
 

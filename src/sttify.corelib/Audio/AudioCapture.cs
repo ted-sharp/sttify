@@ -12,16 +12,19 @@ public class AudioCapture : IDisposable
     private WasapiAudioCapture? _wasapiCapture;
     private bool _isCapturing;
     private readonly object _lockObject = new();
+    private int _restartAttempts;
+    private const int MaxRestartAttempts = 1; // simple lightweight recovery
+    private AudioCaptureSettings? _lastSettings;
 
-    public bool IsCapturing 
-    { 
-        get 
-        { 
-            lock (_lockObject) 
-            { 
-                return _isCapturing; 
-            } 
-        } 
+    public bool IsCapturing
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _isCapturing;
+            }
+        }
     }
 
     public async Task StartAsync(AudioCaptureSettings settings, CancellationToken cancellationToken = default)
@@ -34,6 +37,7 @@ public class AudioCapture : IDisposable
 
         try
         {
+            _lastSettings = settings;
             _wasapiCapture = new WasapiAudioCapture();
             _wasapiCapture.OnFrame += OnWasapiFrame;
             _wasapiCapture.OnError += OnWasapiError;
@@ -43,6 +47,7 @@ public class AudioCapture : IDisposable
             lock (_lockObject)
             {
                 _isCapturing = true;
+                _restartAttempts = 0; // reset on successful start
             }
         }
         catch (Exception ex)
@@ -83,28 +88,28 @@ public class AudioCapture : IDisposable
         {
             _isCapturing = false;
         }
-        
+
         // Log the error with structured data
-        Telemetry.LogError("WasapiAudioError", e.Exception, new 
-        { 
+        Telemetry.LogError("WasapiAudioError", e.Exception, new
+        {
             Component = "AudioCapture",
             Message = e.Message
         });
-        
+
         // Attempt automatic recovery for transient errors
         if (IsTransientAudioError(e.Exception))
         {
             await AttemptAudioRecoveryAsync();
         }
-        
+
         OnError?.Invoke(this, e);
     }
-    
+
     private bool IsTransientAudioError(Exception exception)
     {
         // Check for known transient error patterns
         if (exception == null) return false;
-        
+
         var message = exception.Message?.ToLowerInvariant() ?? "";
         return message.Contains("device in use") ||
                message.Contains("device not available") ||
@@ -112,20 +117,37 @@ public class AudioCapture : IDisposable
                exception is UnauthorizedAccessException ||
                exception is InvalidOperationException;
     }
-    
+
     private async Task AttemptAudioRecoveryAsync()
     {
         var recoveryStartTime = DateTime.UtcNow;
-        
+
         try
         {
             // Wait a short time for the device to become available
             await Task.Delay(1000);
-            
+
             // Try to get available devices to see if any are accessible
             var availableDevices = GetAvailableDevices();
             if (availableDevices.Any())
             {
+                // Try one-time restart using last known settings if we have them
+                if (_lastSettings != null && _restartAttempts < MaxRestartAttempts)
+                {
+                    _restartAttempts++;
+                    try
+                    {
+                        var lastSettings = _lastSettings;
+                        await StopAsync();
+                        await StartAsync(lastSettings);
+                        Telemetry.LogEvent("AudioDeviceRestarted", new { Attempts = _restartAttempts });
+                    }
+                    catch (Exception ex)
+                    {
+                        Telemetry.LogError("AudioDeviceRestartFailed", ex, new { Attempts = _restartAttempts });
+                    }
+                }
+
                 var recoveryDuration = DateTime.UtcNow - recoveryStartTime;
                 Telemetry.LogEvent("AudioDeviceRecoverySuccessful", new
                 {
@@ -134,8 +156,8 @@ public class AudioCapture : IDisposable
                     RecoveryDurationMs = recoveryDuration.TotalMilliseconds,
                     RecoveryAction = "Device became available after wait"
                 });
-                
-                Telemetry.LogEvent("AudioRecoverySuccessful", new 
+
+                Telemetry.LogEvent("AudioRecoverySuccessful", new
                 {
                     AvailableDevices = availableDevices.Count,
                     RecoveryDurationMs = recoveryDuration.TotalMilliseconds

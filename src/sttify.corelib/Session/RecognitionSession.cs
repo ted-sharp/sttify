@@ -18,7 +18,7 @@ public class RecognitionSession : IDisposable
     public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
     public event EventHandler<SilenceDetectedEventArgs>? OnSilenceDetected;
-    
+
     // Currently not implemented but reserved for future voice activity detection features
 #pragma warning disable CS0067 // Event is declared but never used - reserved for future features
     public event EventHandler<VoiceActivityEventArgs>? OnVoiceActivity;
@@ -27,28 +27,28 @@ public class RecognitionSession : IDisposable
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
     private SessionState _currentState = SessionState.Idle;
     private readonly object _lockObject = new();
-    
+
     // Silence detection state
     private DateTime _lastVoiceActivity = DateTime.MinValue;
     private bool _inSilence = false;
     private readonly Timer _silenceTimer;
     private readonly Timer _finalizeTimer;
-    
+
     // Wake word detection state - reserved for future implementation
 #pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
     private bool _waitingForWakeWord = false;
 #pragma warning restore CS0414
     private readonly List<string> _wakeWords = ["スティファイ", "sttify"];
-    
+
     // Continuous mode state
     private CancellationTokenSource? _continuousModeCts;
-    
+
     // PTT state - reserved for future implementation
 #pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
     private bool _pttPressed = false;
 #pragma warning restore CS0414
-    
-    // Single utterance state  
+
+    // Single utterance state
     private bool _utteranceStarted = false;
 
     public RecognitionSession(
@@ -68,19 +68,19 @@ public class RecognitionSession : IDisposable
         _audioCapture.OnFrame += OnAudioFrame;
         _sttEngine.OnPartial += OnPartialRecognition;
         _sttEngine.OnFinal += OnFinalRecognition;
-        
+
         // Initialize timers
         _silenceTimer = new Timer(OnSilenceTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
         _finalizeTimer = new Timer(OnFinalizeTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
-        
+
         // Add wake words from settings if provided
         if (_settings.WakeWords?.Length > 0)
         {
             _wakeWords.AddRange(_settings.WakeWords);
         }
-        
-        Telemetry.LogEvent("RecognitionSessionCreated", new 
-        { 
+
+        Telemetry.LogEvent("RecognitionSessionCreated", new
+        {
             Mode = _currentMode.ToString(),
             EndpointSilenceMs = _settings.EndpointSilenceMs,
             WakeWordsCount = _wakeWords.Count
@@ -90,17 +90,17 @@ public class RecognitionSession : IDisposable
     public RecognitionMode CurrentMode
     {
         get { lock (_lockObject) { return _currentMode; } }
-        set 
-        { 
-            lock (_lockObject) 
-            { 
+        set
+        {
+            lock (_lockObject)
+            {
                 if (_currentMode != value)
                 {
                     var oldMode = _currentMode;
                     _currentMode = value;
                     OnModeChanged(oldMode, value);
                 }
-            } 
+            }
         }
     }
 
@@ -126,7 +126,7 @@ public class RecognitionSession : IDisposable
     {
         System.Diagnostics.Debug.WriteLine($"*** RecognitionSession.StartAsync ENTRY - Current State: {CurrentState} ***");
         Telemetry.LogEvent("RecognitionSession_StartRequested", new { CurrentState = CurrentState.ToString() });
-        
+
         if (CurrentState != SessionState.Idle)
         {
             System.Diagnostics.Debug.WriteLine($"*** RecognitionSession EARLY RETURN - State is {CurrentState}, not Idle ***");
@@ -140,34 +140,34 @@ public class RecognitionSession : IDisposable
         {
             CurrentState = SessionState.Starting;
             Telemetry.LogEvent("RecognitionSession_StateChangedToStarting");
-            
+
             System.Diagnostics.Debug.WriteLine($"*** About to call _sttEngine.StartAsync() on {_sttEngine.GetType().Name} ***");
             Telemetry.LogEvent("RecognitionSession_StartingEngine");
             await _sttEngine.StartAsync(cancellationToken);
             System.Diagnostics.Debug.WriteLine($"*** _sttEngine.StartAsync() completed successfully ***");
             Telemetry.LogEvent("RecognitionSession_EngineStarted");
-            
+
             var audioCaptureSettings = new AudioCaptureSettings
             {
                 SampleRate = _settings.SampleRate,
                 Channels = _settings.Channels,
                 BufferSize = (_settings.SampleRate * _settings.Channels * 2 * _settings.BufferSizeMs) / 1000 // Convert ms to buffer size
             };
-            
+
             Telemetry.LogEvent("RecognitionSession_StartingAudioCapture", new { audioCaptureSettings.SampleRate, audioCaptureSettings.Channels, audioCaptureSettings.BufferSize });
             await _audioCapture.StartAsync(audioCaptureSettings, cancellationToken);
             Telemetry.LogEvent("RecognitionSession_AudioCaptureStarted");
-            
+
             // Initialize mode-specific behavior
             Telemetry.LogEvent("RecognitionSession_InitializingMode", new { Mode = CurrentMode.ToString() });
             await InitializeModeAsync(cancellationToken);
             Telemetry.LogEvent("RecognitionSession_ModeInitialized");
-            
+
             CurrentState = SessionState.Listening;
             Telemetry.LogEvent("RecognitionSession_StateChangedToListening");
-            
-            Telemetry.LogEvent("RecognitionSessionStarted", new 
-            { 
+
+            Telemetry.LogEvent("RecognitionSessionStarted", new
+            {
                 Mode = CurrentMode.ToString(),
                 AudioSettings = new { audioCaptureSettings.SampleRate, audioCaptureSettings.Channels }
             });
@@ -191,31 +191,31 @@ public class RecognitionSession : IDisposable
                 _continuousModeCts = new CancellationTokenSource();
                 // Start continuous recognition immediately
                 break;
-                
+
             case RecognitionMode.WakeWord:
                 _waitingForWakeWord = true;
                 Telemetry.LogEvent("WakeWordModeStarted", new { WakeWords = _wakeWords });
                 break;
-                
+
             case RecognitionMode.Ptt:
                 // PTT waits for manual activation
                 break;
-                
+
             case RecognitionMode.SingleUtterance:
                 // Single utterance starts immediately but stops after first result
                 break;
         }
-        
+
         return Task.CompletedTask;
     }
 
     public async Task StopAsync()
     {
         CurrentState = SessionState.Stopping;
-        
+
         await _audioCapture.StopAsync();
         await _sttEngine.StopAsync();
-        
+
         CurrentState = SessionState.Idle;
     }
 
@@ -236,7 +236,7 @@ public class RecognitionSession : IDisposable
     private async void OnFinalRecognition(object? sender, FinalRecognitionEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine($"*** FINAL RECOGNITION: '{e.Text}' (Confidence: {e.Confidence}) ***");
-        
+
         if (string.IsNullOrWhiteSpace(e.Text))
         {
             System.Diagnostics.Debug.WriteLine("*** FINAL RECOGNITION IGNORED - Empty text ***");
@@ -262,7 +262,7 @@ public class RecognitionSession : IDisposable
 
         var processedText = text;
         var plugins = _pluginManager.GetLoadedPlugins();
-        
+
         foreach (var plugin in plugins)
         {
             try
@@ -285,10 +285,10 @@ public class RecognitionSession : IDisposable
     // Add the missing methods that are referenced in the enhanced code
     private void OnModeChanged(RecognitionMode oldMode, RecognitionMode newMode)
     {
-        Telemetry.LogEvent("RecognitionModeChanged", new 
-        { 
-            OldMode = oldMode.ToString(), 
-            NewMode = newMode.ToString() 
+        Telemetry.LogEvent("RecognitionModeChanged", new
+        {
+            OldMode = oldMode.ToString(),
+            NewMode = newMode.ToString()
         });
     }
 
@@ -298,9 +298,9 @@ public class RecognitionSession : IDisposable
         {
             _inSilence = true;
             var silenceDuration = DateTime.UtcNow - _lastVoiceActivity;
-            
+
             OnSilenceDetected?.Invoke(this, new SilenceDetectedEventArgs(silenceDuration));
-            
+
             // Handle silence based on current mode
             if (CurrentMode == RecognitionMode.SingleUtterance && _utteranceStarted)
             {
@@ -320,7 +320,7 @@ public class RecognitionSession : IDisposable
     public void StartPtt()
     {
         if (CurrentMode != RecognitionMode.Ptt) return;
-        
+
         _pttPressed = true;
         Telemetry.LogEvent("PttPressed");
     }
@@ -328,7 +328,7 @@ public class RecognitionSession : IDisposable
     public void StopPtt()
     {
         if (CurrentMode != RecognitionMode.Ptt) return;
-        
+
         _pttPressed = false;
         Telemetry.LogEvent("PttReleased");
     }
@@ -361,7 +361,7 @@ public class RecognitionSession : IDisposable
         if (string.IsNullOrEmpty(text)) return false;
 
         var lowerText = text.ToLowerInvariant();
-        
+
         foreach (var wakeWord in _wakeWords)
         {
             if (lowerText.Contains(wakeWord.ToLowerInvariant()))
@@ -370,14 +370,14 @@ public class RecognitionSession : IDisposable
                 return true;
             }
         }
-        
+
         return false;
     }
 
     private async Task SendTextToOutputSinksAsync(string text)
     {
         System.Diagnostics.Debug.WriteLine($"*** SendTextToOutputSinksAsync - Text: '{text}', Sinks Count: {_outputSinks.Count()} ***");
-        
+
         bool textSentSuccessfully = false;
         var failedSinks = new List<string>();
 
@@ -388,16 +388,16 @@ public class RecognitionSession : IDisposable
             {
                 bool canSend = await sink.CanSendAsync();
                 System.Diagnostics.Debug.WriteLine($"*** Sink {sink.Name} CanSend: {canSend} ***");
-                
+
                 if (canSend)
                 {
                     System.Diagnostics.Debug.WriteLine($"*** Sending text '{text}' to {sink.Name} ***");
                     await sink.SendAsync(text);
                     textSentSuccessfully = true;
                     System.Diagnostics.Debug.WriteLine($"*** Successfully sent to {sink.Name} ***");
-                    
-                    Telemetry.LogEvent("TextOutputSuccessful", new 
-                    { 
+
+                    Telemetry.LogEvent("TextOutputSuccessful", new
+                    {
                         SinkName = sink.Name,
                         TextLength = text.Length,
                         Mode = "Session"
@@ -413,8 +413,8 @@ public class RecognitionSession : IDisposable
             {
                 System.Diagnostics.Debug.WriteLine($"*** Exception in sink {sink.Name}: {ex.Message} ***");
                 failedSinks.Add(sink.Name);
-                
-                Telemetry.LogError("OutputSinkFailed", ex, new 
+
+                Telemetry.LogError("OutputSinkFailed", ex, new
                 {
                     SinkName = sink.Name,
                     TextLength = text.Length,
@@ -425,9 +425,9 @@ public class RecognitionSession : IDisposable
 
         if (!textSentSuccessfully)
         {
-            Telemetry.LogError("AllOutputSinksFailed", 
-                new InvalidOperationException("No output sinks available"), 
-                new 
+            Telemetry.LogError("AllOutputSinksFailed",
+                new InvalidOperationException("No output sinks available"),
+                new
                 {
                     TextLength = text.Length,
                     FailedSinks = failedSinks,
@@ -442,10 +442,15 @@ public class RecognitionSession : IDisposable
         {
             _continuousModeCts?.Cancel();
             _continuousModeCts?.Dispose();
-            
+
             _silenceTimer?.Dispose();
             _finalizeTimer?.Dispose();
-            
+
+            // Unsubscribe events to prevent memory leaks
+            _audioCapture.OnFrame -= OnAudioFrame;
+            _sttEngine.OnPartial -= OnPartialRecognition;
+            _sttEngine.OnFinal -= OnFinalRecognition;
+
             StopAsync().Wait(5000); // Wait max 5 seconds
         }
         catch (Exception ex)

@@ -11,6 +11,7 @@ public class SendInputSink : ITextOutputSink
 {
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_UNICODE = 0x0004;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
 
     public string Name => "SendInput";
     public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
@@ -154,7 +155,6 @@ public class SendInputSink : ITextOutputSink
 
     private async Task<bool> SendTextViaInputAsync(string text, CancellationToken cancellationToken)
     {
-        var inputs = new List<INPUT>();
         var delayMs = _settings.RateLimitCps > 0 ? 1000 / _settings.RateLimitCps : 0;
         bool anySuccess = false;
 
@@ -163,8 +163,8 @@ public class SendInputSink : ITextOutputSink
             if (cancellationToken.IsCancellationRequested)
                 return anySuccess;
 
-            // Create UNICODE input
-            var unicodeInput = new INPUT
+            // Send UNICODE key down
+            var downInput = new INPUT
             {
                 type = INPUT_KEYBOARD,
                 union = new INPUTUNION
@@ -180,43 +180,59 @@ public class SendInputSink : ITextOutputSink
                 }
             };
 
-            inputs.Add(unicodeInput);
-
-            // Send character immediately for better responsiveness
-            if (inputs.Count == 1)
+            uint resultDown = SendInput(1, new[] { downInput }, Marshal.SizeOf<INPUT>());
+            if (resultDown == 0)
             {
-                uint result = SendInput(1, inputs.ToArray(), Marshal.SizeOf<INPUT>());
-                if (result == 0)
+                uint error = GetLastError();
+                string errorMsgDown = error switch
                 {
-                    uint error = GetLastError();
-                    string errorMsg = error switch
-                    {
-                        87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
-                        5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
-                        0 => "No error code - Likely UIPI blocking",
-                        _ => $"Windows error {error}"
-                    };
-                    System.Diagnostics.Debug.WriteLine($"*** SendInput FAILED for char '{c}': {errorMsg} ***");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"*** SendInput SUCCESS for char '{c}': result={result} ***");
-                    anySuccess = true;
-                }
-                inputs.Clear();
-
-                if (delayMs > 0)
-                {
-                    await Task.Delay(delayMs, cancellationToken);
-                }
+                    87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
+                    5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
+                    0 => "No error code - Likely UIPI blocking",
+                    _ => $"Windows error {error}"
+                };
+                System.Diagnostics.Debug.WriteLine($"*** SendInput (down) FAILED for char '{c}': {errorMsgDown} ***");
             }
-        }
+            else
+            {
+                anySuccess = true;
+            }
 
-        // Send any remaining inputs
-        if (inputs.Count > 0)
-        {
-            uint result = SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
-            if (result > 0) anySuccess = true;
+            // Send UNICODE key up (required to avoid stuck keys)
+            var upInput = new INPUT
+            {
+                type = INPUT_KEYBOARD,
+                union = new INPUTUNION
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = 0,
+                        wScan = c,
+                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            uint resultUp = SendInput(1, new[] { upInput }, Marshal.SizeOf<INPUT>());
+            if (resultUp == 0)
+            {
+                uint error = GetLastError();
+                string errorMsgUp = error switch
+                {
+                    87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
+                    5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
+                    0 => "No error code - Likely UIPI blocking",
+                    _ => $"Windows error {error}"
+                };
+                System.Diagnostics.Debug.WriteLine($"*** SendInput (up) FAILED for char '{c}': {errorMsgUp} ***");
+            }
+
+            if (delayMs > 0)
+            {
+                await Task.Delay(delayMs, cancellationToken);
+            }
         }
 
         // Send commit key if specified
@@ -418,13 +434,24 @@ public class SendInputSink : ITextOutputSink
                 return false;
             }
 
-            const int TokenElevationType = 18;
-            bool elevated = GetTokenInformation(tokenHandle, TokenElevationType, IntPtr.Zero, 0, out uint returnLength);
+            // Query TokenElevation (20) to determine if the target process is elevated
+            const int TokenElevation = 20;
+            int elevationSize = Marshal.SizeOf<TOKEN_ELEVATION>();
+            IntPtr elevationPtr = Marshal.AllocHGlobal(elevationSize);
+            try
+            {
+                bool gotInfo = GetTokenInformation(tokenHandle, TokenElevation, elevationPtr, (uint)elevationSize, out uint _);
+                var elevation = gotInfo ? Marshal.PtrToStructure<TOKEN_ELEVATION>(elevationPtr) : default;
 
-            CloseHandle(tokenHandle);
-            CloseHandle(processHandle);
+                CloseHandle(tokenHandle);
+                CloseHandle(processHandle);
 
-            return elevated;
+                return gotInfo && elevation.TokenIsElevated != 0;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(elevationPtr);
+            }
         }
         catch
         {
@@ -498,6 +525,12 @@ public class SendInputSink : ITextOutputSink
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TOKEN_ELEVATION
+    {
+        public int TokenIsElevated;
+    }
 
     // INPUT は Sequential のまま
     [StructLayout(LayoutKind.Sequential)]
