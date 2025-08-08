@@ -141,9 +141,13 @@ public class WasapiAudioCapture : IDisposable
 
         _wasapiCapture = new WasapiCapture(captureDevice, true, 100);
         
+        System.Diagnostics.Debug.WriteLine($"*** WASAPI Capture Format - Requested: {_settings.SampleRate}Hz, {_settings.Channels}ch, {_settings.BitsPerSample}bit ***");
+        System.Diagnostics.Debug.WriteLine($"*** WASAPI Capture Format - Actual: {_wasapiCapture.WaveFormat.SampleRate}Hz, {_wasapiCapture.WaveFormat.Channels}ch, {_wasapiCapture.WaveFormat.BitsPerSample}bit ***");
+        
         if (_wasapiCapture.WaveFormat.SampleRate != _settings.SampleRate ||
             _wasapiCapture.WaveFormat.Channels != _settings.Channels)
         {
+            System.Diagnostics.Debug.WriteLine($"*** AUDIO FORMAT MISMATCH DETECTED! ***");
             Telemetry.LogEvent("AudioFormatMismatch", new
             {
                 RequestedSampleRate = _settings.SampleRate,
