@@ -110,15 +110,26 @@ public class RecognitionSession : IDisposable
         get { lock (_lockObject) { return _currentState; } }
         private set
         {
+            SessionState oldState;
+            bool changed = false;
             lock (_lockObject)
             {
                 if (_currentState != value)
                 {
-                    var oldState = _currentState;
-                    System.Diagnostics.Debug.WriteLine($"*** STATE CHANGE: {oldState} → {value} ***");
+                    oldState = _currentState;
                     _currentState = value;
-                    OnStateChanged?.Invoke(this, new SessionStateChangedEventArgs(oldState, value));
+                    changed = true;
                 }
+                else
+                {
+                    oldState = _currentState;
+                }
+            }
+
+            if (changed)
+            {
+                System.Diagnostics.Debug.WriteLine($"*** STATE CHANGE: {oldState} → {value} ***");
+                OnStateChanged?.Invoke(this, new SessionStateChangedEventArgs(oldState, value));
             }
         }
     }
@@ -144,7 +155,8 @@ public class RecognitionSession : IDisposable
 
             System.Diagnostics.Debug.WriteLine($"*** About to call _sttEngine.StartAsync() on {_sttEngine.GetType().Name} ***");
             Telemetry.LogEvent("RecognitionSession_StartingEngine");
-            await _sttEngine.StartAsync(cancellationToken);
+            // Guard against engine start hanging indefinitely
+            await _sttEngine.StartAsync(cancellationToken).WithTimeout(TimeSpan.FromSeconds(10), "SttEngine.Start");
             System.Diagnostics.Debug.WriteLine($"*** _sttEngine.StartAsync() completed successfully ***");
             Telemetry.LogEvent("RecognitionSession_EngineStarted");
 
@@ -156,7 +168,8 @@ public class RecognitionSession : IDisposable
             };
 
             Telemetry.LogEvent("RecognitionSession_StartingAudioCapture", new { audioCaptureSettings.SampleRate, audioCaptureSettings.Channels, audioCaptureSettings.BufferSize });
-            await _audioCapture.StartAsync(audioCaptureSettings, cancellationToken);
+            // Guard against audio capture start hanging indefinitely
+            await _audioCapture.StartAsync(audioCaptureSettings, cancellationToken).WithTimeout(TimeSpan.FromSeconds(10), "AudioCapture.Start");
             Telemetry.LogEvent("RecognitionSession_AudioCaptureStarted");
 
             // Initialize mode-specific behavior
@@ -212,24 +225,33 @@ public class RecognitionSession : IDisposable
 
     public async Task StopAsync()
     {
-        CurrentState = SessionState.Stopping;
-
-        await _audioCapture.StopAsync();
-        await _sttEngine.StopAsync();
-
-        CurrentState = SessionState.Idle;
+        try
+        {
+            CurrentState = SessionState.Stopping;
+            await _audioCapture.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "AudioCapture.Stop");
+            await _sttEngine.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "SttEngine.Stop");
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("RecognitionSessionStopFailed", ex);
+        }
+        finally
+        {
+            CurrentState = SessionState.Idle;
+        }
     }
 
     private void OnAudioFrame(object? sender, AudioFrameEventArgs e)
     {
-        if (CurrentState == SessionState.Listening)
-        {
+        // Avoid taking state lock inside engine lock: read once without re-entrancy risk
+        var stateSnapshot = CurrentState;
+        if (stateSnapshot == SessionState.Listening)
             _sttEngine.PushAudio(e.AudioData.Span);
-        }
     }
 
     private void OnPartialRecognition(object? sender, PartialRecognitionEventArgs e)
     {
+        // Avoid heavy work or nested locks while holding engine callbacks
         System.Diagnostics.Debug.WriteLine($"*** PARTIAL RECOGNITION: '{e.Text}' (Confidence: {e.Confidence}) ***");
         OnTextRecognized?.Invoke(this, new TextRecognizedEventArgs(e.Text, false, e.Confidence));
     }

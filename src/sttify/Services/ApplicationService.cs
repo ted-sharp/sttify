@@ -229,6 +229,7 @@ public class ApplicationService : IDisposable
 
     private void OnSessionStateChanged(object? sender, SessionStateChangedEventArgs e)
     {
+        // Avoid UI thread sync while holding potential locks upstream
         SessionStateChanged?.Invoke(this, e);
 
         Telemetry.LogEvent("SessionStateChanged", new {

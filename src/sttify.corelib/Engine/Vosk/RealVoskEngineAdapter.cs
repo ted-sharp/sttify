@@ -335,7 +335,12 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
 
     public void Dispose()
     {
-        StopAsync().Wait();
+        try
+        {
+            // Avoid potential deadlock by running stop without capturing context and with a short timeout
+            Task.Run(async () => await StopAsync().ConfigureAwait(false)).Wait(TimeSpan.FromSeconds(3));
+        }
+        catch { }
 
         _silenceTimer?.Stop();
         _silenceTimer?.Dispose();
