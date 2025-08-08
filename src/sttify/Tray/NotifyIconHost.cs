@@ -14,6 +14,8 @@ public class NotifyIconHost : IDisposable
     private readonly IServiceProvider _serviceProvider;
     private NotifyIcon? _notifyIcon;
     private ApplicationService? _applicationService;
+    private ToolStripMenuItem? _menuItemControlWindow;
+    private ToolStripMenuItem? _menuItemStartStop;
 
     public NotifyIconHost(IServiceProvider serviceProvider)
     {
@@ -34,6 +36,9 @@ public class NotifyIconHost : IDisposable
 
             SetupContextMenu();
             Console.WriteLine("NotifyIconHost: Context menu setup complete");
+
+            // Initialize menu text/icon state based on current session
+            UpdateContextMenu();
 
             _notifyIcon!.Visible = true;
             Console.WriteLine($"NotifyIconHost: Icon visibility set to true. Actually visible: {_notifyIcon.Visible}");
@@ -77,18 +82,18 @@ public class NotifyIconHost : IDisposable
 
         var contextMenu = new ContextMenuStrip();
 
-        var controlWindowItem = new ToolStripMenuItem("Control Window")
+        _menuItemControlWindow = new ToolStripMenuItem("Show Control Window")
         {
             Font = new Font(contextMenu.Font, System.Drawing.FontStyle.Bold)
         };
-        controlWindowItem.Click += OnShowControlWindow;
-        contextMenu.Items.Add(controlWindowItem);
+        _menuItemControlWindow.Click += OnToggleControlWindow;
+        contextMenu.Items.Add(_menuItemControlWindow);
 
         contextMenu.Items.Add(new ToolStripSeparator());
 
-        var startStopItem = new ToolStripMenuItem("Start Recognition");
-        startStopItem.Click += OnToggleRecognition;
-        contextMenu.Items.Add(startStopItem);
+        _menuItemStartStop = new ToolStripMenuItem("Start Recognition");
+        _menuItemStartStop.Click += OnToggleRecognition;
+        contextMenu.Items.Add(_menuItemStartStop);
 
         contextMenu.Items.Add(new ToolStripSeparator());
 
@@ -102,6 +107,7 @@ public class NotifyIconHost : IDisposable
         exitItem.Click += OnExit;
         contextMenu.Items.Add(exitItem);
 
+        contextMenu.Opening += (s, e) => UpdateContextMenu();
         _notifyIcon.ContextMenuStrip = contextMenu;
 
         if (_applicationService != null)
@@ -115,13 +121,17 @@ public class NotifyIconHost : IDisposable
         if (_notifyIcon?.ContextMenuStrip == null || _applicationService == null)
             return;
 
-        var startStopItem = _notifyIcon.ContextMenuStrip?.Items.OfType<ToolStripMenuItem>()
-            .FirstOrDefault(item => item.Text?.Contains("Recognition") == true);
-
-        if (startStopItem != null)
+        if (_menuItemStartStop != null)
         {
             var isListening = _applicationService.GetCurrentState() == Sttify.Corelib.Session.SessionState.Listening;
-            startStopItem.Text = isListening ? "Stop Recognition" : "Start Recognition";
+            _menuItemStartStop.Text = isListening ? "Stop Recognition" : "Start Recognition";
+        }
+
+        if (_menuItemControlWindow != null)
+        {
+            var cw = System.Windows.Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
+            var isVisible = cw != null && cw.Visibility == Visibility.Visible;
+            _menuItemControlWindow.Text = isVisible ? "Hide Control Window" : "Show Control Window";
         }
 
         var currentState = _applicationService.GetCurrentState();
@@ -193,7 +203,41 @@ public class NotifyIconHost : IDisposable
 
     private void OnNotifyIconDoubleClick(object? sender, EventArgs e)
     {
-        OnShowControlWindow(sender, e);
+        ToggleControlWindow();
+    }
+
+    private void OnToggleControlWindow(object? sender, EventArgs e)
+    {
+        ToggleControlWindow();
+    }
+
+    private void ToggleControlWindow()
+    {
+        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        {
+            var controlWindow = System.Windows.Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
+            if (controlWindow == null)
+            {
+                controlWindow = _serviceProvider.GetRequiredService<ControlWindow>();
+                controlWindow.Show();
+                controlWindow.Activate();
+            }
+            else
+            {
+                if (controlWindow.Visibility == Visibility.Visible)
+                {
+                    controlWindow.Hide();
+                }
+                else
+                {
+                    controlWindow.WindowState = WindowState.Normal;
+                    controlWindow.Show();
+                    controlWindow.Activate();
+                }
+            }
+
+            UpdateContextMenu();
+        });
     }
 
     private void OnShowControlWindow(object? sender, EventArgs e)
