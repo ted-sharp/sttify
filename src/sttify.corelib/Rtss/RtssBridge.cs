@@ -12,12 +12,12 @@ public class RtssBridge : IDisposable
     private const string RTSS_SHARED_MEMORY_NAME = "RTSSSharedMemoryV2";
     private const int RTSS_MAX_TEXT_LENGTH = 4096;
     private const int RTSS_HEADER_SIZE = 256;
-    
+
     private bool _isInitialized;
     private readonly object _lockObject = new();
     private string _lastDisplayedText = "";
     private DateTime _lastUpdate = DateTime.MinValue;
-    private readonly RtssSettings _settings;
+    private RtssSettings _settings;
     private IntPtr _sharedMemoryHandle = IntPtr.Zero;
     private IntPtr _sharedMemoryPtr = IntPtr.Zero;
 
@@ -26,7 +26,7 @@ public class RtssBridge : IDisposable
     private static extern IntPtr OpenFileMapping(uint dwDesiredAccess, bool bInheritHandle, string lpName);
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, uint dwDesiredAccess, uint dwFileOffsetHigh, 
+    private static extern IntPtr MapViewOfFile(IntPtr hFileMappingObject, uint dwDesiredAccess, uint dwFileOffsetHigh,
         uint dwFileOffsetLow, UIntPtr dwNumberOfBytesToMap);
 
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -41,6 +41,20 @@ public class RtssBridge : IDisposable
     public RtssBridge(RtssSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+    }
+
+    /// <summary>
+    /// Applies updated RTSS settings at runtime.
+    /// </summary>
+    public void UpdateSettings(RtssSettings settings)
+    {
+        if (settings == null) return;
+        lock (_lockObject)
+        {
+            _settings.Enabled = settings.Enabled;
+            _settings.UpdatePerSec = settings.UpdatePerSec;
+            _settings.TruncateLength = settings.TruncateLength;
+        }
     }
 
     public bool Initialize()
@@ -160,16 +174,16 @@ public class RtssBridge : IDisposable
 
             // Write text length at the beginning (4 bytes)
             Marshal.WriteInt32(_sharedMemoryPtr, totalLength);
-            
+
             // Write the text data after the header
             var textPtr = IntPtr.Add(_sharedMemoryPtr, RTSS_HEADER_SIZE);
             Marshal.Copy(textBytes, 0, textPtr, totalLength);
-            
+
             // Null terminate
             Marshal.WriteByte(textPtr, totalLength, 0);
 
             Telemetry.LogEvent("RtssTextDisplayed", new { TextLength = totalLength });
-        }  
+        }
         catch (Exception ex)
         {
             Telemetry.LogError("RtssDisplayTextFailed", ex, new { Text = text });
@@ -181,13 +195,13 @@ public class RtssBridge : IDisposable
         const string rtssLibraryName = "RTSSHooks.dll";
         var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         var rtssPath = Path.Combine(programFiles, "RivaTuner Statistics Server", rtssLibraryName);
-        
+
         if (File.Exists(rtssPath))
             return rtssPath;
 
         var programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
         rtssPath = Path.Combine(programFilesX86, "RivaTuner Statistics Server", rtssLibraryName);
-        
+
         return rtssPath;
     }
 

@@ -6,6 +6,8 @@ using System.Windows.Interop;
 using Microsoft.Extensions.DependencyInjection;
 using Sttify.Services;
 using Sttify.Corelib.Diagnostics;
+using System.Diagnostics;
+using System.Windows.Navigation;
 
 namespace Sttify.Views;
 
@@ -153,6 +155,53 @@ public partial class SettingsWindow : Window
     private void OnCancel(object sender, RoutedEventArgs e)
     {
         Close();
+    }
+
+    private void OnReconnectRtssClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var appSvc = App.ServiceProvider?.GetService<ApplicationService>();
+            var settingsProvider = App.ServiceProvider?.GetService<Sttify.Corelib.Config.SettingsProvider>();
+            var rtss = App.ServiceProvider?.GetService<Sttify.Corelib.Rtss.RtssBridge>();
+            if (appSvc != null && settingsProvider != null && rtss != null)
+            {
+                var settings = settingsProvider.GetSettingsSync();
+                rtss.UpdateSettings(settings.Rtss);
+                var ok = rtss.Initialize();
+                System.Diagnostics.Debug.WriteLine($"*** RTSS reconnect requested, result: {ok} ***");
+                if (!ok)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Failed to connect to RTSS shared memory. Please ensure RTSS is running and OSD is enabled.",
+                        "RTSS",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** RTSS reconnect failed: {ex.Message} ***");
+            System.Windows.MessageBox.Show($"RTSS reconnect failed: {ex.Message}", "RTSS", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void OnRtssOfficialLinkNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = e.Uri.AbsoluteUri,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Failed to open link: {ex.Message}", "Open Link", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        e.Handled = true;
     }
 
 

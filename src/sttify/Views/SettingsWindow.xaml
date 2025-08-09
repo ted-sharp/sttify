@@ -5,40 +5,85 @@
         Width="600" Height="500"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
-    
-    
+
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- Title -->
-        <TextBlock Grid.Row="0" 
-                   Text="Sttify Settings" 
-                   FontSize="18" 
-                   FontWeight="Bold" 
+        <TextBlock Grid.Row="0"
+                   Text="Sttify Settings"
+                   FontSize="18"
+                   FontWeight="Bold"
                    Margin="0,0,0,10"/>
-        
+
         <!-- Settings Tabs -->
         <TabControl Grid.Row="1">
             <TabItem Header="General">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
-                        <CheckBox Content="Start with Windows" 
-                                 IsChecked="{Binding Settings.Application.StartWithWindows}" 
+                        <CheckBox Content="Start with Windows"
+                                 IsChecked="{Binding Settings.Application.StartWithWindows}"
                                  Margin="0,5"/>
-                        <CheckBox Content="Show in system tray" 
-                                 IsChecked="{Binding Settings.Application.ShowInTray}" 
+                        <CheckBox Content="Show in system tray"
+                                 IsChecked="{Binding Settings.Application.ShowInTray}"
                                  Margin="0,5"/>
-                        <CheckBox Content="Start minimized" 
-                                 IsChecked="{Binding Settings.Application.StartMinimized}" 
+                        <CheckBox Content="Start minimized"
+                                 IsChecked="{Binding Settings.Application.StartMinimized}"
                                  Margin="0,5"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
+            <TabItem Header="Gaming (RTSS)">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="RivaTuner Statistics Server Integration" FontWeight="Bold" Margin="0,0,0,8"/>
+
+                        <CheckBox Content="Enable RTSS On-Screen Display"
+                                  IsChecked="{Binding Settings.Rtss.Enabled}"
+                                  Margin="0,0,0,10"/>
+
+                        <Label Content="Update Frequency (per second):"/>
+                        <Slider Value="{Binding Settings.Rtss.UpdatePerSec}"
+                                Minimum="1" Maximum="10"
+                                TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        <TextBlock Text="{Binding Settings.Rtss.UpdatePerSec, StringFormat=Current: {0} updates/sec}"
+                                   Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
+
+                        <Label Content="Text Length Limit:"/>
+                        <Slider Value="{Binding Settings.Rtss.TruncateLength}"
+                                Minimum="20" Maximum="200"
+                                TickFrequency="10" IsSnapToTickEnabled="True"/>
+                        <TextBlock Text="{Binding Settings.Rtss.TruncateLength, StringFormat=Current: {0} characters}"
+                                   Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="Requirements" FontWeight="Bold" Margin="0,10,0,5"/>
+                        <TextBlock Foreground="Gray" FontSize="11">
+                            • RivaTuner Statistics Server must be installed
+                            <LineBreak/>
+                            • RTSS must be running before starting Sttify
+                            <LineBreak/>
+                            • On-Screen Display must be enabled in RTSS settings
+                        </TextBlock>
+
+                        <TextBlock Margin="0,10,0,0">
+                            <Run Text="Official website: "/>
+                            <Hyperlink NavigateUri="https://www.guru3d.com/files-details/rtss-rivatuner-statistics-server-download.html"
+                                       RequestNavigate="OnRtssOfficialLinkNavigate">
+                                https://www.guru3d.com/files-details/rtss-rivatuner-statistics-server-download.html
+                            </Hyperlink>
+                        </TextBlock>
+
+                        <Button Content="Reconnect RTSS" Width="140" Margin="0,10,0,0" Click="OnReconnectRtssClick"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <TabItem Header="Audio">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
@@ -48,7 +93,7 @@
                                  SelectedValuePath="Id"
                                  SelectedValue="{Binding Settings.Audio.DeviceId}"
                                  Margin="0,5,0,10"/>
-                        
+
                         <Label Content="Sample Rate:"/>
                         <ComboBox Margin="0,5,0,10">
                             <ComboBoxItem Content="16000 Hz" IsSelected="True"/>
@@ -58,7 +103,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <TabItem Header="Engine">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
@@ -73,17 +118,17 @@
                         <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableEngines}"
                                  SelectedItem="{Binding EngineProfile}"
                                  Margin="5,0,5,0" VerticalAlignment="Center"/>
-                        <Button Grid.Column="2" Content="📦 Models" 
+                        <Button Grid.Column="2" Content="📦 Models"
                                Command="{Binding ShowVoskModelInfoCommand}"
                                Width="70" VerticalAlignment="Center" Margin="0,0,5,0"
                                ToolTip="Show Vosk model download information"
                                Visibility="{Binding IsVoskSelected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                        <Button Grid.Column="3" Content="📖 Docs" 
+                        <Button Grid.Column="3" Content="📖 Docs"
                                Command="{Binding OpenEngineDocumentationCommand}"
                                Width="60" VerticalAlignment="Center"
                                ToolTip="Open official documentation"/>
                     </Grid>
-                    
+
                     <!-- Vosk Configuration -->
                     <GroupBox Header="Vosk Configuration" Margin="0,15,0,0"
                              Visibility="{Binding IsVoskSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -91,7 +136,7 @@
                             <TextBlock Text="Download models from: https://alphacephei.com/vosk/models"
                                       Margin="0,0,0,10" Foreground="Blue" TextDecorations="Underline"
                                       MouseLeftButtonUp="OnVoskModelsUrlClick" Cursor="Hand"/>
-                            
+
                             <Label Content="Vosk Model Path:"/>
                             <Grid Margin="0,5,0,10">
                                 <Grid.ColumnDefinitions>
@@ -100,22 +145,22 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBox Grid.Column="0" Text="{Binding Settings.Engine.Vosk.ModelPath}"/>
-                                <Button Grid.Column="1" Content="📁 Folder" 
-                                       Command="{Binding BrowseForModelFolderCommand}" 
+                                <Button Grid.Column="1" Content="📁 Folder"
+                                       Command="{Binding BrowseForModelFolderCommand}"
                                        Width="80" Margin="5,0,5,0"
                                        ToolTip="Select a model folder"/>
-                                <Button Grid.Column="2" Content="📦 ZIP" 
-                                       Command="{Binding BrowseForModelZipCommand}" 
+                                <Button Grid.Column="2" Content="📦 ZIP"
+                                       Command="{Binding BrowseForModelZipCommand}"
                                        Width="80" Margin="0,0,0,0"
                                        ToolTip="Select and extract a ZIP model file"/>
                             </Grid>
-                            
-                            <CheckBox Content="Enable punctuation" 
-                                     IsChecked="{Binding Settings.Engine.Vosk.Punctuation}" 
+
+                            <CheckBox Content="Enable punctuation"
+                                     IsChecked="{Binding Settings.Engine.Vosk.Punctuation}"
                                      Margin="0,5"/>
                         </StackPanel>
                     </GroupBox>
-                    
+
                     <!-- Vibe Configuration -->
                     <GroupBox Header="Vibe Configuration" Margin="0,15,0,0"
                              Visibility="{Binding IsVibeEngine, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -124,10 +169,10 @@
                             <TextBox Text="{Binding Settings.Engine.Vibe.Endpoint}" Margin="0,5,0,10"/>
                             <TextBlock Text="URL of the Vibe HTTP API server (e.g., http://localhost:8080)"
                                       Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
-                            
+
                             <Label Content="API Key (optional):"/>
                             <TextBox Text="{Binding Settings.Engine.Vibe.ApiKey}" Margin="0,5,0,10"/>
-                            
+
                             <Label Content="Language:"/>
                             <ComboBox SelectedValue="{Binding Settings.Engine.Vibe.Language}" Margin="0,5,0,10">
                                 <ComboBoxItem Content="Auto Detect" Tag=""/>
@@ -135,15 +180,15 @@
                                 <ComboBoxItem Content="English (en)" Tag="en"/>
                                 <ComboBoxItem Content="Chinese (zh)" Tag="zh"/>
                             </ComboBox>
-                            
-                            <CheckBox Content="Enable diarization (speaker separation)" 
-                                     IsChecked="{Binding Settings.Engine.Vibe.EnableDiarization}" 
+
+                            <CheckBox Content="Enable diarization (speaker separation)"
+                                     IsChecked="{Binding Settings.Engine.Vibe.EnableDiarization}"
                                      Margin="0,5"/>
-                            <CheckBox Content="Enable post-processing" 
-                                     IsChecked="{Binding Settings.Engine.Vibe.EnablePostProcessing}" 
+                            <CheckBox Content="Enable post-processing"
+                                     IsChecked="{Binding Settings.Engine.Vibe.EnablePostProcessing}"
                                      Margin="0,5"/>
-                            
-                            <Button Content="Test Connection" 
+
+                            <Button Content="Test Connection"
                                    Command="{Binding TestVibeCommand}"
                                    Width="120" HorizontalAlignment="Left" Margin="0,10,0,0"/>
                         </StackPanel>
@@ -151,65 +196,65 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <TabItem Header="Output">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
                     <Label Content="Primary Output:"/>
-                    <ComboBox SelectedIndex="{Binding PrimaryOutputIndex}" 
+                    <ComboBox SelectedIndex="{Binding PrimaryOutputIndex}"
                              Margin="0,5,0,10">
                         <ComboBoxItem Content="SendInput (with IME Control)"/>
                         <ComboBoxItem Content="External Process"/>
                         <ComboBoxItem Content="Stream Output"/>
                     </ComboBox>
-                    
+
                     <!-- IME Control Settings -->
                     <GroupBox Header="IME Control Settings" Margin="0,0,0,15"
                              Visibility="{Binding IsSendInputSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel Margin="10">
-                            <TextBlock Text="Japanese IME control for speech-to-text input (日本語IME制御)" 
+                            <TextBlock Text="Japanese IME control for speech-to-text input (日本語IME制御)"
                                       Margin="0,0,0,10" TextWrapping="Wrap" FontStyle="Italic" FontWeight="Bold"/>
-                            
-                            <CheckBox Content="Enable IME control" 
-                                     IsChecked="{Binding Settings.Output.SendInput.Ime.EnableImeControl}" 
+
+                            <CheckBox Content="Enable IME control"
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.EnableImeControl}"
                                      Margin="0,5"/>
-                            <TextBlock Text="Automatically manage IME during speech-to-text input to prevent conflicts" 
-                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
-                            
-                            <CheckBox Content="Close IME when sending text" 
-                                     IsChecked="{Binding Settings.Output.SendInput.Ime.CloseImeWhenSending}" 
-                                     Margin="0,5"/>
-                            <TextBlock Text="💡 Temporarily close IME during text input, then restore original state (recommended for Japanese)" 
-                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
-                            
-                            <CheckBox Content="Set alphanumeric mode" 
-                                     IsChecked="{Binding Settings.Output.SendInput.Ime.SetAlphanumericMode}" 
-                                     Margin="0,5"/>
-                            <TextBlock Text="⚠️ Alternative: Switch to alphanumeric mode instead of closing IME (use only if closing IME causes issues)" 
-                                      Foreground="DarkOrange" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
-                            
-                            <CheckBox Content="Skip when IME is composing" 
-                                     IsChecked="{Binding Settings.Output.SendInput.Ime.SkipWhenImeComposing}" 
-                                     Margin="0,5"/>
-                            <TextBlock Text="Skip text input if IME is actively composing to prevent conflicts" 
+                            <TextBlock Text="Automatically manage IME during speech-to-text input to prevent conflicts"
                                       Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
 
-                            <TextBlock Text="🏮 How it works: Speech recognition sends Japanese text via Unicode SendInput. IME is temporarily managed to prevent composition conflicts, then restored to original state (日本語/ひらがな mode)." 
+                            <CheckBox Content="Close IME when sending text"
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.CloseImeWhenSending}"
+                                     Margin="0,5"/>
+                            <TextBlock Text="💡 Temporarily close IME during text input, then restore original state (recommended for Japanese)"
+                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+
+                            <CheckBox Content="Set alphanumeric mode"
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.SetAlphanumericMode}"
+                                     Margin="0,5"/>
+                            <TextBlock Text="⚠️ Alternative: Switch to alphanumeric mode instead of closing IME (use only if closing IME causes issues)"
+                                      Foreground="DarkOrange" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+
+                            <CheckBox Content="Skip when IME is composing"
+                                     IsChecked="{Binding Settings.Output.SendInput.Ime.SkipWhenImeComposing}"
+                                     Margin="0,5"/>
+                            <TextBlock Text="Skip text input if IME is actively composing to prevent conflicts"
+                                      Foreground="Gray" FontSize="11" Margin="20,0,0,5" TextWrapping="Wrap"/>
+
+                            <TextBlock Text="🏮 How it works: Speech recognition sends Japanese text via Unicode SendInput. IME is temporarily managed to prevent composition conflicts, then restored to original state (日本語/ひらがな mode)."
                                       Background="LightYellow" Padding="8" Margin="0,10,0,5" TextWrapping="Wrap"/>
-                            
-                            <TextBlock Text="💡 Use Win+Shift+F4 to test IME control functionality with detailed debug information" 
+
+                            <TextBlock Text="💡 Use Win+Shift+F4 to test IME control functionality with detailed debug information"
                                       Background="LightBlue" Padding="8" Margin="0,5,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </GroupBox>
-                    
+
                     <!-- Test Section -->
                     <GroupBox Header="Output Test" Margin="0,0,0,15">
                         <StackPanel Margin="10">
-                            <TextBlock Text="Test output methods using global keyboard shortcuts (works from any application):" 
+                            <TextBlock Text="Test output methods using global keyboard shortcuts (works from any application):"
                                       Margin="0,0,0,10" TextWrapping="Wrap"/>
-                            <TextBox x:Name="TestTextBox" Text="Hello, this is a test from Sttify." 
+                            <TextBox x:Name="TestTextBox" Text="Hello, this is a test from Sttify."
                                     Margin="0,0,0,10"/>
-                            
+
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -221,47 +266,47 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                
+
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
-                                
+
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process" Margin="0,2"/>
-                                
+
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
-                                
+
                                 <TextBlock Grid.Row="3" Grid.Column="0" Text="Win+Shift+F4:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="3" Grid.Column="1" Text="Test IME Control (detailed debug output)" Margin="0,2"/>
                             </Grid>
-                            
-                            <TextBlock Text="1. Focus a text editor (like Notepad)&#10;2. Press the desired global shortcut key (Win+Shift+F1/F2/F3/F4)&#10;3. The test text will be sent to the focused application (F4 provides detailed IME control debug output)" 
+
+                            <TextBlock Text="1. Focus a text editor (like Notepad)&#10;2. Press the desired global shortcut key (Win+Shift+F1/F2/F3/F4)&#10;3. The test text will be sent to the focused application (F4 provides detailed IME control debug output)"
                                       Foreground="Gray" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <TabItem Header="Hotkeys">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
                         <GroupBox Header="Application Hotkeys" Margin="0,0,0,15">
                             <StackPanel Margin="10">
                                 <Label Content="Toggle UI:"/>
-                                <TextBox Text="{Binding Settings.Hotkeys.ToggleUi}" 
+                                <TextBox Text="{Binding Settings.Hotkeys.ToggleUi}"
                                         Margin="0,5,0,10"/>
-                                
+
                                 <Label Content="Toggle Microphone:"/>
-                                <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}" 
+                                <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}"
                                         Margin="0,5,0,10"/>
                             </StackPanel>
                         </GroupBox>
-                        
+
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <TabItem Header="Interface">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
@@ -278,7 +323,7 @@
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
-                                
+
                                 <TextBlock Grid.Row="0" Grid.Column="0" Text="X Position:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,2">
                                     <TextBlock.Text>
@@ -287,7 +332,7 @@
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>
-                                
+
                                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Y Position:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,2">
                                     <TextBlock.Text>
@@ -296,35 +341,35 @@
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>
-                                
+
                                 <TextBlock Grid.Row="2" Grid.Column="0" Text="Display:" FontWeight="Bold" Margin="0,2,10,2"/>
                                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Settings.Application.ControlWindow.DisplayConfiguration}" Margin="0,2"/>
                             </Grid>
-                            
-                            <TextBlock Text="Reset control window position to default location" 
+
+                            <TextBlock Text="Reset control window position to default location"
                                       Margin="0,5,0,10" TextWrapping="Wrap"/>
-                            <Button Content="Reset Window Position" 
+                            <Button Content="Reset Window Position"
                                    Command="{Binding ResetWindowPositionCommand}"
                                    Width="150" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </GroupBox>
-                    
+
                     <GroupBox Header="Display Settings" Margin="0,0,0,15">
                         <StackPanel Margin="10">
-                            <CheckBox Content="Always show window on primary monitor" 
-                                     IsChecked="{Binding Settings.Application.AlwaysOnPrimaryMonitor}" 
+                            <CheckBox Content="Always show window on primary monitor"
+                                     IsChecked="{Binding Settings.Application.AlwaysOnPrimaryMonitor}"
                                      Margin="0,5"/>
-                            <CheckBox Content="Remember window position" 
-                                     IsChecked="{Binding Settings.Application.RememberWindowPosition}" 
+                            <CheckBox Content="Remember window position"
+                                     IsChecked="{Binding Settings.Application.RememberWindowPosition}"
                                      Margin="0,5"/>
                         </StackPanel>
                     </GroupBox>
-                    
+
                     <GroupBox Header="Logs &amp; Diagnostics">
                         <StackPanel Margin="10">
-                            <TextBlock Text="Open application log files directory" 
+                            <TextBlock Text="Open application log files directory"
                                       Margin="0,0,0,10" TextWrapping="Wrap"/>
-                            <Button Content="Open Log Directory" 
+                            <Button Content="Open Log Directory"
                                    Command="{Binding OpenLogDirectoryCommand}"
                                    Width="150" HorizontalAlignment="Left"/>
                         </StackPanel>
@@ -332,16 +377,16 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
         </TabControl>
-        
+
         <!-- Buttons -->
-        <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
-                    HorizontalAlignment="Right" 
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
                     Margin="0,10,0,0">
-            <Button Content="Reset to Defaults" 
-                   Command="{Binding ResetToDefaultsCommand}" 
+            <Button Content="Reset to Defaults"
+                   Command="{Binding ResetToDefaultsCommand}"
                    Width="120" Margin="0,0,10,0"/>
             <Button Content="Cancel" Width="80" Margin="0,0,10,0" Click="OnCancel"/>
             <Button Content="OK" Width="80" IsDefault="True" Click="OnOK"/>

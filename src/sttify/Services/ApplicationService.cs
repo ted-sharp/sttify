@@ -230,6 +230,9 @@ public class ApplicationService : IDisposable
         try
         {
             // Console.WriteLine("ApplicationService: Initializing RTSS service...");
+            // Apply latest settings to bridge before initialize
+            var settings = _settingsProvider.GetSettingsSync();
+            _rtssService.UpdateSettings(settings.Rtss);
             var initialized = _rtssService.Initialize();
             // Console.WriteLine($"ApplicationService: RTSS initialization result: {initialized}");
             Telemetry.LogEvent("RtssInitialized", new { Success = initialized });
