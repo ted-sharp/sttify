@@ -118,7 +118,14 @@ public class NotifyIconHost : IDisposable
 
     private void UpdateContextMenu()
     {
-        if (_notifyIcon?.ContextMenuStrip == null || _applicationService == null)
+        // Ensure we are on the WPF UI thread before touching Application.Current.Windows or UI-bound elements
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.BeginInvoke((Action)UpdateContextMenu);
+            return;
+        }
+
+        if (_applicationService == null || _notifyIcon == null || _notifyIcon.ContextMenuStrip == null)
             return;
 
         if (_menuItemStartStop != null)
@@ -129,7 +136,7 @@ public class NotifyIconHost : IDisposable
 
         if (_menuItemControlWindow != null)
         {
-            var cw = System.Windows.Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
+            var cw = System.Windows.Application.Current?.Windows.OfType<ControlWindow>().FirstOrDefault();
             var isVisible = cw != null && cw.Visibility == Visibility.Visible;
             _menuItemControlWindow.Text = isVisible ? "Hide Control Window" : "Show Control Window";
         }
