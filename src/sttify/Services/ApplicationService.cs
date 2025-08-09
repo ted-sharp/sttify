@@ -160,10 +160,24 @@ public class ApplicationService : IDisposable
             {
                 var settings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
 
-                _hotkeyManager.UnregisterAllHotkeys();
+                bool uiOk = false;
+                bool micOk = false;
 
-                var uiOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
-                var micOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
+                Action registerOnUi = () =>
+                {
+                    _hotkeyManager.UnregisterAllHotkeys();
+                    uiOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
+                    micOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
+                };
+
+                if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+                {
+                    System.Windows.Application.Current.Dispatcher.Invoke(registerOnUi);
+                }
+                else
+                {
+                    registerOnUi();
+                }
 
                 Telemetry.LogEvent("HotkeysRegistered", new {
                     ToggleUi = settings.Hotkeys.ToggleUi,
@@ -277,12 +291,14 @@ public class ApplicationService : IDisposable
                         break;
 
                     case "ToggleMic":
-                        if (_recognitionSession.CurrentState == SessionState.Listening)
+                        var state = _recognitionSession.CurrentState;
+                        if (state == SessionState.Listening)
                         {
                             await StopRecognitionAsync().ConfigureAwait(false);
                         }
-                        else if (_recognitionSession.CurrentState == SessionState.Idle)
+                        else if (state == SessionState.Idle || state == SessionState.Error)
                         {
+                            // Allow recovery from Error state via hotkey
                             await StartRecognitionAsync().ConfigureAwait(false);
                         }
                         break;
