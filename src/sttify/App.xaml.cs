@@ -17,6 +17,8 @@ using Sttify.Views;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using Sttify.Corelib.Services;
+using System.Text.Json;
 
 namespace Sttify;
 
@@ -125,10 +127,22 @@ public partial class App : System.Windows.Application
         bool maskLogs = false;
         try
         {
-            // Load privacy setting early from user config
-            var tempSettingsProvider = new SettingsProvider();
-            var settings = tempSettingsProvider.GetSettingsSync();
-            maskLogs = settings.Privacy?.MaskInLogs ?? false;
+            // Load privacy setting early from user config WITHOUT instantiating SettingsProvider (avoids extra FileSystemWatcher)
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var sttifyDir = Path.Combine(appDataPath, "sttify");
+            var configPath = Path.Combine(sttifyDir, "config.json");
+            if (File.Exists(configPath))
+            {
+                var json = File.ReadAllText(configPath);
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("privacy", out var privacy) &&
+                    privacy.ValueKind == JsonValueKind.Object &&
+                    privacy.TryGetProperty("maskInLogs", out var maskProp) &&
+                    (maskProp.ValueKind == JsonValueKind.True || maskProp.ValueKind == JsonValueKind.False))
+                {
+                    maskLogs = maskProp.GetBoolean();
+                }
+            }
         }
         catch
         {
@@ -159,6 +173,7 @@ public partial class App : System.Windows.Application
                     // Create HotkeyManager with default IntPtr (0) for window handle
                     return new HotkeyManager(IntPtr.Zero);
                 });
+                services.AddSingleton<HotkeyService>();
 
                 // Use default settings for now - will be configured later
                 services.AddSingleton<RtssBridge>(provider =>

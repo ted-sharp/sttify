@@ -12,8 +12,9 @@ public class HotkeyService : IDisposable
     private bool _disposed;
 
     public event EventHandler<HotkeyTriggeredEventArgs>? OnHotkeyTriggered;
+        public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
-    public HotkeyService(HotkeyManager hotkeyManager, SettingsProvider settingsProvider)
+        public HotkeyService(HotkeyManager hotkeyManager, SettingsProvider settingsProvider)
     {
         _hotkeyManager = hotkeyManager ?? throw new ArgumentNullException(nameof(hotkeyManager));
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
@@ -21,6 +22,7 @@ public class HotkeyService : IDisposable
         _hotkeyManager.OnHotkeyPressed += OnHotkeyPressed;
         _hotkeyManager.OnHotkeyRegistered += OnHotkeyRegistered;
         _hotkeyManager.OnHotkeyUnregistered += OnHotkeyUnregistered;
+            _hotkeyManager.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailedInternal;
     }
 
     public async Task InitializeAsync()
@@ -29,7 +31,7 @@ public class HotkeyService : IDisposable
         {
             _currentSettings = await _settingsProvider.GetSettingsAsync();
             await RegisterApplicationHotkeysAsync();
-            
+
             Telemetry.LogEvent("HotkeyServiceInitialized");
         }
         catch (Exception ex)
@@ -39,17 +41,30 @@ public class HotkeyService : IDisposable
         }
     }
 
+    private void OnHotkeyRegistrationFailedInternal(object? sender, HotkeyRegistrationFailedEventArgs e)
+    {
+        try
+        {
+            Telemetry.LogWarning("HotkeyRegistrationFailed", $"Failed to register hotkey {e.HotkeyString} (Win32={e.Win32Error})", new { e.Name, e.HotkeyString, e.Win32Error });
+            OnHotkeyRegistrationFailed?.Invoke(this, e);
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("HotkeyService_OnRegistrationFailed_HandlerError", ex, new { e.Name, e.HotkeyString, e.Win32Error });
+        }
+    }
+
     public async Task RefreshHotkeysAsync()
     {
         try
         {
             // Unregister all current hotkeys
             _hotkeyManager.UnregisterAllHotkeys();
-            
+
             // Reload settings and register new hotkeys
             _currentSettings = await _settingsProvider.GetSettingsAsync();
             await RegisterApplicationHotkeysAsync();
-            
+
             Telemetry.LogEvent("HotkeysRefreshed");
         }
         catch (Exception ex)
@@ -98,7 +113,7 @@ public class HotkeyService : IDisposable
                 Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "EmergencyStop", Hotkey = _currentSettings.Hotkeys.EmergencyStop });
             }
         }
-        
+
         return Task.CompletedTask;
     }
 
@@ -116,11 +131,11 @@ public class HotkeyService : IDisposable
             };
 
             OnHotkeyTriggered?.Invoke(this, new HotkeyTriggeredEventArgs(e.Name, e.HotkeyString, action));
-            
-            Telemetry.LogEvent("HotkeyTriggered", new 
-            { 
-                Name = e.Name, 
-                HotkeyString = e.HotkeyString, 
+
+            Telemetry.LogEvent("HotkeyTriggered", new
+            {
+                Name = e.Name,
+                HotkeyString = e.HotkeyString,
                 Action = action.ToString(),
                 Timestamp = e.Timestamp
             });
@@ -133,21 +148,21 @@ public class HotkeyService : IDisposable
 
     private void OnHotkeyRegistered(object? sender, HotkeyRegistrationEventArgs e)
     {
-        Telemetry.LogEvent("HotkeyRegistrationChanged", new 
-        { 
-            Name = e.Name, 
-            HotkeyString = e.HotkeyString, 
-            IsRegistered = e.IsRegistered 
+        Telemetry.LogEvent("HotkeyRegistrationChanged", new
+        {
+            Name = e.Name,
+            HotkeyString = e.HotkeyString,
+            IsRegistered = e.IsRegistered
         });
     }
 
     private void OnHotkeyUnregistered(object? sender, HotkeyRegistrationEventArgs e)
     {
-        Telemetry.LogEvent("HotkeyRegistrationChanged", new 
-        { 
-            Name = e.Name, 
-            HotkeyString = e.HotkeyString, 
-            IsRegistered = e.IsRegistered 
+        Telemetry.LogEvent("HotkeyRegistrationChanged", new
+        {
+            Name = e.Name,
+            HotkeyString = e.HotkeyString,
+            IsRegistered = e.IsRegistered
         });
     }
 
@@ -175,7 +190,7 @@ public class HotkeyService : IDisposable
                 _hotkeyManager.OnHotkeyPressed -= OnHotkeyPressed;
                 _hotkeyManager.OnHotkeyRegistered -= OnHotkeyRegistered;
                 _hotkeyManager.OnHotkeyUnregistered -= OnHotkeyUnregistered;
-                
+
                 _hotkeyManager.Dispose();
             }
             catch (Exception ex)

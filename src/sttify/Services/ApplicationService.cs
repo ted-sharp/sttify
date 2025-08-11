@@ -8,6 +8,7 @@ using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using System.Windows;
 using System.Windows.Interop;
+using Sttify.Corelib.Services;
 // duplicate using removed
 
 namespace Sttify.Services;
@@ -16,7 +17,7 @@ public class ApplicationService : IDisposable
 {
     private readonly SettingsProvider _settingsProvider;
     private readonly RecognitionSession _recognitionSession;
-    private readonly HotkeyManager _hotkeyManager;
+    private readonly HotkeyService _hotkeyService;
     private readonly RtssBridge _rtssService;
     private readonly ErrorRecovery _errorRecovery;
     private readonly HealthMonitor _healthMonitor;
@@ -29,13 +30,13 @@ public class ApplicationService : IDisposable
     public ApplicationService(
         SettingsProvider settingsProvider,
         RecognitionSession recognitionSession,
-        HotkeyManager hotkeyManager,
+        HotkeyService hotkeyService,
         RtssBridge rtssService)
     {
         System.Diagnostics.Debug.WriteLine("*** ApplicationService Constructor Called - VERSION 2024-DEBUG ***");
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         _recognitionSession = recognitionSession ?? throw new ArgumentNullException(nameof(recognitionSession));
-        _hotkeyManager = hotkeyManager ?? throw new ArgumentNullException(nameof(hotkeyManager));
+        _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
         _rtssService = rtssService ?? throw new ArgumentNullException(nameof(rtssService));
 
         _errorRecovery = new ErrorRecovery();
@@ -43,8 +44,8 @@ public class ApplicationService : IDisposable
 
         _recognitionSession.OnStateChanged += OnSessionStateChanged;
         _recognitionSession.OnTextRecognized += OnTextRecognized;
-        _hotkeyManager.OnHotkeyPressed += OnHotkeyPressed;
-        _hotkeyManager.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailed;
+        _hotkeyService.OnHotkeyTriggered += OnHotkeyTriggered;
+        _hotkeyService.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailed;
 
         _errorRecovery.OnRecoveryFailed += OnRecoveryFailed;
         _healthMonitor.OnHealthStatusChanged += OnHealthStatusChanged;
@@ -59,9 +60,8 @@ public class ApplicationService : IDisposable
             // Console.WriteLine("ApplicationService: Starting initialization...");
             Telemetry.LogEvent("ApplicationServiceInitializing");
 
-            // Console.WriteLine("ApplicationService: Initializing hotkeys...");
-            InitializeHotkeys();
-            // Console.WriteLine("ApplicationService: Hotkeys initialized");
+            // Initialize hotkeys via HotkeyService
+            AsyncHelper.FireAndForget(() => _hotkeyService.InitializeAsync(), nameof(HotkeyService.InitializeAsync));
 
             // Console.WriteLine("ApplicationService: Initializing RTSS...");
             InitializeRtss();
@@ -82,18 +82,21 @@ public class ApplicationService : IDisposable
         }
     }
 
+    private ThreadMessageEventHandler? _hotkeyThreadHandler;
+
     private void RegisterHotkeyMessageHook()
     {
         try
         {
-            ComponentDispatcher.ThreadPreprocessMessage += (ref MSG msg, ref bool handled) =>
+            _hotkeyThreadHandler = (ref MSG msg, ref bool handled) =>
             {
                 // WM_HOTKEY = 0x0312
                 if (msg.message == 0x0312)
                 {
-                    _hotkeyManager.ProcessWindowMessage(msg.hwnd, (int)msg.message, msg.wParam, msg.lParam);
+                    _hotkeyService.ProcessWindowMessage(msg.hwnd, (int)msg.message, msg.wParam, msg.lParam);
                 }
             };
+            ComponentDispatcher.ThreadPreprocessMessage += _hotkeyThreadHandler;
             Telemetry.LogEvent("HotkeyMessageHookRegistered");
         }
         catch (Exception ex)
@@ -152,72 +155,13 @@ public class ApplicationService : IDisposable
         return _recognitionSession.CurrentState;
     }
 
-    private void InitializeHotkeys()
-    {
-        AsyncHelper.FireAndForget(async () =>
-        {
-            try
-            {
-                var settings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
-
-                bool uiOk = false;
-                bool micOk = false;
-
-                Action registerOnUi = () =>
-                {
-                    _hotkeyManager.UnregisterAllHotkeys();
-                    uiOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleUi, "ToggleUi");
-                    micOk = _hotkeyManager.RegisterHotkey(settings.Hotkeys.ToggleMic, "ToggleMic");
-                };
-
-                if (System.Windows.Application.Current != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
-                {
-                    System.Windows.Application.Current.Dispatcher.Invoke(registerOnUi);
-                }
-                else
-                {
-                    registerOnUi();
-                }
-
-                Telemetry.LogEvent("HotkeysRegistered", new {
-                    ToggleUi = settings.Hotkeys.ToggleUi,
-                    ToggleMic = settings.Hotkeys.ToggleMic,
-                    ToggleUiRegistered = uiOk,
-                    ToggleMicRegistered = micOk
-                });
-                if (!uiOk || !micOk)
-                {
-                    Telemetry.LogWarning("HotkeyRegistrationIssue", $"Some hotkeys failed to register. UI={uiOk}, MIC={micOk}");
-                }
-
-                _lastHotkeyToggleUi = settings.Hotkeys.ToggleUi;
-                _lastHotkeyToggleMic = settings.Hotkeys.ToggleMic;
-            }
-            catch (Exception ex)
-            {
-                Telemetry.LogError("HotkeyInitializationFailed", ex);
-            }
-        }, nameof(InitializeHotkeys));
-    }
+    // Hotkey registration is delegated to HotkeyService
 
     public async Task ReinitializeHotkeysAsync()
     {
         try
         {
-            var settings = await _settingsProvider.GetSettingsAsync();
-            var needsUpdate = settings.Hotkeys.ToggleUi != _lastHotkeyToggleUi ||
-                              settings.Hotkeys.ToggleMic != _lastHotkeyToggleMic;
-
-            if (!needsUpdate)
-            {
-                Telemetry.LogEvent("HotkeysReinitSkippedNoChange", new {
-                    ToggleUi = settings.Hotkeys.ToggleUi,
-                    ToggleMic = settings.Hotkeys.ToggleMic
-                });
-                return;
-            }
-
-            InitializeHotkeys();
+            await _hotkeyService.RefreshHotkeysAsync();
         }
         catch (Exception ex)
         {
@@ -271,15 +215,15 @@ public class ApplicationService : IDisposable
         }, nameof(OnTextRecognized), new { e.Text, e.IsFinal });
     }
 
-    private void OnHotkeyPressed(object? sender, HotkeyPressedEventArgs e)
+    private void OnHotkeyTriggered(object? sender, HotkeyTriggeredEventArgs e)
     {
         AsyncHelper.FireAndForget(async () =>
         {
             try
             {
-                switch (e.Name)
+                switch (e.Action)
                 {
-                    case "ToggleUi":
+                    case HotkeyAction.ToggleUI:
                         System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             var controlWindow = System.Windows.Application.Current.Windows.OfType<Views.ControlWindow>().FirstOrDefault();
@@ -293,7 +237,7 @@ public class ApplicationService : IDisposable
                         });
                         break;
 
-                    case "ToggleMic":
+                    case HotkeyAction.ToggleMicrophone:
                         var state = _recognitionSession.CurrentState;
                         if (state == SessionState.Listening)
                         {
@@ -305,15 +249,23 @@ public class ApplicationService : IDisposable
                             await StartRecognitionAsync().ConfigureAwait(false);
                         }
                         break;
+
+                    case HotkeyAction.PushToTalk:
+                        // Reserved for future PTT behavior
+                        break;
+
+                    case HotkeyAction.EmergencyStop:
+                        await StopRecognitionAsync().ConfigureAwait(false);
+                        break;
                 }
 
-                Telemetry.LogEvent("HotkeyPressed", new { Name = e.Name, Hotkey = e.HotkeyString });
+                Telemetry.LogEvent("HotkeyTriggeredHandled", new { Name = e.Name, Hotkey = e.HotkeyString, Action = e.Action.ToString() });
             }
             catch (Exception ex)
             {
-                Telemetry.LogError("HotkeyProcessingFailed", ex, new { Name = e.Name });
+                Telemetry.LogError("HotkeyProcessingFailed", ex, new { Name = e.Name, Action = e.Action.ToString() });
             }
-        }, nameof(OnHotkeyPressed), new { e.Name, e.HotkeyString });
+        }, nameof(OnHotkeyTriggered), new { e.Name, e.HotkeyString, Action = e.Action.ToString() });
     }
 
     private void SetupHealthChecks()
@@ -411,10 +363,16 @@ public class ApplicationService : IDisposable
     public void Dispose()
     {
         _healthMonitor?.Dispose();
-        if (_hotkeyManager != null)
+        if (_hotkeyThreadHandler is not null)
         {
-            _hotkeyManager.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
-            _hotkeyManager.Dispose();
+            ComponentDispatcher.ThreadPreprocessMessage -= _hotkeyThreadHandler;
+            _hotkeyThreadHandler = null;
+        }
+        if (_hotkeyService is not null)
+        {
+            _hotkeyService.OnHotkeyTriggered -= OnHotkeyTriggered;
+            _hotkeyService.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
+            _hotkeyService.Dispose();
         }
         _recognitionSession?.Dispose();
         _rtssService?.Dispose();

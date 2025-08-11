@@ -20,12 +20,24 @@ public static class SttEngineFactory
             "vosk-mock" => new VoskEngineAdapter(engineSettings.Vosk),
             "vibe" => new VibeSttEngine(engineSettings.Vibe),
             "azure" => new AzureSpeechEngine(engineSettings.Cloud),
-            "cloud" => EngineFactory.CreateEngine(engineSettings),
-            "google" or "aws" => EngineFactory.CreateEngine(engineSettings),
+            "cloud" => CreateCloudEngine(engineSettings.Cloud),
+            "google" or "aws" => CreateCloudEngine(engineSettings.Cloud),
             _ => FallbackToDefault(engineSettings, profile)
         };
         System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Created: {engine.GetType().Name} ***");
         return engine;
+    }
+
+    private static ISttEngine CreateCloudEngine(CloudEngineSettings settings)
+    {
+        var provider = settings.Provider?.ToLowerInvariant();
+        return provider switch
+        {
+            "azure" => new AzureSpeechEngine(settings),
+            "google" => new GoogleCloudSpeechEngine(settings),
+            "aws" => new AwsTranscribeEngine(settings),
+            _ => throw new ArgumentException($"Unsupported cloud provider: {settings.Provider}")
+        };
     }
 
     private static ISttEngine CreateVoskEngine(VoskEngineSettings voskSettings)

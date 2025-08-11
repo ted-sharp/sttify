@@ -144,20 +144,15 @@ public partial class SettingsViewModel : ObservableObject
             IsLoading = true;
             await _settingsProvider.SaveSettingsAsync(Settings);
 
-            // Apply settings immediately: refresh output sinks and hotkeys
+             // Apply settings immediately: refresh output sinks and hotkeys
             try
             {
                 var sinkProvider = App.ServiceProvider?.GetService<IOutputSinkProvider>();
-                if (sinkProvider != null)
-                {
-                    await sinkProvider.RefreshAsync();
-                }
-
                 var appService = App.ServiceProvider?.GetService<ApplicationService>();
-                if (appService != null)
-                {
-                    await appService.ReinitializeHotkeysAsync();
-                }
+                var engineFactory = App.ServiceProvider?.GetService<Sttify.Corelib.Engine.SttEngineFactory>(); // might be null (static factory)
+
+                if (sinkProvider != null) await sinkProvider.RefreshAsync();
+                if (appService != null) await appService.ReinitializeHotkeysAsync();
             }
             catch (Exception ex)
             {
@@ -339,7 +334,8 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            AvailableEngines = await Task.Run(() => EngineFactory.GetAvailableProfiles());
+            // Prefer unified factory's list if available; keep EngineFactory for backward compatibility
+            AvailableEngines = await Task.Run(() => SttEngineFactory.GetAvailableEngines());
         }
         catch (Exception ex)
         {
@@ -616,7 +612,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var engine = EngineFactory.CreateEngine(Settings.Engine);
+            var engine = SttEngineFactory.CreateEngine(Settings.Engine);
 
             // Basic test - try to initialize
             await engine.StartAsync();

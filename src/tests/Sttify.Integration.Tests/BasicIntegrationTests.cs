@@ -3,7 +3,7 @@ using Moq;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
-using Sttify.Corelib.Engine.Vosk;
+// using Sttify.Corelib.Engine.Vosk;
 using Sttify.Corelib.Output;
 using Sttify.Corelib.Session;
 using Sttify.Corelib.Plugins;
@@ -23,7 +23,7 @@ public class BasicIntegrationTests
         services.AddSingleton<SettingsProvider>();
         services.AddSingleton<AudioCapture>();
         // Engine is constructed on session start now; keep a dummy registration if required elsewhere
-        services.AddSingleton<ISttEngine>(provider => new RealVoskEngineAdapter(new VoskEngineSettings()));
+        services.AddSingleton<ISttEngine>(provider => new Mock<ISttEngine>().Object);
         services.AddSingleton<IOutputSinkProvider>(provider =>
         {
             // Minimal provider for integration test
@@ -62,7 +62,7 @@ public class BasicIntegrationTests
         var settings = await settingsProvider.GetSettingsAsync();
 
         var audioCapture = new AudioCapture();
-        var sttEngine = new RealVoskEngineAdapter(settings.Engine.Vosk); // not used by session ctor anymore
+        // var sttEngine = new RealVoskEngineAdapter(settings.Engine.Vosk); // not used by session ctor anymore
         var mockSinkProvider = new Mock<IOutputSinkProvider>();
         mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink> { new SendInputSink(new SendInputSettings()) });
         var outputSinkProvider = mockSinkProvider.Object;
