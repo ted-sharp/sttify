@@ -255,7 +255,7 @@ public partial class ControlWindow : Window
         var contextMenu = new System.Windows.Controls.ContextMenu();
 
         // Add microphone control options
-        var applicationService = _applicationService ?? App.ServiceProvider?.GetService<ApplicationService>();
+        var applicationService = _applicationService;
 
         if (applicationService == null)
         {
@@ -302,9 +302,8 @@ public partial class ControlWindow : Window
 
     private void ShowSettingsWindow()
     {
-        // Try to use instance service provider first, then fall back to static
-        var serviceProvider = _serviceProvider ?? App.ServiceProvider;
-
+        // Use injected service provider only
+        var serviceProvider = _serviceProvider;
         if (serviceProvider == null)
         {
             System.Windows.MessageBox.Show("Service provider not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -643,7 +642,7 @@ public partial class ControlWindow : Window
             return;
         }
 
-        var serviceProvider = App.ServiceProvider;
+        var serviceProvider = _serviceProvider;
         if (serviceProvider != null)
         {
             try
@@ -667,7 +666,7 @@ public partial class ControlWindow : Window
         }
         else
         {
-            Debug.WriteLine("TryRegisterApplicationService: App.ServiceProvider is null");
+            Debug.WriteLine("TryRegisterApplicationService: ServiceProvider is null");
         }
     }
 

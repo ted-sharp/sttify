@@ -14,14 +14,20 @@ namespace Sttify.Views;
 public partial class SettingsWindow : Window
 {
     private readonly SettingsViewModel _viewModel;
+    private readonly ApplicationService _applicationService;
+    private readonly Sttify.Corelib.Config.SettingsProvider _settingsProvider;
+    private readonly Sttify.Corelib.Rtss.RtssBridge _rtss;
     private HotkeyManager? _hotkeyManager;
     private HwndSource? _hwndSource;
 
-    public SettingsWindow(SettingsViewModel viewModel)
+    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService, Sttify.Corelib.Config.SettingsProvider settingsProvider, Sttify.Corelib.Rtss.RtssBridge rtss)
     {
         InitializeComponent();
 
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
+        _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
+        _rtss = rtss ?? throw new ArgumentNullException(nameof(rtss));
         DataContext = _viewModel;
 
         // Setup global hotkeys when window is loaded
@@ -132,14 +138,10 @@ public partial class SettingsWindow : Window
             {
                 await _viewModel.SaveSettingsCommand.ExecuteAsync(null).ConfigureAwait(false);
 
-                try
-                {
-                    var appSvc = App.ServiceProvider?.GetService<ApplicationService>();
-                    if (appSvc != null)
-                    {
-                        await appSvc.ReinitializeHotkeysAsync().ConfigureAwait(false);
-                    }
-                }
+            try
+            {
+                await _applicationService.ReinitializeHotkeysAsync().ConfigureAwait(false);
+            }
                 catch { }
 
                 Dispatcher.Invoke(Close);
@@ -161,23 +163,17 @@ public partial class SettingsWindow : Window
     {
         try
         {
-            var appSvc = App.ServiceProvider?.GetService<ApplicationService>();
-            var settingsProvider = App.ServiceProvider?.GetService<Sttify.Corelib.Config.SettingsProvider>();
-            var rtss = App.ServiceProvider?.GetService<Sttify.Corelib.Rtss.RtssBridge>();
-            if (appSvc != null && settingsProvider != null && rtss != null)
+            var settings = _settingsProvider.GetSettingsSync();
+            _rtss.UpdateSettings(settings.Rtss);
+            var ok = _rtss.Initialize();
+            System.Diagnostics.Debug.WriteLine($"*** RTSS reconnect requested, result: {ok} ***");
+            if (!ok)
             {
-                var settings = settingsProvider.GetSettingsSync();
-                rtss.UpdateSettings(settings.Rtss);
-                var ok = rtss.Initialize();
-                System.Diagnostics.Debug.WriteLine($"*** RTSS reconnect requested, result: {ok} ***");
-                if (!ok)
-                {
-                    System.Windows.MessageBox.Show(
-                        "Failed to connect to RTSS shared memory. Please ensure RTSS is running and OSD is enabled.",
-                        "RTSS",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
-                }
+                System.Windows.MessageBox.Show(
+                    "Failed to connect to RTSS shared memory. Please ensure RTSS is running and OSD is enabled.",
+                    "RTSS",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
         }
         catch (Exception ex)
