@@ -152,7 +152,11 @@ public partial class SettingsViewModel : ObservableObject
                 var engineFactory = App.ServiceProvider?.GetService<Sttify.Corelib.Engine.SttEngineFactory>(); // might be null (static factory)
 
                 if (sinkProvider != null) await sinkProvider.RefreshAsync();
-                if (appService != null) await appService.ReinitializeHotkeysAsync();
+                if (appService != null)
+                {
+                    await appService.ReinitializeHotkeysAsync();
+                    await appService.ReinitializeEngineAsync(restartIfRunning: true);
+                }
             }
             catch (Exception ex)
             {

@@ -169,6 +169,30 @@ public class ApplicationService : IDisposable
         }
     }
 
+    public async Task ReinitializeEngineAsync(bool restartIfRunning = true)
+    {
+        try
+        {
+            var wasListening = _recognitionSession.CurrentState == SessionState.Listening;
+            if (wasListening && restartIfRunning)
+            {
+                await StopRecognitionAsync().ConfigureAwait(false);
+            }
+
+            // Next StartRecognitionAsync() will rebuild engine from latest settings via session
+            if (wasListening && restartIfRunning)
+            {
+                await StartRecognitionAsync().ConfigureAwait(false);
+            }
+
+            Telemetry.LogEvent("EngineReinitialized", new { Restarted = wasListening && restartIfRunning });
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("EngineReinitializeFailed", ex);
+        }
+    }
+
     private void InitializeRtss()
     {
         try

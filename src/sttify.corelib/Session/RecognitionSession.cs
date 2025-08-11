@@ -152,6 +152,25 @@ public class RecognitionSession : IDisposable
             Telemetry.LogEvent("RecognitionSession_StateChangedToStarting");
 
             // Create engine with latest settings on each start
+            // Dispose any existing engine to avoid leaks between restarts
+            if (_sttEngine != null)
+            {
+                try
+                {
+                    _sttEngine.OnPartial -= OnPartialRecognition;
+                    _sttEngine.OnFinal -= OnFinalRecognition;
+                    _sttEngine.Dispose();
+                }
+                catch (Exception disposeEx)
+                {
+                    Telemetry.LogError("RecognitionSession_PreviousEngineDisposeFailed", disposeEx);
+                }
+                finally
+                {
+                    _sttEngine = null;
+                }
+            }
+
             var appSettings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
             var engine = Sttify.Corelib.Engine.SttEngineFactory.CreateEngine(appSettings.Engine);
             engine.OnPartial += OnPartialRecognition;
