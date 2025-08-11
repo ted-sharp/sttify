@@ -208,6 +208,34 @@ public partial class SettingsWindow : Window
         e.Handled = true;
     }
 
+    private void OnSendRtssTestClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = _settingsProvider.GetSettingsSync();
+            if (!settings.Rtss.Enabled)
+            {
+                System.Windows.MessageBox.Show("RTSS OSD is disabled in settings.", "RTSS", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (_rtss.Initialize())
+            {
+                var text = "Sttify RTSS Test: The quick brown fox jumps over the lazy dog.";
+                _rtss.UpdateOsd(text);
+                System.Windows.MessageBox.Show("Test message sent to RTSS OSD.", "RTSS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("Failed to connect RTSS shared memory.", "RTSS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Failed to send RTSS test message: {ex.Message}", "RTSS", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
 
 
     private void OnVoskModelsUrlClick(object sender, MouseButtonEventArgs e)
