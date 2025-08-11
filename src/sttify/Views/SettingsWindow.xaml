@@ -35,6 +35,9 @@
                         <CheckBox Content="Start minimized"
                                  IsChecked="{Binding Settings.Application.StartMinimized}"
                                  Margin="0,5"/>
+                         <CheckBox Content="Enable debug hotkeys (Win+Shift+F1..F4)"
+                                  IsChecked="{Binding Settings.Application.EnableDebugHotkeys}"
+                                  Margin="0,5"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

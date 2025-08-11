@@ -397,6 +397,7 @@ public class ApplicationSettings
     public bool AlwaysOnPrimaryMonitor { get; set; } = false;
     public bool RememberWindowPosition { get; set; } = true;
     public WindowPosition ControlWindow { get; set; } = new();
+    public bool EnableDebugHotkeys { get; set; } = false;
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

@@ -41,6 +41,14 @@ public partial class SettingsWindow : Window
 
         try
         {
+            // respect debug hotkeys setting
+            var settings = _settingsProvider.GetSettingsSync();
+            if (!settings.Application.EnableDebugHotkeys)
+            {
+                System.Diagnostics.Debug.WriteLine("*** Debug hotkeys disabled by settings ***");
+                return;
+            }
+
             // Get window handle
             var windowInteropHelper = new WindowInteropHelper(this);
             var windowHandle = windowInteropHelper.Handle;
