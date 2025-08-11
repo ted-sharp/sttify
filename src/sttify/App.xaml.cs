@@ -280,10 +280,19 @@ public partial class App : System.Windows.Application
             _notifyIconHost.Initialize();
             // Console.WriteLine("InitializeServices: NotifyIconHost initialized successfully");
 
-            // Console.WriteLine("InitializeServices: All services initialized successfully");
-
-            // Make service provider globally accessible
+            // Make service provider globally accessible before showing any UI
             ServiceProvider = _host.Services;
+
+            // Show control window via DI to ensure it uses injected services, not StartupUri
+            try
+            {
+                var controlWindow = _host.Services.GetRequiredService<ControlWindow>();
+                controlWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to show ControlWindow via DI: {ex.Message}");
+            }
         }
         catch (Exception ex)
         {
