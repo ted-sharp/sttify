@@ -211,7 +211,7 @@ public partial class ControlWindow : Window
         // Ensure ApplicationService is available and events are registered
         TryRegisterApplicationService();
 
-        var applicationService = _applicationService;
+        var applicationService = _applicationService ?? App.ServiceProvider?.GetService<ApplicationService>();
         if (applicationService == null)
         {
             System.Windows.MessageBox.Show("ApplicationService is not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -302,8 +302,8 @@ public partial class ControlWindow : Window
 
     private void ShowSettingsWindow()
     {
-        // Use injected service provider only
-        var serviceProvider = _serviceProvider;
+        // Try to use instance service provider first, then fall back to static
+        var serviceProvider = _serviceProvider ?? App.ServiceProvider;
         if (serviceProvider == null)
         {
             System.Windows.MessageBox.Show("Service provider not available.", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -642,7 +642,7 @@ public partial class ControlWindow : Window
             return;
         }
 
-        var serviceProvider = _serviceProvider;
+        var serviceProvider = _serviceProvider ?? App.ServiceProvider;
         if (serviceProvider != null)
         {
             try
