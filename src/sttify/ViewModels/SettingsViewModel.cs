@@ -19,6 +19,8 @@ namespace Sttify.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsProvider _settingsProvider;
+    private readonly IOutputSinkProvider? _sinkProvider;
+    private readonly ApplicationService? _applicationService;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVibeEngine))]
@@ -92,9 +94,11 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    public SettingsViewModel(SettingsProvider settingsProvider)
+    public SettingsViewModel(SettingsProvider settingsProvider, IOutputSinkProvider? sinkProvider = null, ApplicationService? applicationService = null)
     {
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
+        _sinkProvider = sinkProvider;
+        _applicationService = applicationService;
 
         _ = InitializeAsync();
     }
@@ -147,15 +151,11 @@ public partial class SettingsViewModel : ObservableObject
              // Apply settings immediately: refresh output sinks and hotkeys
             try
             {
-                var sinkProvider = App.ServiceProvider?.GetService<IOutputSinkProvider>();
-                var appService = App.ServiceProvider?.GetService<ApplicationService>();
-                var engineFactory = App.ServiceProvider?.GetService<Sttify.Corelib.Engine.SttEngineFactory>(); // might be null (static factory)
-
-                if (sinkProvider != null) await sinkProvider.RefreshAsync();
-                if (appService != null)
+                if (_sinkProvider != null) await _sinkProvider.RefreshAsync();
+                if (_applicationService != null)
                 {
-                    await appService.ReinitializeHotkeysAsync();
-                    await appService.ReinitializeEngineAsync(restartIfRunning: true);
+                    await _applicationService.ReinitializeHotkeysAsync();
+                    await _applicationService.ReinitializeEngineAsync(restartIfRunning: true);
                 }
             }
             catch (Exception ex)

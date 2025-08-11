@@ -244,7 +244,14 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<ApplicationService>();
 
                 services.AddTransient<MainViewModel>();
-                services.AddTransient<SettingsViewModel>();
+                services.AddTransient<SettingsViewModel>(provider =>
+                {
+                    return new SettingsViewModel(
+                        provider.GetRequiredService<SettingsProvider>(),
+                        provider.GetService<IOutputSinkProvider>(),
+                        provider.GetService<ApplicationService>()
+                    );
+                });
                 services.AddTransient<ControlWindow>();
                 services.AddTransient<SettingsWindow>();
             })
