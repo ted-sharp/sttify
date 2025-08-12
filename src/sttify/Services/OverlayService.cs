@@ -170,7 +170,7 @@ public class OverlayService : IDisposable
         }
         else if (overlay.TargetMonitorIndex == -2 || settings.Application.AlwaysOnPrimaryMonitor)
         {
-            workingPx = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
+            workingPx = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea ?? Rectangle.Empty;
         }
         else
         {
@@ -181,11 +181,12 @@ public class OverlayService : IDisposable
 
         // Convert pixel rect to WPF DIPs
         var source = PresentationSource.FromVisual(window);
-        if (source?.CompositionTarget == null)
+        var ct = source?.CompositionTarget;
+        if (ct is null)
         {
             return; // cannot position reliably yet
         }
-        var m = source.CompositionTarget.TransformFromDevice;
+        var m = ct.TransformFromDevice;
         var topLeftDip = m.Transform(new System.Windows.Point(workingPx.Left, workingPx.Top));
         var bottomRightDip = m.Transform(new System.Windows.Point(workingPx.Right, workingPx.Bottom));
         double areaLeft = topLeftDip.X;

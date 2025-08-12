@@ -21,8 +21,6 @@ public class ApplicationService : IDisposable
     private readonly OverlayService _overlayService;
     private readonly ErrorRecovery _errorRecovery;
     private readonly HealthMonitor _healthMonitor;
-    private string? _lastHotkeyToggleUi;
-    private string? _lastHotkeyToggleMic;
 
     public event EventHandler<SessionStateChangedEventArgs>? SessionStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? TextRecognized;
