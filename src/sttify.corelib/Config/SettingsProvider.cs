@@ -285,12 +285,6 @@ public class SettingsProvider
                 MarginX = 32,
                 MarginY = 48
             },
-            Rtss = new RtssSettings
-            {
-                Enabled = true,
-                UpdatePerSec = 2,
-                TruncateLength = 80
-            },
             Hotkeys = new HotkeySettings
             {
                 ToggleUi = "Win+Alt+H",
@@ -401,7 +395,6 @@ public class SttifySettings
     public SessionSettings Session { get; set; } = new();
     public OutputSettings Output { get; set; } = new();
     public OverlaySettings Overlay { get; set; } = new();
-    public RtssSettings Rtss { get; set; } = new();
     public HotkeySettings Hotkeys { get; set; } = new();
     public PrivacySettings Privacy { get; set; } = new();
 }
@@ -545,13 +538,6 @@ public class StreamOutputSettings
     public string CustomSuffix { get; set; } = "";
 }
 
-[ExcludeFromCodeCoverage] // Simple configuration class with no business logic
-public class RtssSettings
-{
-    public bool Enabled { get; set; } = true;
-    public int UpdatePerSec { get; set; } = 2;
-    public int TruncateLength { get; set; } = 80;
-}
 
 [ExcludeFromCodeCoverage] // Simple configuration class for overlay UI
 public class OverlaySettings

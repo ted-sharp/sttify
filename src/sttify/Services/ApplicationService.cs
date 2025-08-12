@@ -4,7 +4,6 @@ using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Hotkey;
 using Sttify.Corelib.Output;
-// using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using System.Windows;
 using System.Windows.Interop;

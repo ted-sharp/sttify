@@ -1,5 +1,5 @@
 # sttify 要件定義・最終ドキュメント（FINAL_DOC）
-> C# 13 / .NET 9 / WPF(+Forms Tray) / CommunityToolkit.MVVM / TDD 前提  
+> C# 13 / .NET 9 / WPF(+Forms Tray) / CommunityToolkit.MVVM / TDD 前提
 > 本ドキュメントは「要件定義 → 詳細設計 ― 方針作成 → レビュー＆ブラッシュアップ → ドキュメントアウトプット」の最終成果物です。
 
 ---
@@ -9,7 +9,7 @@
   - プロジェクト分割：`sttify.corelib`（コア） / `sttify`（GUI常駐）。
   - STT エンジン：**Vosk** + **統合VAD**（Voice Activity Detection）による自動音声境界検出。
   - **音声処理パイプライン**：WASAPI → AudioCapture → VAD → Vosk → 出力シンク
-  - 出力先差し替え：`ITextOutputSink` 抽象。**既定＝SendInput**（IME制御付き）、**External Process**、**Stream Output**、**RTSS統合** に対応。
+  - 出力先差し替え：`ITextOutputSink` 抽象。**既定＝SendInput**（IME制御付き）、**External Process**、**Stream Output** に対応。
 - **VAD（Voice Activity Detection）**
   - **閾値ベース検出**：RMS音声レベル計算（既定閾値: 0.005）
   - **自動音声境界検出**：音声開始/終了の自動判定（800ms無音で確定）
@@ -21,15 +21,13 @@
   - **メモリ管理**：ArrayPool、BoundedQueue、オブジェクトプーリング
   - **CPU最適化**：FFTキャッシュ、スペクトル解析キャッシュ（50ms）
   - **I/O最適化**：テレメトリーバッチング、設定ファイル監視
-- **RTSS**
-  - **直接連携**。既定は**文単位更新**（テキスト長 60–80 文字目安、設定で変更可）。
 - **設定・ログ**
   - 設定：`%AppData%\sttify\config.json`（ユーザー単位、階層マージ：既定→エンジン別→アプリ別）。
   - **リアルタイム設定更新**：FileSystemWatcher による自動反映（ポーリングなし）
-  - ログ：**構造化JSONログ** → C# 側 **Serilog**（NDJSON ローリング）。  
+  - ログ：**構造化JSONログ** → C# 側 **Serilog**（NDJSON ローリング）。
     - 既定は**マスクなし（全文出力）**。バッチ化I/O（100ms間隔）で性能向上。
 - **対象 HW/OS**
-  - Windows 10/11（x64）。  
+  - Windows 10/11（x64）。
   - HW 目標：**Ryzen AI MAX+ 935 / 128GB**（将来 Whisper/NPU は別トラックで検証）。
 
 ---
@@ -39,7 +37,6 @@
 - **STT プラガブル（初期 Vosk）**：**Yes / 高**
 - **出力：SendInput（既定）**：**Yes / 高**（仮想キーボード入力）
 - **出力：外部 exe / ストリーム**：**Yes / 中**（初期は枠のみ）
-- **RTSS 直接連携**：**Yes / 中**（文単位推奨）
 - **ホットキー**：**Yes / 高**
 - **ウェイクワード（「スティファイ」）**：**Yes / 中**（一文送出）
 - **Whisper/NPU（ONNX/Vitis AI 等）**：**要検討 / 低〜中**（別トラック）
@@ -71,7 +68,6 @@
     - `Diagnostics/Telemetry.cs`：**バッチ化構造化ログ**（100ms間隔、NDJSON）
     - `Diagnostics/ErrorHandling.cs`：**構造化エラー処理**（自動回復メカニズム）
   - **統合機能**
-    - `Rtss/RtssBridge.cs`：直接 OSD（更新間引き）
     - `Hotkey/HotkeyManager.cs`：RegisterHotKey（衝突再登録）
     - `Plugins/PluginManager.cs`：プラグインシステム
 - **`src/sttify/`（WPF + Forms Tray）**
@@ -96,7 +92,6 @@
   - `output.primary`：`"sendinput"`（初期）／`"external"`／`"stream"`
   - `output.fallbacks`：例 `["external", "stream"]`
   - `output.sendInput`：`rateLimitCps`, `commitKey`
-  - `rtss`：`enabled`, `updatePerSec`, `truncateLength`
   - `hotkeys`：`toggleUi`, `toggleMic`
   - `privacy`：`maskInLogs=false`（**既定で全文出力**）
 - **プロファイル**
@@ -114,7 +109,6 @@
   - **エンジン**（Vosk モデルパス・言語・句読点）
   - **出力**（優先＝SendInput／フォールバック＝External Process、Stream）
   - **モード**（PTT/一文/常時/ウェイク）
-  - **RTSS**（有効／頻度／長さ）
   - **高度**（RDP時の自動ポリシー、ログ詳細化）
 
 ---
@@ -125,34 +119,32 @@ flowchart LR
   Mic[Audio Input\n(WASAPI)] --> WAC[WasapiAudioCapture\n(ArrayPool)]
   WAC --> AC[AudioCapture\n(エラー回復)]
   AC --> SES[RecognitionSession\nイベント駆動]
-  
+
   SES --> VAD[VAD統合Vosk\n音声境界検出]
   VAD -- 音声検出 --> PROC[音声処理\n(閾値: 0.005)]
   VAD -- 800ms無音 --> FIN[自動確定]
-  
+
   PROC --> PART[部分結果\nOnPartial Event]
   FIN --> FINAL[最終結果\nOnFinal Event]
-  
+
   FINAL --> PLUG[Plugin処理\n(任意)]
   PLUG --> OUT[Output Sink\n優先度ベース]
-  
+
   OUT --> SI[SendInput\n(IME制御付き)]
   OUT --> EXT[External Process]
   OUT --> STR[Stream Output]
-  OUT --> RTSS[RTSS Bridge\n(リアルタイム字幕)]
-  
+
   SI --> APP[ターゲットアプリ]
-  RTSS --> OSD[OSD Overlay]
-  
+
   HK[ホットキー\nWin+Alt+H/M] --> SES
   UI[Tray/Control Window] --> SES
-  
+
   subgraph "パフォーマンス最適化"
     BQ[BoundedQueue\nメモリ制限]
     RC[ResponseCache\nLRU+TTL]
     FFT[FFTキャッシュ\n50ms間隔]
   end
-  
+
   subgraph "設定管理"
     FSW[FileSystemWatcher\nリアルタイム更新]
     TEL[Telemetry\nバッチ化ログ]
@@ -196,7 +188,7 @@ flowchart LR
 - **非同期処理**：適切なasync/awaitパターンによるノンブロッキング処理
 - **バッチ処理**：テレメトリーI/O（100ms間隔）、設定ファイル操作
 
-### 8.3 I/O最適化  
+### 8.3 I/O最適化
 - **FileSystemWatcher**：設定ファイル変更のリアルタイム検出（ポーリングなし）
 - **構造化ログ**：NDJSON形式、バッチ化I/O
 - **設定管理**：階層マージ、破損回復、リトライロジック

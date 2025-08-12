@@ -7,18 +7,18 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         Icon="pack://application:,,,/Resources/microphone.ico">
-    
+
     <Window.Resources>
         <local:StringToBooleanConverter x:Key="StringToBooleanConverter"/>
         <local:LocalizationConverter x:Key="LocalizationConverter"/>
-        
+
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Margin" Value="0,10,0,5"/>
             <Setter Property="Foreground" Value="#FF2196F3"/>
         </Style>
-        
+
         <Style x:Key="DescriptionStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="Foreground" Value="Gray"/>
@@ -41,14 +41,14 @@
             </Style.Triggers>
         </Style>
     </Window.Resources>
-    
+
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- Title and Status -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
             <TextBlock Text="🎤" FontSize="24" VerticalAlignment="Center" Margin="0,0,10,0"/>
@@ -56,51 +56,51 @@
             <ProgressBar Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
                         IsIndeterminate="True" Width="100" Height="4" Margin="20,0,0,0" VerticalAlignment="Center"/>
         </StackPanel>
-        
+
         <!-- Settings Tabs -->
         <TabControl Grid.Row="1" TabStripPlacement="Top">
-            
+
             <!-- General Tab -->
             <TabItem Header="General" Padding="15,5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="Application Settings" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <CheckBox Content="Start with Windows" 
-                                 IsChecked="True" 
+
+                        <CheckBox Content="Start with Windows"
+                                 IsChecked="True"
                                  Margin="0,5"/>
                         <TextBlock Text="Automatically start Sttify when Windows starts"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <CheckBox Content="Show in system tray" 
-                                 IsChecked="True" 
+
+                        <CheckBox Content="Show in system tray"
+                                 IsChecked="True"
                                  Margin="0,5"/>
                         <TextBlock Text="Keep Sttify accessible from the system tray"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <CheckBox Content="Start minimized" 
-                                 IsChecked="False" 
+
+                        <CheckBox Content="Start minimized"
+                                 IsChecked="False"
                                  Margin="0,5"/>
                         <TextBlock Text="Launch the application minimized to tray"
                                   Style="{StaticResource DescriptionStyle}"/>
 
                         <TextBlock Text="Privacy Settings" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <CheckBox Content="Mask text in logs" 
-                                 IsChecked="{Binding Settings.Privacy.MaskInLogs}" 
+
+                        <CheckBox Content="Mask text in logs"
+                                 IsChecked="{Binding Settings.Privacy.MaskInLogs}"
                                  Margin="0,5"/>
                         <TextBlock Text="Hide recognized text in application logs for privacy"
                                   Style="{StaticResource DescriptionStyle}"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <!-- Audio Tab -->
             <TabItem Header="Audio" Padding="15,5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="Audio Input Device" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <ComboBox ItemsSource="{Binding AudioDevices}"
                                  DisplayMemberPath="Name"
                                  SelectedValuePath="Id"
@@ -108,9 +108,9 @@
                                  Margin="0,5,0,10"/>
                         <TextBlock Text="Select the microphone or audio input device for speech recognition"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <TextBlock Text="{Binding Source='settings.audio_quality', Converter={StaticResource LocalizationConverter}}" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <Label Content="{Binding Source='settings.sample_rate', Converter={StaticResource LocalizationConverter}}"/>
                         <ComboBox Margin="0,5,0,10" SelectedValue="{Binding Settings.Audio.SampleRate}">
                             <ComboBoxItem Content="{Binding Source='settings.sample_rate_16k', Converter={StaticResource LocalizationConverter}}" Tag="16000"/>
@@ -119,7 +119,7 @@
                         </ComboBox>
                         <TextBlock Text="{Binding Source='settings.sample_rate_desc', Converter={StaticResource LocalizationConverter}}"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <Label Content="{Binding Source='settings.channels', Converter={StaticResource LocalizationConverter}}"/>
                         <ComboBox Margin="0,5,0,10" SelectedValue="{Binding Settings.Audio.Channels}">
                             <ComboBoxItem Content="{Binding Source='settings.channels_mono', Converter={StaticResource LocalizationConverter}}" Tag="1"/>
@@ -130,25 +130,25 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <!-- Engine Tab -->
             <TabItem Header="Speech Engine" Padding="15,5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="Speech Recognition Engine" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <Label Content="Engine Type:"/>
                         <ComboBox ItemsSource="{Binding AvailableEngines}"
                                  SelectedItem="{Binding Settings.Engine.Profile}"
                                  Margin="0,5,0,10"/>
                         <TextBlock Text="Select the speech recognition engine to use"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <Button Content="Test Engine" Command="{Binding TestEngineCommand}" 
+
+                        <Button Content="Test Engine" Command="{Binding TestEngineCommand}"
                                Width="120" HorizontalAlignment="Left" Margin="0,5,0,15"/>
 
                         <TextBlock Text="Vosk Model Configuration" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <Label Content="Current Model Path:"/>
                         <Grid Margin="0,5,0,10">
                             <Grid.ColumnDefinitions>
@@ -156,12 +156,12 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Grid.Column="0" Text="{Binding Settings.Engine.Vosk.ModelPath}" IsReadOnly="True"/>
-                            <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseForModelCommand}" 
+                            <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseForModelCommand}"
                                    Width="80" Margin="5,0,0,0"/>
                         </Grid>
-                        
+
                         <TextBlock Text="Available Models for Download" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <ItemsControl ItemsSource="{Binding AvailableModels}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -171,7 +171,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            
+
                                             <StackPanel Grid.Column="0">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
@@ -188,8 +188,8 @@
                                                     <TextBlock Text="{Binding Language}" FontSize="12"/>
                                                 </StackPanel>
                                             </StackPanel>
-                                            
-                                            <Button Grid.Column="1" Content="Download" 
+
+                                            <Button Grid.Column="1" Content="Download"
                                                    Command="{Binding DataContext.DownloadModelCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                    CommandParameter="{Binding}"
                                                    IsEnabled="{Binding DataContext.IsDownloadingModel, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}"
@@ -199,37 +199,37 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        
+
                         <!-- Download Progress -->
                         <StackPanel Visibility="{Binding IsDownloadingModel, Converter={StaticResource BooleanToVisibilityConverter}}"
                                    Margin="0,10">
                             <TextBlock Text="{Binding DownloadStatus}" FontWeight="Bold"/>
                             <ProgressBar Value="{Binding DownloadProgress}" Height="6" Margin="0,5"/>
                         </StackPanel>
-                        
+
                         <TextBlock Text="Advanced Settings" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <CheckBox Content="Enable punctuation" 
-                                 IsChecked="{Binding Settings.Engine.Vosk.Punctuation}" 
+
+                        <CheckBox Content="Enable punctuation"
+                                 IsChecked="{Binding Settings.Engine.Vosk.Punctuation}"
                                  Margin="0,5"/>
                         <TextBlock Text="Automatically add punctuation to recognized text"
                                   Style="{StaticResource DescriptionStyle}"/>
 
                         <!-- Vibe Configuration -->
-                        <TextBlock Text="Vibe Configuration" Style="{StaticResource SectionHeaderStyle}" 
+                        <TextBlock Text="Vibe Configuration" Style="{StaticResource SectionHeaderStyle}"
                                   Visibility="{Binding IsVibeEngine, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                        
+
                         <StackPanel Visibility="{Binding IsVibeEngine, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <Label Content="Vibe Endpoint:"/>
                             <TextBox Text="{Binding Settings.Engine.Vibe.Endpoint}" Margin="0,5,0,10"/>
                             <TextBlock Text="URL of the Vibe HTTP API server (e.g., http://localhost:8080)"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
+
                             <Label Content="API Key (Optional):"/>
                             <TextBox Text="{Binding Settings.Engine.Vibe.ApiKey}" Margin="0,5,0,10"/>
                             <TextBlock Text="API key for authentication (leave empty if not required)"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
+
                             <Label Content="Model:"/>
                             <ComboBox SelectedItem="{Binding Settings.Engine.Vibe.Model}" Margin="0,5,0,10">
                                 <ComboBoxItem Content="base"/>
@@ -239,7 +239,7 @@
                             </ComboBox>
                             <TextBlock Text="Whisper model to use for transcription"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
+
                             <Label Content="Language:"/>
                             <ComboBox SelectedItem="{Binding Settings.Engine.Vibe.Language}" Margin="0,5,0,10">
                                 <ComboBoxItem Content="ja"/>
@@ -250,39 +250,39 @@
                             </ComboBox>
                             <TextBlock Text="Language for transcription (auto = automatic detection)"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
-                            <CheckBox Content="Enable speaker diarization" 
-                                     IsChecked="{Binding Settings.Engine.Vibe.EnableDiarization}" 
+
+                            <CheckBox Content="Enable speaker diarization"
+                                     IsChecked="{Binding Settings.Engine.Vibe.EnableDiarization}"
                                      Margin="0,5"/>
                             <TextBlock Text="Identify different speakers in the audio"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
-                            <CheckBox Content="Auto capitalize sentences" 
-                                     IsChecked="{Binding Settings.Engine.Vibe.AutoCapitalize}" 
+
+                            <CheckBox Content="Auto capitalize sentences"
+                                     IsChecked="{Binding Settings.Engine.Vibe.AutoCapitalize}"
                                      Margin="0,5"/>
                             <TextBlock Text="Automatically capitalize the first letter of sentences"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
-                            <CheckBox Content="Auto add punctuation" 
-                                     IsChecked="{Binding Settings.Engine.Vibe.AutoPunctuation}" 
+
+                            <CheckBox Content="Auto add punctuation"
+                                     IsChecked="{Binding Settings.Engine.Vibe.AutoPunctuation}"
                                      Margin="0,5"/>
                             <TextBlock Text="Automatically add punctuation to sentences"
                                       Style="{StaticResource DescriptionStyle}"/>
-                            
-                            <Button Content="Test Vibe Connection" Command="{Binding TestVibeCommand}" 
+
+                            <Button Content="Test Vibe Connection" Command="{Binding TestVibeCommand}"
                                    Width="150" HorizontalAlignment="Left" Margin="0,10,0,5"/>
                         </StackPanel>
-                        
+
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <!-- Output Tab -->
             <TabItem Header="Text Output" Padding="15,5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="Output Method" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <Label Content="Primary Output:"/>
                         <ComboBox Margin="0,5,0,10" SelectedIndex="0">
                             <ComboBoxItem Content="SendInput (Primary)"/>
@@ -291,90 +291,90 @@
                         </ComboBox>
                         <TextBlock Text="SendInput provides virtual keyboard input to applications"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        
+
+
                         <TextBlock Text="SendInput Settings" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <Label Content="Typing Speed (characters per second):"/>
-                        <Slider Value="{Binding Settings.Output.SendInput.RateLimitCps}" 
-                               Minimum="10" Maximum="200" 
+                        <Slider Value="{Binding Settings.Output.SendInput.RateLimitCps}"
+                               Minimum="10" Maximum="200"
                                TickFrequency="10" IsSnapToTickEnabled="True"
                                Margin="0,5"/>
                         <TextBlock Text="{Binding Settings.Output.SendInput.RateLimitCps, StringFormat='Current: {0} CPS'}"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <TextBlock Text="IME Control" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Automatic control of Input Method Editor (IME) to prevent conflicts during text input"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <CheckBox Content="Enable IME control" 
-                                 IsChecked="True" 
+
+                        <CheckBox Content="Enable IME control"
+                                 IsChecked="True"
                                  Margin="0,5"/>
                         <TextBlock Text="Automatically manage IME state during text input to prevent conflicts"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <CheckBox Content="Close IME when sending text" 
-                                 IsChecked="True" 
+
+                        <CheckBox Content="Close IME when sending text"
+                                 IsChecked="True"
                                  Margin="0,5"/>
                         <TextBlock Text="Temporarily close IME to prevent interference with text input"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <CheckBox Content="Set alphanumeric mode" 
-                                 IsChecked="True" 
+
+                        <CheckBox Content="Set alphanumeric mode"
+                                 IsChecked="True"
                                  Margin="0,5"/>
                         <TextBlock Text="Switch IME to alphanumeric mode for direct text input"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <CheckBox Content="Skip when IME is composing" 
-                                 IsChecked="True" 
+
+                        <CheckBox Content="Skip when IME is composing"
+                                 IsChecked="True"
                                  Margin="0,5"/>
                         <TextBlock Text="Skip text input if IME is actively composing text to avoid conflicts"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <TextBlock Text="🧪 Test IME Control: Press Win+Shift+F4 to test IME functionality with detailed debug output"
-                                  Style="{StaticResource DescriptionStyle}" 
-                                  Background="#FFF0F8FF" 
-                                  Padding="8" 
+                                  Style="{StaticResource DescriptionStyle}"
+                                  Background="#FFF0F8FF"
+                                  Padding="8"
                                   Margin="0,10,0,5"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <!-- Recognition Modes -->
             <TabItem Header="Recognition Modes" Padding="15,5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="10">
                         <TextBlock Text="Recognition Mode" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <RadioButton Content="Push-to-Talk (PTT)" 
-                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=ptt}" 
+
+                        <RadioButton Content="Push-to-Talk (PTT)"
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=ptt}"
                                     Margin="0,5"/>
                         <TextBlock Text="Press and hold hotkey to activate speech recognition"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <RadioButton Content="Single Utterance" 
-                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=single}" 
+
+                        <RadioButton Content="Single Utterance"
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=single}"
                                     Margin="0,5"/>
                         <TextBlock Text="Recognize one phrase at a time, automatically stopping after silence"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <RadioButton Content="Continuous Recognition" 
-                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=continuous}" 
+
+                        <RadioButton Content="Continuous Recognition"
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=continuous}"
                                     Margin="0,5"/>
                         <TextBlock Text="Always-on recognition, continuously processing speech"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <RadioButton Content="Wake Word Activation" 
-                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=wakeword}" 
+
+                        <RadioButton Content="Wake Word Activation"
+                                    IsChecked="{Binding Settings.Session.Mode, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=wakeword}"
                                     Margin="0,5"/>
                         <TextBlock Text="Start recognition when 'スティファイ' (Sttify) is detected"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <TextBlock Text="Silence Detection" Style="{StaticResource SectionHeaderStyle}"/>
-                        
+
                         <Label Content="Endpoint Silence (milliseconds):"/>
-                        <Slider Value="{Binding Settings.Engine.Vosk.EndpointSilenceMs}" 
-                               Minimum="200" Maximum="3000" 
+                        <Slider Value="{Binding Settings.Engine.Vosk.EndpointSilenceMs}"
+                               Minimum="200" Maximum="3000"
                                TickFrequency="100" IsSnapToTickEnabled="True"
                                Margin="0,5"/>
                         <TextBlock Text="{Binding Settings.Engine.Vosk.EndpointSilenceMs, StringFormat='Current: {0}ms'}"
@@ -382,7 +382,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
+
             <!-- Hotkeys Tab -->
             <TabItem Header="Hotkeys" Padding="15,5">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -390,17 +390,17 @@
                         <TextBlock Text="Global Hotkeys" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="These hotkeys work system-wide, even when Sttify is not the active window"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <Label Content="Toggle Control Window:"/>
                         <TextBox Text="{Binding Settings.Hotkeys.ToggleUi}" Margin="0,5,0,10" Width="200" HorizontalAlignment="Left"/>
-                        
+
                         <Label Content="Toggle Microphone:"/>
                         <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}" Margin="0,5,0,10" Width="200" HorizontalAlignment="Left"/>
-                        
+
                         <TextBlock Text="Test Functions" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Text="Built-in test functions for debugging and troubleshooting"
                                   Style="{StaticResource DescriptionStyle}"/>
-                        
+
                         <Grid Margin="0,5,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="200"/>
@@ -411,23 +411,23 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            
+
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center"/>
                             <TextBlock Grid.Row="0" Grid.Column="1" Text="Test SendInput functionality" Margin="10,0,0,0" VerticalAlignment="Center"/>
-                            
+
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
                             <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process functionality" Margin="10,5,0,0" VerticalAlignment="Center"/>
-                            
+
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F4" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
                             <TextBlock Grid.Row="2" Grid.Column="1" Text="Test IME Control functionality" Margin="10,5,0,0" VerticalAlignment="Center"/>
                         </Grid>
-                        
+
                         <TextBlock Text="💡 Tip: Open any text editor (like Notepad) and press these keys to test text input functionality. Check the debug output in Visual Studio or the console for detailed test results."
-                                  Style="{StaticResource DescriptionStyle}" 
-                                  Background="#FFF9F9F9" 
-                                  Padding="8" 
+                                  Style="{StaticResource DescriptionStyle}"
+                                  Background="#FFF9F9F9"
+                                  Padding="8"
                                   Margin="0,5,0,15"/>
-                        
+
                         <TextBlock Text="Hotkey Format Examples:" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Style="{StaticResource DescriptionStyle}">
                             • Ctrl+Alt+H<LineBreak/>
@@ -438,51 +438,15 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            
-            <!-- Gaming/RTSS Tab -->
-            <TabItem Header="Gaming (RTSS)" Padding="15,5">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="RivaTuner Statistics Server Integration" Style="{StaticResource SectionHeaderStyle}"/>
-                        
-                        <CheckBox Content="Enable RTSS On-Screen Display" 
-                                 IsChecked="{Binding Settings.Rtss.Enabled}" 
-                                 Margin="0,5"/>
-                        <TextBlock Text="Show live speech recognition results as overlay in games and full-screen applications"
-                                  Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <Label Content="Update Frequency (per second):"/>
-                        <Slider Value="{Binding Settings.Rtss.UpdatePerSec}" 
-                               Minimum="1" Maximum="10" 
-                               TickFrequency="1" IsSnapToTickEnabled="True"
-                               Margin="0,5"/>
-                        <TextBlock Text="{Binding Settings.Rtss.UpdatePerSec, StringFormat='Current: {0} updates/sec'}"
-                                  Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <Label Content="Text Length Limit:"/>
-                        <Slider Value="{Binding Settings.Rtss.TruncateLength}" 
-                               Minimum="20" Maximum="200" 
-                               TickFrequency="10" IsSnapToTickEnabled="True"
-                               Margin="0,5"/>
-                        <TextBlock Text="{Binding Settings.Rtss.TruncateLength, StringFormat='Current: {0} characters'}"
-                                  Style="{StaticResource DescriptionStyle}"/>
-                        
-                        <TextBlock Text="Requirements" Style="{StaticResource SectionHeaderStyle}"/>
-                        <TextBlock Style="{StaticResource DescriptionStyle}">
-                            • RivaTuner Statistics Server must be installed<LineBreak/>
-                            • RTSS must be running before starting Sttify<LineBreak/>
-                            • On-Screen Display must be enabled in RTSS settings
-                        </TextBlock>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            
+
+
+
         </TabControl>
-        
+
         <!-- Bottom Buttons -->
-        <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
-                    HorizontalAlignment="Right" 
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
                     Margin="0,15,0,0">
             <Button Content="Reset to Defaults" Command="{Binding ResetToDefaultsCommand}" Width="130" Margin="0,0,10,0"/>
             <Button Content="Cancel" Width="80" Margin="0,0,10,0" Click="OnCancel"/>

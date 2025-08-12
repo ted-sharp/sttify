@@ -16,7 +16,6 @@ public partial class SettingsWindow : Window
     private readonly SettingsViewModel _viewModel;
     private readonly ApplicationService _applicationService;
     private readonly Sttify.Corelib.Config.SettingsProvider _settingsProvider;
-    // private readonly Sttify.Corelib.Rtss.RtssBridge _rtss;
     private HotkeyManager? _hotkeyManager;
     private HwndSource? _hwndSource;
 
@@ -166,7 +165,7 @@ public partial class SettingsWindow : Window
         Close();
     }
 
-    // RTSS-related handlers removed as overlay replaces RTSS path
+    // RTSS integration has been removed
 
 
 

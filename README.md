@@ -19,9 +19,7 @@
 - **RDP Support**: Optimized text insertion for Remote Desktop sessions
 
 ### 🎮 **Gaming Integration**
-- **RTSS Integration**: On-screen display (OSD) overlay for gaming and full-screen applications
-- **Real-time Subtitles**: Live speech-to-text display with customizable formatting
-- **Performance Optimized**: Minimal impact on system performance
+// RTSS integration has been removed.
 
 ### ⚙️ **Flexible Configuration**
 - **Hierarchical Settings**: Default → Engine-specific → Application-specific configuration
@@ -136,11 +134,6 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
   },
   "privacy": {
     "maskInLogs": false
-  },
-  "rtss": {
-    "enabled": true,
-    "updatePerSec": 2,
-    "truncateLength": 80
   }
 }
 ```
@@ -257,7 +250,7 @@ The application manifest is configured with `level="asInvoker"`, which means:
 │  BoundedQueue │ FFT Cache │ Response Cache │ Batched I/O   │
 ├─────────────────────────────────────────────────────────────┤
 │                  External Integrations                     │
-│              RTSS OSD       │       Target Applications    │
+│                       Target Applications                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -267,7 +260,7 @@ The application manifest is configured with `level="asInvoker"`, which means:
 - **Audio Processing**: WASAPI capture with ArrayPool zero-allocation optimization and error recovery
 - **Voice Activity Detection**: Dual-layer VAD system - RealVoskEngineAdapter (integrated, threshold-based) + VoiceActivityDetector (advanced, multi-feature FFT-based)
 - **Speech Recognition**: Event-driven Vosk integration with automatic speech boundary detection (800ms silence timeout)
-- **Output Handling**: Prioritized sink system (SendInput with IME control → External Process → Stream → RTSS)
+- **Output Handling**: Prioritized sink system (SendInput with IME control → External Process → Stream)
 - **Performance Optimization**: BoundedQueue (memory-bounded), ResponseCache (LRU+TTL), FFT caching (50ms spectrum cache)
 - **Configuration**: FileSystemWatcher-based real-time configuration updates with hierarchical merging
 - **Telemetry**: Batched structured JSON logging (100ms intervals) with comprehensive error recovery tracking
@@ -355,7 +348,7 @@ dotnet test --collect:"XPlat Code Coverage"
 
 **High CPU usage**
 - Reduce audio capture quality in settings
-- Disable RTSS integration if not needed
+
 - Check for model compatibility issues
 - Benefit from built-in optimizations: FFT caching (30-50% CPU reduction), ArrayPool memory management
 
@@ -409,7 +402,7 @@ Application logs are stored in `%AppData%\sttify\logs\` in NDJSON format for str
 3. **Automatic Speech Boundary Detection**: 800ms silence timer for automatic utterance finalization
 4. **Event-Driven Speech Recognition**: Vosk processing triggered only during voice activity periods
 5. **Text Processing**: Recognition session with plugin support and Japanese normalization
-6. **Prioritized Output Delivery**: SendInput (IME control) → External Process → Stream → RTSS with automatic fallback
+6. **Prioritized Output Delivery**: SendInput (IME control) → External Process → Stream
 
 ### Performance Architecture
 - **Memory**: ArrayPool<T> for zero-allocation audio processing
@@ -431,7 +424,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Vosk**: Open-source speech recognition toolkit
 - **NAudio**: .NET audio library
-- **RTSS**: RivaTuner Statistics Server for OSD integration
+
 
 ## Performance Optimizations
 

@@ -64,7 +64,6 @@ WASAPI Audio Input → AudioCapture (ArrayPool) → STT Engine (Vosk) → Recogn
 1. **SendInput** (primary): Virtual keyboard input for text insertion
 2. **External Process**: Launch external applications with recognized text
 3. **Stream Output**: File, stdout, or shared memory output
-4. **RTSS Integration**: On-screen display overlay for gaming
 
 ### Recognition Modes
 - **PTT (Push-to-Talk)**: Manual activation via hotkey
@@ -138,7 +137,7 @@ The codebase includes comprehensive optimizations implemented throughout:
 - The build script requires Visual Studio Build Tools or Visual Studio 2022
 - Japanese Vosk models must be manually downloaded and configured
 - The application supports RDP scenarios with automatic fallback to SendInput
-- RTSS integration provides real-time subtitle overlay for gaming applications
+
 - All audio processing uses ArrayPool to avoid allocations
 - Cloud engines include response caching with SHA256-based keys
 - Configuration system includes file watching for real-time updates without polling
