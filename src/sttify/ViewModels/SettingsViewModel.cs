@@ -156,6 +156,7 @@ public partial class SettingsViewModel : ObservableObject
                 {
                     await _applicationService.ReinitializeHotkeysAsync();
                     await _applicationService.ReinitializeEngineAsync(restartIfRunning: true);
+                    await _applicationService.ReinitializeOverlayAsync();
                 }
             }
             catch (Exception ex)
@@ -170,6 +171,38 @@ public partial class SettingsViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task PreviewOverlayAsync()
+    {
+        try
+        {
+            if (_applicationService != null)
+            {
+                await _applicationService.ShowOverlayTextAsync("Overlay Preview: The quick brown fox jumps over the lazy dog.");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Overlay preview failed: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task HideOverlayAsync()
+    {
+        try
+        {
+            if (_applicationService != null)
+            {
+                await _applicationService.HideOverlayAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Overlay hide failed: {ex.Message}");
         }
     }
 

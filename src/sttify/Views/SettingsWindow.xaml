@@ -42,50 +42,182 @@
                 </ScrollViewer>
             </TabItem>
 
-            <TabItem Header="Gaming (RTSS)">
+            <TabItem Header="Overlay">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="10">
-                        <TextBlock Text="RivaTuner Statistics Server Integration" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Transparent overlay (WPF) to show live recognition text" FontWeight="Bold" Margin="0,0,0,8"/>
 
-                        <CheckBox Content="Enable RTSS On-Screen Display"
-                                  IsChecked="{Binding Settings.Rtss.Enabled}"
+                        <CheckBox Content="Enable Overlay"
+                                  IsChecked="{Binding Settings.Overlay.Enabled}"
                                   Margin="0,0,0,10"/>
 
                         <Label Content="Update Frequency (per second):"/>
-                        <Slider Value="{Binding Settings.Rtss.UpdatePerSec}"
+                        <Slider Value="{Binding Settings.Overlay.UpdatePerSec}"
                                 Minimum="1" Maximum="10"
                                 TickFrequency="1" IsSnapToTickEnabled="True"/>
-                        <TextBlock Text="{Binding Settings.Rtss.UpdatePerSec, StringFormat=Current: {0} updates/sec}"
+                        <TextBlock Text="{Binding Settings.Overlay.UpdatePerSec, StringFormat=Current: {0} updates/sec}"
                                    Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
 
                         <Label Content="Text Length Limit:"/>
-                        <Slider Value="{Binding Settings.Rtss.TruncateLength}"
-                                Minimum="20" Maximum="200"
+                        <Slider Value="{Binding Settings.Overlay.MaxChars}"
+                                Minimum="20" Maximum="400"
                                 TickFrequency="10" IsSnapToTickEnabled="True"/>
-                        <TextBlock Text="{Binding Settings.Rtss.TruncateLength, StringFormat=Current: {0} characters}"
+                        <TextBlock Text="{Binding Settings.Overlay.MaxChars, StringFormat=Current: {0} characters}"
                                    Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
 
-                        <TextBlock Text="Requirements" FontWeight="Bold" Margin="0,10,0,5"/>
-                        <TextBlock Foreground="Gray" FontSize="11">
-                            • RivaTuner Statistics Server must be installed
-                            <LineBreak/>
-                            • RTSS must be running before starting Sttify
-                            <LineBreak/>
-                            • On-Screen Display must be enabled in RTSS settings
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                            <CheckBox Content="Topmost" IsChecked="{Binding Settings.Overlay.Topmost}" Margin="0,0,15,0"/>
+                            <CheckBox Content="Click-through" IsChecked="{Binding Settings.Overlay.IsClickThrough}"/>
+                        </StackPanel>
 
-                        <TextBlock Margin="0,10,0,0">
-                            <Run Text="Official website: "/>
-                            <Hyperlink NavigateUri="https://www.guru3d.com/files-details/rtss-rivatuner-statistics-server-download.html"
-                                       RequestNavigate="OnRtssOfficialLinkNavigate">
-                                https://www.guru3d.com/files-details/rtss-rivatuner-statistics-server-download.html
-                            </Hyperlink>
-                        </TextBlock>
+                        <Label Content="Opacity:"/>
+                        <Slider Value="{Binding Settings.Overlay.Opacity}"
+                                Minimum="0.2" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                        <TextBlock Text="{Binding Settings.Overlay.Opacity, StringFormat=Current: {0:F2}}"
+                                   Foreground="Gray" FontSize="11" Margin="0,0,0,10"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <CheckBox Content="Enable Fade" IsChecked="{Binding Settings.Overlay.EnableFade}"/>
+                            <StackPanel Orientation="Horizontal" Margin="15,0,0,0">
+                                <TextBlock Text="Fade In (ms):" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <Slider Width="160" Value="{Binding Settings.Overlay.FadeInMs}" Minimum="0" Maximum="1000" TickFrequency="50" IsSnapToTickEnabled="True"/>
+                                <TextBlock Text="{Binding Settings.Overlay.FadeInMs}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="15,0,0,0">
+                                <TextBlock Text="Fade Out (ms):" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <Slider Width="160" Value="{Binding Settings.Overlay.FadeOutMs}" Minimum="0" Maximum="1000" TickFrequency="50" IsSnapToTickEnabled="True"/>
+                                <TextBlock Text="{Binding Settings.Overlay.FadeOutMs}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="15,0,0,0">
+                                <TextBlock Text="Easing:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <ComboBox Width="120" SelectedValue="{Binding Settings.Overlay.FadeEasing}">
+                                    <ComboBoxItem Content="Cubic"/>
+                                    <ComboBoxItem Content="Quadratic"/>
+                                    <ComboBoxItem Content="Sine"/>
+                                    <ComboBoxItem Content="Circle"/>
+                                    <ComboBoxItem Content="Quartic"/>
+                                    <ComboBoxItem Content="Quintic"/>
+                                </ComboBox>
+                                <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="10,0,6,0"/>
+                                <ComboBox Width="90" SelectedValue="{Binding Settings.Overlay.FadeEaseMode}">
+                                    <ComboBoxItem Content="In"/>
+                                    <ComboBoxItem Content="Out"/>
+                                    <ComboBoxItem Content="InOut"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0" Content="Font Family:"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.Overlay.FontFamily}" Margin="5,0,15,0"/>
+
+                            <Label Grid.Row="0" Grid.Column="2" Content="Font Size:"/>
+                            <Slider Grid.Row="0" Grid.Column="3" Value="{Binding Settings.Overlay.FontSize}" Minimum="12" Maximum="64" TickFrequency="2" IsSnapToTickEnabled="True"/>
+
+                            <Label Grid.Row="1" Grid.Column="0" Content="Foreground (ARGB Hex):"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Settings.Overlay.Foreground}" Margin="5,0,15,0"/>
+
+                            <Label Grid.Row="1" Grid.Column="2" Content="Background (ARGB Hex):"/>
+                            <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding Settings.Overlay.Background}"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <Label Grid.Row="0" Grid.Column="0" Content="Horizontal Alignment:"/>
+                            <ComboBox Grid.Row="0" Grid.Column="1" SelectedValue="{Binding Settings.Overlay.HorizontalAlignment}" Margin="5,0,15,0">
+                                <ComboBoxItem Content="Left"/>
+                                <ComboBoxItem Content="Center"/>
+                                <ComboBoxItem Content="Right"/>
+                                <ComboBoxItem Content="Stretch"/>
+                            </ComboBox>
+
+                            <Label Grid.Row="0" Grid.Column="2" Content="Vertical Alignment:"/>
+                            <ComboBox Grid.Row="0" Grid.Column="3" SelectedValue="{Binding Settings.Overlay.VerticalAlignment}">
+                                <ComboBoxItem Content="Top"/>
+                                <ComboBoxItem Content="Center"/>
+                                <ComboBoxItem Content="Bottom"/>
+                                <ComboBoxItem Content="Stretch"/>
+                            </ComboBox>
+
+                            <Label Grid.Row="1" Grid.Column="0" Content="Margin X:"/>
+                            <Slider Grid.Row="1" Grid.Column="1" Value="{Binding Settings.Overlay.MarginX}" Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Margin="5,0,15,0"/>
+
+                            <Label Grid.Row="1" Grid.Column="2" Content="Margin Y:"/>
+                            <Slider Grid.Row="1" Grid.Column="3" Value="{Binding Settings.Overlay.MarginY}" Minimum="0" Maximum="300" TickFrequency="5" IsSnapToTickEnabled="True"/>
+                        </Grid>
 
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button Content="Reconnect RTSS" Width="140" Click="OnReconnectRtssClick"/>
-                            <Button Content="Send Test Message" Width="160" Margin="10,0,0,0" Click="OnSendRtssTestClick"/>
+                            <Button Content="Preview" Width="100" Command="{Binding PreviewOverlayCommand}"/>
+                            <Button Content="Hide" Width="80" Margin="10,0,0,0" Command="{Binding HideOverlayCommand}"/>
                         </StackPanel>
+
+                        <GroupBox Header="Auto Hide &amp; Width" Margin="0,10,0,0">
+                            <StackPanel Margin="10">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="Auto Hide (ms):" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <Slider Width="220" Value="{Binding Settings.Overlay.AutoHideMs}" Minimum="0" Maximum="10000" TickFrequency="200" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Text="{Binding Settings.Overlay.AutoHideMs}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Max Width Ratio:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <Slider Width="220" Value="{Binding Settings.Overlay.MaxWidthRatio}" Minimum="0.3" Maximum="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"/>
+                                    <TextBlock Text="{Binding Settings.Overlay.MaxWidthRatio, StringFormat={}{0:F2}}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Outline" Margin="0,10,0,0">
+                            <StackPanel Margin="10">
+                                <CheckBox Content="Enable Outline" IsChecked="{Binding Settings.Overlay.OutlineEnabled}"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Label Grid.Column="0" Content="Color:"/>
+                                    <TextBox Grid.Column="1" Text="{Binding Settings.Overlay.OutlineColor}" Margin="5,0,15,0"/>
+                                    <Label Grid.Column="2" Content="Thickness:"/>
+                                    <Slider Grid.Column="3" Value="{Binding Settings.Overlay.OutlineThickness}" Minimum="0" Maximum="10" TickFrequency="0.5" IsSnapToTickEnabled="True"/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Target Monitor" Margin="0,10,0,0">
+                            <StackPanel Margin="10">
+                                <TextBlock Text="-1: Cursor monitor, -2: Primary monitor, >=0: Specific index" Foreground="Gray" FontSize="11"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Label Grid.Column="0" Content="Monitor Index:"/>
+                                    <TextBox Grid.Column="1" Text="{Binding Settings.Overlay.TargetMonitorIndex}"/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

@@ -268,6 +268,23 @@ public class SettingsProvider
                     }
                 }
             },
+            Overlay = new OverlaySettings
+            {
+                Enabled = true,
+                UpdatePerSec = 2,
+                MaxChars = 80,
+                Topmost = true,
+                IsClickThrough = true,
+                Opacity = 0.9,
+                FontFamily = "Segoe UI",
+                FontSize = 28,
+                Foreground = "#FFFFFFFF",
+                Background = "#7F000000",
+                HorizontalAlignment = "Center",
+                VerticalAlignment = "Bottom",
+                MarginX = 32,
+                MarginY = 48
+            },
             Rtss = new RtssSettings
             {
                 Enabled = true,
@@ -383,6 +400,7 @@ public class SttifySettings
     public EngineSettings Engine { get; set; } = new();
     public SessionSettings Session { get; set; } = new();
     public OutputSettings Output { get; set; } = new();
+    public OverlaySettings Overlay { get; set; } = new();
     public RtssSettings Rtss { get; set; } = new();
     public HotkeySettings Hotkeys { get; set; } = new();
     public PrivacySettings Privacy { get; set; } = new();
@@ -533,6 +551,44 @@ public class RtssSettings
     public bool Enabled { get; set; } = true;
     public int UpdatePerSec { get; set; } = 2;
     public int TruncateLength { get; set; } = 80;
+}
+
+[ExcludeFromCodeCoverage] // Simple configuration class for overlay UI
+public class OverlaySettings
+{
+    public bool Enabled { get; set; } = true;
+    public int UpdatePerSec { get; set; } = 2;
+    public int MaxChars { get; set; } = 80;
+    public int AutoHideMs { get; set; } = 3000;
+
+    // Window behavior
+    public bool Topmost { get; set; } = true;
+    public bool IsClickThrough { get; set; } = true;
+    public double Opacity { get; set; } = 0.9;
+
+    // Animation
+    public bool EnableFade { get; set; } = true;
+    public int FadeInMs { get; set; } = 120;
+    public int FadeOutMs { get; set; } = 120;
+    public string FadeEasing { get; set; } = "Cubic"; // Cubic, Quadratic, Sine, Circle, Quartic, Quintic
+    public string FadeEaseMode { get; set; } = "Out";  // In, Out, InOut
+
+    // Appearance
+    public string FontFamily { get; set; } = "Segoe UI";
+    public double FontSize { get; set; } = 28;
+    public string Foreground { get; set; } = "#FFFFFFFF";
+    public string Background { get; set; } = "#00000000"; // transparent by default
+    public bool OutlineEnabled { get; set; } = true;
+    public string OutlineColor { get; set; } = "#CC000000";
+    public double OutlineThickness { get; set; } = 3.0;
+
+    // Layout
+    public string HorizontalAlignment { get; set; } = "Center"; // Left/Center/Right/Stretch
+    public string VerticalAlignment { get; set; } = "Bottom";   // Top/Center/Bottom/Stretch
+    public int MarginX { get; set; } = 32;
+    public int MarginY { get; set; } = 48;
+    public double MaxWidthRatio { get; set; } = 0.9; // relative to working area width
+    public int TargetMonitorIndex { get; set; } = -1; // -1: cursor monitor, -2: primary, >=0: specific index
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

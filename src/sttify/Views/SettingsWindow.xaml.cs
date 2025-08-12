@@ -16,18 +16,17 @@ public partial class SettingsWindow : Window
     private readonly SettingsViewModel _viewModel;
     private readonly ApplicationService _applicationService;
     private readonly Sttify.Corelib.Config.SettingsProvider _settingsProvider;
-    private readonly Sttify.Corelib.Rtss.RtssBridge _rtss;
+    // private readonly Sttify.Corelib.Rtss.RtssBridge _rtss;
     private HotkeyManager? _hotkeyManager;
     private HwndSource? _hwndSource;
 
-    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService, Sttify.Corelib.Config.SettingsProvider settingsProvider, Sttify.Corelib.Rtss.RtssBridge rtss)
+    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService, Sttify.Corelib.Config.SettingsProvider settingsProvider)
     {
         InitializeComponent();
 
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
-        _rtss = rtss ?? throw new ArgumentNullException(nameof(rtss));
         DataContext = _viewModel;
 
         // Setup global hotkeys when window is loaded
@@ -167,74 +166,7 @@ public partial class SettingsWindow : Window
         Close();
     }
 
-    private void OnReconnectRtssClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var settings = _settingsProvider.GetSettingsSync();
-            _rtss.UpdateSettings(settings.Rtss);
-            var ok = _rtss.Initialize();
-            System.Diagnostics.Debug.WriteLine($"*** RTSS reconnect requested, result: {ok} ***");
-            if (!ok)
-            {
-                System.Windows.MessageBox.Show(
-                    "Failed to connect to RTSS shared memory. Please ensure RTSS is running and OSD is enabled.",
-                    "RTSS",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"*** RTSS reconnect failed: {ex.Message} ***");
-            System.Windows.MessageBox.Show($"RTSS reconnect failed: {ex.Message}", "RTSS", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void OnRtssOfficialLinkNavigate(object sender, RequestNavigateEventArgs e)
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = e.Uri.AbsoluteUri,
-                UseShellExecute = true
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show($"Failed to open link: {ex.Message}", "Open Link", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        e.Handled = true;
-    }
-
-    private void OnSendRtssTestClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var settings = _settingsProvider.GetSettingsSync();
-            if (!settings.Rtss.Enabled)
-            {
-                System.Windows.MessageBox.Show("RTSS OSD is disabled in settings.", "RTSS", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            if (_rtss.Initialize())
-            {
-                var text = "Sttify RTSS Test: The quick brown fox jumps over the lazy dog.";
-                _rtss.UpdateOsd(text);
-                System.Windows.MessageBox.Show("Test message sent to RTSS OSD.", "RTSS", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                System.Windows.MessageBox.Show("Failed to connect RTSS shared memory.", "RTSS", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Windows.MessageBox.Show($"Failed to send RTSS test message: {ex.Message}", "RTSS", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
+    // RTSS-related handlers removed as overlay replaces RTSS path
 
 
 

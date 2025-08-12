@@ -7,7 +7,7 @@ using Sttify.Corelib.Engine;
 using Sttify.Corelib.Hotkey;
 using Sttify.Corelib.Ime;
 using Sttify.Corelib.Output;
-using Sttify.Corelib.Rtss;
+// using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using static Sttify.Corelib.Config.SettingsProvider;
 using Sttify.Services;
@@ -175,12 +175,8 @@ public partial class App : System.Windows.Application
                 });
                 services.AddSingleton<HotkeyService>();
 
-                // Use default settings for now - will be configured later
-                services.AddSingleton<RtssBridge>(provider =>
-                {
-                    var defaultRtssSettings = new RtssSettings();
-                    return new RtssBridge(defaultRtssSettings);
-                });
+                // Overlay service for transparent window display
+                services.AddSingleton<OverlayService>();
 
                 services.AddSingleton<ISttEngine>(provider =>
                 {
@@ -253,7 +249,14 @@ public partial class App : System.Windows.Application
                     );
                 });
                 services.AddTransient<ControlWindow>();
-                services.AddTransient<SettingsWindow>();
+                services.AddTransient<SettingsWindow>(provider =>
+                {
+                    return new SettingsWindow(
+                        provider.GetRequiredService<SettingsViewModel>(),
+                        provider.GetRequiredService<ApplicationService>(),
+                        provider.GetRequiredService<SettingsProvider>()
+                    );
+                });
             })
             .Build();
     }

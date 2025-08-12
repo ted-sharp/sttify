@@ -4,7 +4,7 @@ using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Hotkey;
 using Sttify.Corelib.Output;
-using Sttify.Corelib.Rtss;
+// using Sttify.Corelib.Rtss;
 using Sttify.Corelib.Session;
 using System.Windows;
 using System.Windows.Interop;
@@ -18,7 +18,7 @@ public class ApplicationService : IDisposable
     private readonly SettingsProvider _settingsProvider;
     private readonly RecognitionSession _recognitionSession;
     private readonly HotkeyService _hotkeyService;
-    private readonly RtssBridge _rtssService;
+    private readonly OverlayService _overlayService;
     private readonly ErrorRecovery _errorRecovery;
     private readonly HealthMonitor _healthMonitor;
     private string? _lastHotkeyToggleUi;
@@ -31,13 +31,13 @@ public class ApplicationService : IDisposable
         SettingsProvider settingsProvider,
         RecognitionSession recognitionSession,
         HotkeyService hotkeyService,
-        RtssBridge rtssService)
+        OverlayService overlayService)
     {
         System.Diagnostics.Debug.WriteLine("*** ApplicationService Constructor Called - VERSION 2024-DEBUG ***");
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         _recognitionSession = recognitionSession ?? throw new ArgumentNullException(nameof(recognitionSession));
         _hotkeyService = hotkeyService ?? throw new ArgumentNullException(nameof(hotkeyService));
-        _rtssService = rtssService ?? throw new ArgumentNullException(nameof(rtssService));
+        _overlayService = overlayService ?? throw new ArgumentNullException(nameof(overlayService));
 
         _errorRecovery = new ErrorRecovery();
         _healthMonitor = new HealthMonitor();
@@ -63,9 +63,8 @@ public class ApplicationService : IDisposable
             // Initialize hotkeys via HotkeyService
             AsyncHelper.FireAndForget(() => _hotkeyService.InitializeAsync(), nameof(HotkeyService.InitializeAsync));
 
-            // Console.WriteLine("ApplicationService: Initializing RTSS...");
-            InitializeRtss();
-            // Console.WriteLine("ApplicationService: RTSS initialized");
+            // Initialize overlay
+            InitializeOverlay();
 
             // Hook WM_HOTKEY for global hotkeys when no explicit window handle is used
             RegisterHotkeyMessageHook();
@@ -193,22 +192,53 @@ public class ApplicationService : IDisposable
         }
     }
 
-    private void InitializeRtss()
+    public async Task ReinitializeOverlayAsync()
     {
         try
         {
-            // Console.WriteLine("ApplicationService: Initializing RTSS service...");
-            // Apply latest settings to bridge before initialize
-            var settings = _settingsProvider.GetSettingsSync();
-            _rtssService.UpdateSettings(settings.Rtss);
-            var initialized = _rtssService.Initialize();
-            // Console.WriteLine($"ApplicationService: RTSS initialization result: {initialized}");
-            Telemetry.LogEvent("RtssInitialized", new { Success = initialized });
+            await _overlayService.ApplySettingsAsync();
+            Telemetry.LogEvent("OverlayReinitialized");
         }
         catch (Exception ex)
         {
-            // Console.WriteLine($"ApplicationService: RTSS initialization failed: {ex.Message}");
-            Telemetry.LogError("RtssInitializationFailed", ex);
+            Telemetry.LogError("OverlayReinitializeFailed", ex);
+        }
+    }
+
+    public async Task ShowOverlayTextAsync(string text)
+    {
+        try
+        {
+            await _overlayService.UpdateTextAsync(text);
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("OverlayShowTextFailed", ex);
+        }
+    }
+
+    public async Task HideOverlayAsync()
+    {
+        try
+        {
+            await _overlayService.HideAsync();
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("OverlayHideFailed", ex);
+        }
+    }
+
+    private void InitializeOverlay()
+    {
+        try
+        {
+            _overlayService.Initialize();
+            Telemetry.LogEvent("OverlayInitialized");
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("OverlayInitializationFailed", ex);
         }
     }
 
@@ -230,10 +260,7 @@ public class ApplicationService : IDisposable
         AsyncHelper.FireAndForget(async () =>
         {
             var settings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
-            if (settings.Rtss.Enabled)
-            {
-                _rtssService.UpdateOsd(e.Text);
-            }
+            await _overlayService.UpdateTextAsync(e.Text);
 
             Telemetry.LogRecognition(e.Text, e.IsFinal, e.Confidence, settings.Privacy.MaskInLogs);
         }, nameof(OnTextRecognized), new { e.Text, e.IsFinal });
@@ -325,17 +352,15 @@ public class ApplicationService : IDisposable
             }
         });
 
-        // RTSS service health check
-        _healthMonitor.RegisterHealthCheck("RTSS", async () =>
+        // Overlay health check
+        _healthMonitor.RegisterHealthCheck("Overlay", async () =>
         {
             var settings = await _settingsProvider.GetSettingsAsync();
-            if (!settings.Rtss.Enabled)
+            if (!settings.Overlay.Enabled)
             {
-                return HealthCheckResult.Healthy("RTSS integration disabled");
+                return HealthCheckResult.Healthy("Overlay disabled");
             }
-
-            // Note: In a real implementation, we would check if RTSS is actually working
-            return HealthCheckResult.Healthy("RTSS integration active");
+            return HealthCheckResult.Healthy("Overlay active");
         });
     }
 
@@ -399,7 +424,7 @@ public class ApplicationService : IDisposable
             _hotkeyService.Dispose();
         }
         _recognitionSession?.Dispose();
-        _rtssService?.Dispose();
+        _overlayService?.Dispose();
     }
 
     private void OnHotkeyRegistrationFailed(object? sender, HotkeyRegistrationFailedEventArgs e)
