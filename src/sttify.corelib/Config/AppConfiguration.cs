@@ -28,31 +28,18 @@ public class AppConfiguration
     private static IConfiguration BuildConfiguration()
     {
         var builder = new ConfigurationBuilder();
-        
-        // Add embedded appsettings.json from corelib
-        var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-        var assemblyDir = Path.GetDirectoryName(assemblyLocation);
-        
-        if (assemblyDir != null)
-        {
-            var appsettingsPath = Path.Combine(assemblyDir, "appsettings.json");
-            if (File.Exists(appsettingsPath))
-            {
-                builder.AddJsonFile(appsettingsPath, optional: true);
-            }
-        }
-        
-        // Add application-specific appsettings.json
+
+        // Add application-specific appsettings.json only (ownership is at app level)
         var appDir = AppDomain.CurrentDomain.BaseDirectory;
         builder.AddJsonFile(Path.Combine(appDir, "appsettings.json"), optional: true);
-        
+
         // Add environment-specific configuration
         var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Production";
         builder.AddJsonFile($"appsettings.{environment}.json", optional: true);
-        
+
         // Add environment variables
         builder.AddEnvironmentVariables("STTIFY_");
-        
+
         return builder.Build();
     }
 
@@ -60,12 +47,12 @@ public class AppConfiguration
     {
         var isDebug = IsDebugMode();
         var configLogLevel = Configuration["Application:DefaultLogLevel"];
-        
+
         if (isDebug)
         {
             return LogEventLevel.Debug;
         }
-        
+
         return configLogLevel?.ToLowerInvariant() switch
         {
             "debug" => LogEventLevel.Debug,
@@ -89,14 +76,14 @@ public class AppConfiguration
     {
         var settings = new TelemetrySettings();
         Configuration.GetSection("Telemetry").Bind(settings);
-        
+
         // Override with computed log level
         settings.MinimumLevel = GetLogLevel();
-        
+
         #if DEBUG
             settings.EnableConsoleLogging = true;
         #endif
-        
+
         return settings;
     }
 }
