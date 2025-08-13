@@ -305,13 +305,19 @@ public class StreamSink : ITextOutputSink, IDisposable
 
         try
         {
-            var bytes = Encoding.UTF8.GetBytes(text + "\0");
-            if (bytes.Length > _settings.SharedMemorySize)
+            // Prefix with 4-byte little-endian length (payload only), then UTF-8 bytes
+            var payload = Encoding.UTF8.GetBytes(text);
+            int maxPayload = Math.Max(0, _settings.SharedMemorySize - 4);
+            if (payload.Length > maxPayload)
             {
-                bytes = Encoding.UTF8.GetBytes(text[..(text.Length * _settings.SharedMemorySize / bytes.Length)] + "\0");
+                Array.Resize(ref payload, maxPayload);
             }
-
-            _memoryMappedAccessor.WriteArray(0, bytes, 0, bytes.Length);
+            int len = payload.Length;
+            _memoryMappedAccessor.Write(0, (byte)(len & 0xFF));
+            _memoryMappedAccessor.Write(1, (byte)((len >> 8) & 0xFF));
+            _memoryMappedAccessor.Write(2, (byte)((len >> 16) & 0xFF));
+            _memoryMappedAccessor.Write(3, (byte)((len >> 24) & 0xFF));
+            _memoryMappedAccessor.WriteArray(4, payload, 0, payload.Length);
         }
         catch (Exception ex)
         {

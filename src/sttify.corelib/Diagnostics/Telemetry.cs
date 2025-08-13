@@ -11,7 +11,7 @@ public static class Telemetry
 {
     private static ILogger? _logger;
     private static bool _isInitialized;
-    
+
     // Batching for better I/O performance
     private static readonly ConcurrentQueue<LogEntry> _logQueue = new();
     private static readonly Timer _batchTimer;
@@ -19,7 +19,8 @@ public static class Telemetry
     private static volatile bool _isShuttingDown;
     private const int BatchSize = 50;
     private const int BatchIntervalMs = 100;
-    
+    private const int MaxQueueSize = 5000; // backpressure upper bound
+
     static Telemetry()
     {
         _batchTimer = new Timer(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
@@ -61,7 +62,7 @@ public static class Telemetry
         _logger = logConfig.CreateLogger();
         _isInitialized = true;
 
-        LogEvent("TelemetryInitialized", new { 
+        LogEvent("TelemetryInitialized", new {
             Settings = settings,
             LogLevel = settings.MinimumLevel.ToString(),
             IsDebugMode = Config.AppConfiguration.IsDebugMode()
@@ -72,7 +73,7 @@ public static class Telemetry
     {
         if (!_isInitialized || _isShuttingDown)
             return;
-            
+
         EnqueueLogEntry(new LogEntry
         {
             Level = LogEventLevel.Information,
@@ -86,7 +87,7 @@ public static class Telemetry
     {
         if (!_isInitialized || _isShuttingDown)
             return;
-            
+
         EnqueueLogEntry(new LogEntry
         {
             Level = LogEventLevel.Error,
@@ -101,7 +102,7 @@ public static class Telemetry
     {
         if (!_isInitialized || _isShuttingDown)
             return;
-            
+
         EnqueueLogEntry(new LogEntry
         {
             Level = LogEventLevel.Warning,
@@ -163,33 +164,42 @@ public static class Telemetry
 
     private static void EnqueueLogEntry(LogEntry entry)
     {
+        // Backpressure: drop oldest when exceeding max size
         _logQueue.Enqueue(entry);
-        
+        if (_logQueue.Count > MaxQueueSize)
+        {
+            // Drain a small batch to keep memory bounded
+            var drop = 0;
+            while (_logQueue.Count > MaxQueueSize && drop < BatchSize && _logQueue.TryDequeue(out _))
+            {
+                drop++;
+            }
+        }
         // If queue is getting large, force flush
         if (_logQueue.Count >= BatchSize * 2)
         {
             Task.Run(() => FlushBatch(null));
         }
     }
-    
+
     private static void FlushBatch(object? state)
     {
         if (_isShuttingDown || !_isInitialized || _logger == null)
             return;
-            
+
         lock (_batchLock)
         {
             var entries = new List<LogEntry>();
-            
+
             // Drain up to BatchSize entries
             while (entries.Count < BatchSize && _logQueue.TryDequeue(out var entry))
             {
                 entries.Add(entry);
             }
-            
+
             if (entries.Count == 0)
                 return;
-                
+
             // Write all entries in batch
             foreach (var entry in entries)
             {
@@ -216,14 +226,19 @@ public static class Telemetry
             }
         }
     }
-    
+
     public static void Shutdown()
     {
         _isShuttingDown = true;
-        
-        // Flush any remaining entries
-        FlushBatch(null);
-        
+
+        // Flush remaining entries until queue is empty
+        for (int i = 0; i < 20; i++) // up to ~2s
+        {
+            FlushBatch(null);
+            if (_logQueue.IsEmpty) break;
+            Thread.Sleep(BatchIntervalMs);
+        }
+
         if (_isInitialized && _logger is IDisposable disposableLogger)
         {
             // Log shutdown directly (bypass batching since we're shutting down)
@@ -231,7 +246,7 @@ public static class Telemetry
             disposableLogger.Dispose();
             _isInitialized = false;
         }
-        
+
         _batchTimer.Dispose();
     }
 }

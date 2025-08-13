@@ -280,7 +280,29 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
                     // Normalize spacing for Japanese output
                     text = NormalizeJapaneseSpacing(text);
 
-                    var confidence = 0.95; // streaming Vosk confidence heuristic
+                    // Compute confidence from word results if available; fallback to top-level/confidence or default
+                    double confidence = 0.95;
+                    if (jsonDoc.RootElement.TryGetProperty("result", out var resultArray) &&
+                        resultArray.ValueKind == JsonValueKind.Array)
+                    {
+                        double sum = 0.0; int count = 0;
+                        foreach (var w in resultArray.EnumerateArray())
+                        {
+                            if (w.TryGetProperty("conf", out var confEl) && confEl.ValueKind == JsonValueKind.Number)
+                            {
+                                sum += confEl.GetDouble();
+                                count++;
+                            }
+                        }
+                        if (count > 0)
+                        {
+                            confidence = Math.Clamp(sum / count, 0.0, 1.0);
+                        }
+                        else if (jsonDoc.RootElement.TryGetProperty("confidence", out var confTop) && confTop.ValueKind == JsonValueKind.Number)
+                        {
+                            confidence = Math.Clamp(confTop.GetDouble(), 0.0, 1.0);
+                        }
+                    }
                     var duration = DateTime.UtcNow - _recognitionStartTime;
 
                     System.Diagnostics.Debug.WriteLine($"*** FINAL RECOGNITION: '{text}' ***");
@@ -360,6 +382,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
             _recognizer = new global::Vosk.VoskRecognizer(_model, sampleRate);
             _recognizer.SetMaxAlternatives(0);
             _recognizer.SetWords(true);
+            // Note: Vosk C# bindings may not expose SetGrammar; relying on SetWords and configuration-only
             if (_settings.Punctuation)
             {
                 // Vosk doesn't add punctuation automatically for all models; this flag is kept for symmetry

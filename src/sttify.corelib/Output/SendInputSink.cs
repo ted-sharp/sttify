@@ -110,8 +110,8 @@ public class SendInputSink : ITextOutputSink
                 }
             }
 
-            // Try direct SendInput first
-            bool success = await SendTextViaInputAsync(text, cancellationToken);
+        // Try direct SendInput first (handles surrogate pairs)
+        bool success = await SendTextViaInputAsync(text, cancellationToken);
 
             // If SendInput fails, try alternative methods
             if (!success)
@@ -159,75 +159,81 @@ public class SendInputSink : ITextOutputSink
         var delayMs = _settings.RateLimitCps > 0 ? 1000 / _settings.RateLimitCps : 0;
         bool anySuccess = false;
 
-        foreach (char c in text)
+        // Iterate over text by Unicode scalar values to handle surrogate pairs
+        var enumerator = System.Globalization.StringInfo.GetTextElementEnumerator(text);
+        while (enumerator.MoveNext())
         {
             if (cancellationToken.IsCancellationRequested)
                 return anySuccess;
 
-            // Send UNICODE key down
-            var downInput = new INPUT
+            var element = enumerator.GetTextElement();
+            foreach (var ch in element)
             {
-                type = INPUT_KEYBOARD,
-                union = new INPUTUNION
+                // Send UNICODE key down
+                var downInput = new INPUT
                 {
-                    ki = new KEYBDINPUT
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
                     {
-                        wVk = 0,
-                        wScan = c,
-                        dwFlags = KEYEVENTF_UNICODE,
-                        time = 0,
-                        dwExtraInfo = IntPtr.Zero
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = 0,
+                            wScan = ch,
+                            dwFlags = KEYEVENTF_UNICODE,
+                            time = 0,
+                            dwExtraInfo = IntPtr.Zero
+                        }
                     }
-                }
-            };
-
-            uint resultDown = SendInput(1, new[] { downInput }, Marshal.SizeOf<INPUT>());
-            if (resultDown == 0)
-            {
-                uint error = GetLastError();
-                string errorMsgDown = error switch
-                {
-                    87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
-                    5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
-                    0 => "No error code - Likely UIPI blocking",
-                    _ => $"Windows error {error}"
                 };
-                System.Diagnostics.Debug.WriteLine($"*** SendInput (down) FAILED for char '{c}': {errorMsgDown} ***");
-            }
-            else
-            {
-                anySuccess = true;
-            }
 
-            // Send UNICODE key up (required to avoid stuck keys)
-            var upInput = new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                union = new INPUTUNION
+                uint resultDown = SendInput(1, new[] { downInput }, Marshal.SizeOf<INPUT>());
+                if (resultDown == 0)
                 {
-                    ki = new KEYBDINPUT
+                    uint error = GetLastError();
+                    string errorMsgDown = error switch
                     {
-                        wVk = 0,
-                        wScan = c,
-                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = IntPtr.Zero
-                    }
+                        87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
+                        5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
+                        0 => "No error code - Likely UIPI blocking",
+                        _ => $"Windows error {error}"
+                    };
+                    System.Diagnostics.Debug.WriteLine($"*** SendInput (down) FAILED for char '{ch}': {errorMsgDown} ***");
                 }
-            };
-
-            uint resultUp = SendInput(1, new[] { upInput }, Marshal.SizeOf<INPUT>());
-            if (resultUp == 0)
-            {
-                uint error = GetLastError();
-                string errorMsgUp = error switch
+                else
                 {
-                    87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
-                    5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
-                    0 => "No error code - Likely UIPI blocking",
-                    _ => $"Windows error {error}"
+                    anySuccess = true;
+                }
+
+                // Send UNICODE key up (required to avoid stuck keys)
+                var upInput = new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    union = new INPUTUNION
+                    {
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = 0,
+                            wScan = ch,
+                            dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                            time = 0,
+                            dwExtraInfo = IntPtr.Zero
+                        }
+                    }
                 };
-                System.Diagnostics.Debug.WriteLine($"*** SendInput (up) FAILED for char '{c}': {errorMsgUp} ***");
+
+                uint resultUp = SendInput(1, new[] { upInput }, Marshal.SizeOf<INPUT>());
+                if (resultUp == 0)
+                {
+                    uint error = GetLastError();
+                    string errorMsgUp = error switch
+                    {
+                        87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
+                        5 => "ERROR_ACCESS_DENIED - Target app elevated or blocking input",
+                        0 => "No error code - Likely UIPI blocking",
+                        _ => $"Windows error {error}"
+                    };
+                    System.Diagnostics.Debug.WriteLine($"*** SendInput (up) FAILED for char '{ch}': {errorMsgUp} ***");
+                }
             }
 
             if (delayMs > 0)
@@ -255,6 +261,14 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
+            // Backup clipboard text (best effort) - use Win32 only to avoid WPF dependency
+            string? original = null;
+            try
+            {
+                original = GetClipboardText();
+            }
+            catch { }
+
             // Use Win32 clipboard APIs directly
             bool clipboardSet = SetClipboardText(text);
 
@@ -320,10 +334,58 @@ public class SendInputSink : ITextOutputSink
             {
                 System.Diagnostics.Debug.WriteLine("*** Failed to set Win32 clipboard ***");
             }
+            // Restore clipboard (best effort)
+            try
+            {
+                if (original != null)
+                {
+                    SetClipboardText(original);
+                }
+            }
+            catch { }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"*** Win32 clipboard fallback failed: {ex.Message} ***");
+        }
+    }
+
+    private static string? GetClipboardText()
+    {
+        try
+        {
+            if (!OpenClipboard(IntPtr.Zero))
+                return null;
+
+            const uint CF_UNICODETEXT = 13;
+            IntPtr handle = GetClipboardData(CF_UNICODETEXT);
+            if (handle == IntPtr.Zero)
+            {
+                CloseClipboard();
+                return null;
+            }
+
+            IntPtr ptr = GlobalLock(handle);
+            if (ptr == IntPtr.Zero)
+            {
+                CloseClipboard();
+                return null;
+            }
+
+            try
+            {
+                string text = Marshal.PtrToStringUni(ptr) ?? string.Empty;
+                return text;
+            }
+            finally
+            {
+                GlobalUnlock(handle);
+                CloseClipboard();
+            }
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -498,6 +560,9 @@ public class SendInputSink : ITextOutputSink
     private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
 
     [DllImport("user32.dll")]
+    private static extern IntPtr GetClipboardData(uint uFormat);
+
+    [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -520,6 +585,12 @@ public class SendInputSink : ITextOutputSink
 
     [DllImport("user32.dll")]
     private static extern bool ChangeWindowMessageFilter(uint message, uint dwFlag);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GlobalLock(IntPtr hMem);
+
+    [DllImport("kernel32.dll")]
+    private static extern bool GlobalUnlock(IntPtr hMem);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);

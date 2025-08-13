@@ -18,7 +18,6 @@ public class RecognitionSession : IDisposable
 
     public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
-    public event EventHandler<SilenceDetectedEventArgs>? OnSilenceDetected;
 
     // Currently not implemented but reserved for future voice activity detection features
 #pragma warning disable CS0067 // Event is declared but never used - reserved for future features
@@ -28,12 +27,9 @@ public class RecognitionSession : IDisposable
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
     private SessionState _currentState = SessionState.Idle;
     private readonly object _lockObject = new();
+    private readonly EndpointDetector _endpointDetector;
 
-    // Silence detection state
-    private DateTime _lastVoiceActivity = DateTime.MinValue;
-    private bool _inSilence = false;
-    private readonly Timer _silenceTimer;
-    private readonly Timer _finalizeTimer;
+    // Silence detection timers removed; handled by engine/VAD components
 
     // Wake word detection state - reserved for future implementation
 #pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
@@ -49,8 +45,7 @@ public class RecognitionSession : IDisposable
     private bool _pttPressed = false;
 #pragma warning restore CS0414
 
-    // Single utterance state
-    private bool _utteranceStarted = false;
+    // Single utterance state removed (handled by endpoint detector callbacks)
 
     public RecognitionSession(
         AudioCapture audioCapture,
@@ -68,9 +63,22 @@ public class RecognitionSession : IDisposable
 
         _audioCapture.OnFrame += OnAudioFrame;
 
-        // Initialize timers
-        _silenceTimer = new Timer(OnSilenceTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
-        _finalizeTimer = new Timer(OnFinalizeTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
+        // Initialize endpoint detector using session settings
+        _endpointDetector = new EndpointDetector(new EndpointSettings
+        {
+            SilenceTimeoutMs = _settings.EndpointSilenceMs
+        });
+        _endpointDetector.OnEndpointTriggered += OnEndpointTriggered;
+        _endpointDetector.OnUtteranceStarted += (_, __) =>
+        {
+            Telemetry.LogEvent("SessionUtteranceStarted");
+        };
+        _endpointDetector.OnUtteranceEnded += (_, e) =>
+        {
+            Telemetry.LogEvent("SessionUtteranceEnded", new { e.Duration, e.EndpointType, e.Confidence });
+        };
+
+        // No session-level silence/finalize timers
 
         // Add wake words from settings if provided
         if (_settings.WakeWords?.Length > 0)
@@ -180,7 +188,7 @@ public class RecognitionSession : IDisposable
             System.Diagnostics.Debug.WriteLine($"*** About to call _sttEngine.StartAsync() on {_sttEngine.GetType().Name} ***");
             Telemetry.LogEvent("RecognitionSession_StartingEngine");
             // Guard against engine start hanging indefinitely
-            await _sttEngine.StartAsync(cancellationToken).WithTimeout(TimeSpan.FromSeconds(10), "SttEngine.Start");
+            await _sttEngine.StartAsync(cancellationToken).WaitAsync(TimeSpan.FromSeconds(10));
             System.Diagnostics.Debug.WriteLine($"*** _sttEngine.StartAsync() completed successfully ***");
             Telemetry.LogEvent("RecognitionSession_EngineStarted");
 
@@ -193,7 +201,7 @@ public class RecognitionSession : IDisposable
 
             Telemetry.LogEvent("RecognitionSession_StartingAudioCapture", new { audioCaptureSettings.SampleRate, audioCaptureSettings.Channels, audioCaptureSettings.BufferSize });
             // Guard against audio capture start hanging indefinitely
-            await _audioCapture.StartAsync(audioCaptureSettings, cancellationToken).WithTimeout(TimeSpan.FromSeconds(10), "AudioCapture.Start");
+            await _audioCapture.StartAsync(audioCaptureSettings, cancellationToken).WaitAsync(TimeSpan.FromSeconds(10));
             Telemetry.LogEvent("RecognitionSession_AudioCaptureStarted");
 
             // Initialize mode-specific behavior
@@ -252,10 +260,10 @@ public class RecognitionSession : IDisposable
         try
         {
             CurrentState = SessionState.Stopping;
-            await _audioCapture.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "AudioCapture.Stop");
+            await _audioCapture.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
             if (_sttEngine != null)
             {
-                await _sttEngine.StopAsync().WithTimeout(TimeSpan.FromSeconds(5), "SttEngine.Stop");
+                await _sttEngine.StopAsync().WaitAsync(TimeSpan.FromSeconds(5));
             }
         }
         catch (Exception ex)
@@ -272,6 +280,8 @@ public class RecognitionSession : IDisposable
     {
         // Avoid taking state lock inside engine lock: read once without re-entrancy risk
         var stateSnapshot = CurrentState;
+        // Feed endpoint detector for boundary detection
+        _endpointDetector.ProcessAudioFrame(e.AudioData.Span, _settings.SampleRate, _settings.Channels);
         if (stateSnapshot == SessionState.Listening && _sttEngine != null)
         {
             _sttEngine.PushAudio(e.AudioData.Span);
@@ -347,29 +357,7 @@ public class RecognitionSession : IDisposable
         });
     }
 
-    private void OnSilenceTimerElapsed(object? state)
-    {
-        if (!_inSilence)
-        {
-            _inSilence = true;
-            var silenceDuration = DateTime.UtcNow - _lastVoiceActivity;
-
-            OnSilenceDetected?.Invoke(this, new SilenceDetectedEventArgs(silenceDuration));
-
-            // Handle silence based on current mode
-            if (CurrentMode == RecognitionMode.SingleUtterance && _utteranceStarted)
-            {
-                // End single utterance on silence
-                AsyncHelper.FireAndForget(() => StopAsync(), "StopAfterSilence");
-            }
-        }
-    }
-
-    private void OnFinalizeTimerElapsed(object? state)
-    {
-        // Finalize any pending recognition
-        Telemetry.LogEvent("RecognitionFinalized", new { Mode = CurrentMode.ToString() });
-    }
+    // Removed unused silence/finalize timers; engine-side VAD handles boundaries
 
     // PTT control methods
     public void StartPtt()
@@ -499,8 +487,8 @@ public class RecognitionSession : IDisposable
             _continuousModeCts?.Cancel();
             _continuousModeCts?.Dispose();
 
-            _silenceTimer?.Dispose();
-            _finalizeTimer?.Dispose();
+            // Dispose endpoint detector
+            _endpointDetector?.Dispose();
 
             // Unsubscribe events to prevent memory leaks
             _audioCapture.OnFrame -= OnAudioFrame;
@@ -520,6 +508,22 @@ public class RecognitionSession : IDisposable
         {
             _audioCapture.Dispose();
             _sttEngine?.Dispose();
+        }
+    }
+
+    private void OnEndpointTriggered(object? sender, EndpointTriggeredEventArgs e)
+    {
+        Telemetry.LogEvent("RecognitionSession_EndpointTriggered", new {
+            e.Result.EndpointType,
+            e.Result.Confidence,
+            e.Result.SilenceDuration,
+            e.Result.UtteranceDuration
+        });
+
+        if (CurrentMode == RecognitionMode.SingleUtterance)
+        {
+            // End session on first endpoint in single-utterance mode
+            AsyncHelper.FireAndForget(() => StopAsync(), nameof(OnEndpointTriggered));
         }
     }
 }

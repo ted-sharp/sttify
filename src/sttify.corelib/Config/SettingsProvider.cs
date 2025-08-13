@@ -17,6 +17,8 @@ public class SettingsProvider
     private DateTime _lastModified;
     private FileSystemWatcher? _fileWatcher;
     private volatile bool _configChanged;
+    private Timer? _debounceTimer;
+    private const int DebounceMs = 250;
     private readonly object _lockObject = new();
 
     public SettingsProvider()
@@ -190,6 +192,12 @@ public class SettingsProvider
 
                 _fileWatcher.Changed += OnConfigFileChanged;
                 _fileWatcher.Created += OnConfigFileChanged;
+
+                _debounceTimer = new Timer(_ =>
+                {
+                    lock (_lockObject) { _configChanged = true; }
+                    Telemetry.LogEvent("ConfigFileChangedDebounced", new { Path = _configPath });
+                }, null, Timeout.Infinite, Timeout.Infinite);
             }
         }
         catch (Exception ex)
@@ -200,10 +208,12 @@ public class SettingsProvider
 
     private void OnConfigFileChanged(object sender, FileSystemEventArgs e)
     {
-        lock (_lockObject)
+        // Debounce noisy events
+        try
         {
-            _configChanged = true;
+            _debounceTimer?.Change(DebounceMs, Timeout.Infinite);
         }
+        catch { }
 
         Telemetry.LogEvent("ConfigFileChanged", new { Path = e.FullPath, ChangeType = e.ChangeType.ToString() });
     }

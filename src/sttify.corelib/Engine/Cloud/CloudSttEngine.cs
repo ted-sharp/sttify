@@ -30,19 +30,19 @@ public abstract class CloudSttEngine : ISttEngine
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _httpClient = new HttpClient();
         _httpClient.Timeout = TimeSpan.FromSeconds(30);
-        
+
         // Use bounded queue to prevent memory bloat
         _audioQueue = new BoundedQueue<byte[]>(50); // Smaller queue for cloud processing
-        
+
         // Cache responses to reduce API calls and improve latency
         _responseCache = new ResponseCache<CloudRecognitionResult>(maxEntries: 500, ttl: TimeSpan.FromMinutes(15));
-        
+
         ConfigureHttpClient();
     }
 
     protected abstract void ConfigureHttpClient();
     protected abstract Task<CloudRecognitionResult> ProcessAudioChunkAsync(byte[] audioData, CancellationToken cancellationToken);
-    
+
     public virtual async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_isRunning)
@@ -60,7 +60,7 @@ public abstract class CloudSttEngine : ISttEngine
             }
 
             _processingTask = Task.Run(() => ProcessAudioLoop(_processingCancellation.Token), cancellationToken);
-            
+
             Telemetry.LogEvent("CloudEngineStarted", new
             {
                 Provider = GetProviderName(),
@@ -122,13 +122,13 @@ public abstract class CloudSttEngine : ISttEngine
     {
         var audioBuffer = new List<byte>();
         var lastProcessTime = DateTime.UtcNow;
-        
+
         try
         {
             while (!cancellationToken.IsCancellationRequested && _isRunning)
             {
                 byte[]? audioChunk = null;
-                
+
                 if (_audioQueue.TryDequeue(out audioChunk))
                 {
                     // Got audio chunk
@@ -151,7 +151,7 @@ public abstract class CloudSttEngine : ISttEngine
                     {
                         var audioArray = audioBuffer.ToArray();
                         var cacheKey = ResponseCache<CloudRecognitionResult>.GenerateKey(audioArray, GetProviderName());
-                        
+
                         CloudRecognitionResult result;
                         if (_responseCache.TryGet(cacheKey, out var cachedResult))
                         {
@@ -166,9 +166,9 @@ public abstract class CloudSttEngine : ISttEngine
                                 _responseCache.Set(cacheKey, result);
                             }
                         }
-                        
+
                         ProcessCloudResult(result);
-                        
+
                         audioBuffer.Clear();
                         lastProcessTime = DateTime.UtcNow;
                     }
@@ -176,7 +176,7 @@ public abstract class CloudSttEngine : ISttEngine
                     {
                         Telemetry.LogError("CloudAudioProcessingError", ex);
                         OnError?.Invoke(this, new SttErrorEventArgs(ex, "Error processing audio with cloud service"));
-                        
+
                         // Clear buffer on error to prevent infinite retry
                         audioBuffer.Clear();
                     }
@@ -226,6 +226,60 @@ public abstract class CloudSttEngine : ISttEngine
         _httpClient?.Dispose();
         _responseCache?.Dispose();
     }
+
+    protected static byte[] WrapAsWav(byte[] pcmLittleEndian, int sampleRate = 16000, short channels = 1, short bitsPerSample = 16)
+    {
+        // Build a minimal PCM WAV container around the provided PCM payload
+        // RIFF header size = 44 bytes
+        int byteRate = sampleRate * channels * (bitsPerSample / 8);
+        short blockAlign = (short)(channels * (bitsPerSample / 8));
+        int dataSize = pcmLittleEndian?.Length ?? 0;
+        int riffChunkSize = 36 + dataSize;
+
+        var buffer = new byte[44 + dataSize];
+        void WriteString(int offset, string s)
+        {
+            for (int i = 0; i < s.Length; i++) buffer[offset + i] = (byte)s[i];
+        }
+        void WriteInt32LE(int offset, int value)
+        {
+            buffer[offset + 0] = (byte)(value & 0xFF);
+            buffer[offset + 1] = (byte)((value >> 8) & 0xFF);
+            buffer[offset + 2] = (byte)((value >> 16) & 0xFF);
+            buffer[offset + 3] = (byte)((value >> 24) & 0xFF);
+        }
+        void WriteInt16LE(int offset, short value)
+        {
+            buffer[offset + 0] = (byte)(value & 0xFF);
+            buffer[offset + 1] = (byte)((value >> 8) & 0xFF);
+        }
+
+        // RIFF chunk descriptor
+        WriteString(0, "RIFF");
+        WriteInt32LE(4, riffChunkSize);
+        WriteString(8, "WAVE");
+
+        // fmt sub-chunk
+        WriteString(12, "fmt ");
+        WriteInt32LE(16, 16);                 // Subchunk1Size for PCM
+        WriteInt16LE(20, 1);                   // PCM format = 1
+        WriteInt16LE(22, channels);
+        WriteInt32LE(24, sampleRate);
+        WriteInt32LE(28, byteRate);
+        WriteInt16LE(32, blockAlign);
+        WriteInt16LE(34, bitsPerSample);
+
+        // data sub-chunk
+        WriteString(36, "data");
+        WriteInt32LE(40, dataSize);
+
+        if (dataSize > 0 && pcmLittleEndian != null)
+        {
+            Buffer.BlockCopy(pcmLittleEndian, 0, buffer, 44, dataSize);
+        }
+
+        return buffer;
+    }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container class
@@ -262,7 +316,9 @@ public class AzureSpeechEngine : CloudSttEngine
             var endpoint = $"{_settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
             var uri = $"{endpoint}?language={_settings.Language}&format=detailed";
 
-            using var content = new ByteArrayContent(audioData);
+            // Ensure we send a proper WAV container (16kHz, mono, 16-bit PCM by default)
+            var wavBytes = WrapAsWav(audioData, 16000, 1, 16);
+            using var content = new ByteArrayContent(wavBytes);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
 
             var response = await _httpClient.PostAsync(uri, content, cancellationToken);
@@ -293,13 +349,29 @@ public class AzureSpeechEngine : CloudSttEngine
 
     protected override async Task ValidateConnectionAsync(CancellationToken cancellationToken)
     {
-        // Simple validation - try to get a token or make a test request
-        var testUri = $"{_settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
-        var response = await _httpClient.GetAsync(testUri, cancellationToken);
-        
+        // Perform a lightweight POST with a short silent WAV to validate endpoint + key
+        var endpoint = $"{_settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
+        var uri = $"{endpoint}?language={_settings.Language}&format=detailed";
+
+        // 100ms of silence @16kHz mono 16-bit
+        var silentPcm = new byte[1600 * 2]; // 1600 samples * 2 bytes
+        var probe = WrapAsWav(silentPcm, 16000, 1, 16);
+        using var content = new ByteArrayContent(probe);
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri) { Content = content };
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
             throw new UnauthorizedAccessException("Invalid Azure Speech Service API key");
+        }
+
+        // Accept 2xx as healthy; other codes indicate endpoint/config issues
+        if (!response.IsSuccessStatusCode)
+        {
+            var msg = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException($"Azure validation failed: {(int)response.StatusCode} {response.ReasonPhrase} - {msg}");
         }
     }
 
