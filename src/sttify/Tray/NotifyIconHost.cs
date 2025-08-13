@@ -143,7 +143,8 @@ public class NotifyIconHost : IDisposable
 
         var currentState = _applicationService.GetCurrentState();
         _notifyIcon.Icon = CreateMicrophoneIcon(currentState);
-        _notifyIcon.Text = $"Sttify - {GetStateDisplayName(currentState)}";
+        var prefix = App.IsElevated ? "[Admin] " : string.Empty;
+        _notifyIcon.Text = $"{prefix}Sttify - {GetStateDisplayName(currentState)}";
     }
 
     private Icon CreateMicrophoneIcon(Sttify.Corelib.Session.SessionState state = Sttify.Corelib.Session.SessionState.Idle)

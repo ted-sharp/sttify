@@ -28,6 +28,7 @@ public partial class App : System.Windows.Application
     private Mutex? _singleInstanceMutex;
 
     public static IServiceProvider? ServiceProvider { get; private set; }
+    public static bool IsElevated { get; private set; } = false;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -313,6 +314,7 @@ public partial class App : System.Windows.Application
             using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
             var principal = new System.Security.Principal.WindowsPrincipal(identity);
             bool isElevated = principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            IsElevated = isElevated;
 
             if (isElevated)
             {
@@ -348,6 +350,7 @@ public partial class App : System.Windows.Application
             else
             {
                 System.Diagnostics.Debug.WriteLine("*** Sttify running with normal user privileges - optimal for text input ***");
+                IsElevated = false;
             }
 
             return true;

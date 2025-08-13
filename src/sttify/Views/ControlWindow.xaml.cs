@@ -76,6 +76,9 @@ public partial class ControlWindow : Window
         UpdateUI();
 
         Debug.WriteLine("ControlWindow: DI constructor completed (drag setup already done in parameterless constructor)");
+
+        // Elevation badge initial state
+        UpdateElevationBadge();
     }
 
     private void SetupDragFunctionality()
@@ -353,6 +356,23 @@ public partial class ControlWindow : Window
         }
 
         StatusText.Text = GetStateDisplayName(currentState);
+
+        // Update elevation badge as part of UI refresh
+        UpdateElevationBadge();
+    }
+
+    private void UpdateElevationBadge()
+    {
+        try
+        {
+            var isElevated = App.IsElevated;
+            var badge = FindName("ElevationBadge") as System.Windows.Controls.Border;
+            if (badge != null)
+            {
+                badge.Visibility = isElevated ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+        catch { }
     }
 
     private void AnimateStateChange(Sttify.Corelib.Session.SessionState newState)
