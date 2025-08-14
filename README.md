@@ -61,7 +61,7 @@
 
 ### 3. First Use
 1. **Start Sttify**: Launch from Start Menu or system tray
-2. **Test Audio**: Press `Win+Alt+M` to toggle microphone
+2. **Test Audio**: Press `Win+Alt+N` to toggle microphone
 3. **Speak**: Say something in Japanese
 4. **Verify Output**: Text should appear in the active application
 
@@ -69,7 +69,7 @@
 | Hotkey | Action |
 |--------|--------|
 | `Win+Alt+H` | Toggle Control Window |
-| `Win+Alt+M` | Toggle Microphone |
+| `Win+Alt+N` | Toggle Microphone |
 
 ## Installation
 
@@ -128,9 +128,8 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
   },
   "hotkeys": {
     "toggleUi": "Win+Alt+H",
-    "toggleMic": "Win+Alt+M",
-    "pushToTalk": "Ctrl+Space",
-    "emergencyStop": "Ctrl+Alt+X"
+    "toggleMic": "Win+Alt+N",
+    "stopMic": "Win+Alt+X"
   },
   "privacy": {
     "maskInLogs": false
@@ -149,19 +148,17 @@ Sttify uses a hierarchical configuration system with settings stored in `%AppDat
 ### Getting Started
 1. **Start Sttify**: Launch from Start Menu or system tray
 2. **Configure Model**: Set the path to your downloaded Vosk model
-3. **Test Recognition**: Use Win+Alt+M to toggle microphone
+3. **Test Recognition**: Use Win+Alt+N to toggle microphone
 4. **Adjust Settings**: Fine-tune recognition and output preferences
 
 ### Hot Keys
 | Key Combination | Action |
 |----------------|--------|
 | `Win+Alt+H` | Toggle Control Window |
-| `Win+Alt+M` | Toggle Microphone |
-| `Ctrl+Space` | Push-to-Talk (when in PTT mode) |
+| `Win+Alt+N` | Toggle Microphone |
+| `Win+Alt+X` | Stop Microphone |
 | `Ctrl+Alt+X` | Emergency Stop (immediate halt) |
-| `Win+Shift+F1` | Test SendInput (for debugging) |
-| `Win+Shift+F2` | Test External Process (for debugging) |
-| `Win+Shift+F4` | Test IME Control (for debugging) |
+<!-- Debug hotkeys removed -->
 
 ### Control Window
 - **Left Click**: Start/Stop recognition
