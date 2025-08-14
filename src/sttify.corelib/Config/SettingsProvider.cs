@@ -298,8 +298,8 @@ public class SettingsProvider
             Hotkeys = new HotkeySettings
             {
                 ToggleUi = "Win+Alt+H",
-                ToggleMic = "Alt+Win+N",
-                StopMic = "Ctrl+Alt+X"
+                ToggleMic = "Win+Alt+N",
+                StopMic = "Win+Alt+X"
             },
             Privacy = new PrivacySettings
             {
@@ -589,8 +589,8 @@ public class OverlaySettings
 public class HotkeySettings
 {
     public string ToggleUi { get; set; } = "Win+Alt+H";
-    public string ToggleMic { get; set; } = "Alt+Win+N";
-    public string StopMic { get; set; } = "Ctrl+Alt+X";
+    public string ToggleMic { get; set; } = "Win+Alt+N";
+    public string StopMic { get; set; } = "Win+Alt+X";
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
