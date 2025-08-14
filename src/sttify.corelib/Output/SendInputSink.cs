@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using Windows.Win32; // Reserved for future CsWin32 migrations
 using System.Text;
 using Sttify.Corelib.Ime;
 using Sttify.Corelib.Diagnostics;
@@ -189,7 +190,7 @@ public class SendInputSink : ITextOutputSink
                 uint resultDown = SendInput(1, new[] { downInput }, Marshal.SizeOf<INPUT>());
                 if (resultDown == 0)
                 {
-                    uint error = GetLastError();
+                    uint error = (uint)Marshal.GetLastWin32Error();
                     string errorMsgDown = error switch
                     {
                         87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
@@ -224,7 +225,7 @@ public class SendInputSink : ITextOutputSink
                 uint resultUp = SendInput(1, new[] { upInput }, Marshal.SizeOf<INPUT>());
                 if (resultUp == 0)
                 {
-                    uint error = GetLastError();
+                    uint error = (uint)Marshal.GetLastWin32Error();
                     string errorMsgUp = error switch
                     {
                         87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
@@ -544,8 +545,7 @@ public class SendInputSink : ITextOutputSink
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetLastError();
+    // GetLastError: use CsWin32 PInvoke.GetLastError()
 
     [DllImport("user32.dll")]
     private static extern bool OpenClipboard(IntPtr hWndNewOwner);

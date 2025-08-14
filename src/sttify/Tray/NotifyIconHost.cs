@@ -176,7 +176,7 @@ public class NotifyIconHost : IDisposable
 
             // Clean up the original handle
             icon.Dispose();
-            Win32.DestroyIcon(hIcon);
+            Vanara.PInvoke.User32.DestroyIcon(hIcon);
 
             return iconCopy;
         }
@@ -188,12 +188,7 @@ public class NotifyIconHost : IDisposable
         }
     }
 
-    // Win32 API for proper icon cleanup
-    private static class Win32
-    {
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        public static extern bool DestroyIcon(IntPtr hIcon);
-    }
+    // Vanara.PInvoke.User32.DestroyIcon is used for icon cleanup
 
     private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state)
     {

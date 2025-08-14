@@ -1,0 +1,39 @@
+// CsWin32 will generate bindings for the listed Win32 APIs and types.
+// Scope: IME control, SendInput path, clipboard, window utilities, security token query.
+
+// IME (imm32)
+ImmGetContext
+ImmReleaseContext
+ImmSetOpenStatus
+ImmGetOpenStatus
+ImmSetConversionStatus
+ImmGetConversionStatus
+ImmSetCompositionString
+ImmGetCompositionString
+ImmNotifyIME
+
+// User32 - input/window/messages/clipboard
+SendInput
+GetForegroundWindow
+GetWindowThreadProcessId
+AttachThreadInput
+SendMessage
+GetWindowText
+GetClassName
+OpenClipboard
+CloseClipboard
+EmptyClipboard
+SetClipboardData
+GetClipboardData
+ChangeWindowMessageFilter
+
+// Kernel32 - error/handle/memory
+OpenProcess
+CloseHandle
+GlobalLock
+GlobalUnlock
+
+// Advapi32 - token
+OpenProcessToken
+GetTokenInformation
+

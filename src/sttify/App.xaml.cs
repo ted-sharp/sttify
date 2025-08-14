@@ -158,8 +158,7 @@ public partial class App : System.Windows.Application
         Telemetry.Initialize(telemetrySettings);
     }
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
-    private static extern bool AllocConsole();
+    private static bool AllocConsole() => Vanara.PInvoke.Kernel32.AllocConsole();
 
     private void BuildHost()
     {
