@@ -1,5 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
+using System.Runtime.Versioning;
+using Vanara.PInvoke;
+using static Vanara.PInvoke.User32;
 
 namespace Sttify.Corelib.Ime;
 
@@ -21,6 +24,7 @@ public class ImeController : IDisposable
     /// Temporarily disables IME for the current foreground window to prevent input conflicts
     /// </summary>
     /// <returns>IDisposable that restores IME state when disposed</returns>
+    [SupportedOSPlatform("windows")]
     public IDisposable? SuppressImeTemporarily()
     {
         if (_disposed || !_settings.EnableImeControl)
@@ -28,7 +32,7 @@ public class ImeController : IDisposable
 
         try
         {
-            var foregroundWindow = ImeNativeMethods.GetForegroundWindow();
+            var foregroundWindow = (IntPtr)GetForegroundWindow();
             if (foregroundWindow == IntPtr.Zero)
             {
                 Telemetry.LogEvent("ImeSuppressionFailed", new { Reason = "NoForegroundWindow" });
@@ -109,6 +113,7 @@ public class ImeController : IDisposable
     /// <summary>
     /// Checks if IME is currently composing text in the foreground window
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public bool IsImeComposing()
     {
         if (_disposed || !_settings.EnableImeControl)
@@ -116,7 +121,7 @@ public class ImeController : IDisposable
 
         try
         {
-            var foregroundWindow = ImeNativeMethods.GetForegroundWindow();
+            var foregroundWindow = (IntPtr)GetForegroundWindow();
             if (foregroundWindow == IntPtr.Zero)
                 return false;
 
@@ -147,6 +152,7 @@ public class ImeController : IDisposable
     /// <summary>
     /// Gets the current IME status for the foreground window
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public ImeStatus GetCurrentImeStatus()
     {
         if (_disposed)
@@ -154,7 +160,7 @@ public class ImeController : IDisposable
 
         try
         {
-            var foregroundWindow = ImeNativeMethods.GetForegroundWindow();
+            var foregroundWindow = (IntPtr)GetForegroundWindow();
             if (foregroundWindow == IntPtr.Zero)
                 return new ImeStatus();
 
@@ -221,6 +227,7 @@ public class ImeController : IDisposable
             _settings = settings;
         }
 
+        [SupportedOSPlatform("windows")]
         public void Dispose()
         {
             if (_disposed || !_settings.RestoreImeStateAfterSending)

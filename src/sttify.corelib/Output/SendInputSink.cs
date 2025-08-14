@@ -1,12 +1,13 @@
+using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Ime;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using Windows.Win32; // Reserved for future CsWin32 migrations
+using System.Runtime.Versioning;
 using System.Text;
-using Sttify.Corelib.Ime;
-using Sttify.Corelib.Diagnostics;
 using Vanara.PInvoke;
-using static Vanara.PInvoke.User32;
+using Windows.Win32; // Reserved for future CsWin32 migrations
 using static Vanara.PInvoke.Kernel32;
+using static Vanara.PInvoke.User32;
 
 namespace Sttify.Corelib.Output;
 
@@ -16,6 +17,7 @@ public class SendInputSink : ITextOutputSink
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_UNICODE = 0x0004;
     private const uint KEYEVENTF_KEYUP = 0x0002;
+        private const uint CF_UNICODETEXT = 13;
 
         public string Id => "sendinput";
         public string Name => "SendInput";
@@ -30,6 +32,7 @@ public class SendInputSink : ITextOutputSink
         _imeController = new ImeController(_settings.Ime);
     }
 
+    [SupportedOSPlatform("windows")]
     public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {
         if (!IsAvailable)
@@ -45,6 +48,7 @@ public class SendInputSink : ITextOutputSink
         return Task.FromResult(true);
     }
 
+    [SupportedOSPlatform("windows")]
     public async Task SendAsync(string text, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(text))
@@ -261,6 +265,7 @@ public class SendInputSink : ITextOutputSink
         return anySuccess;
     }
 
+    [SupportedOSPlatform("windows")]
     private async Task SendTextViaWin32ClipboardAsync(string text, CancellationToken cancellationToken)
     {
         try
@@ -354,6 +359,7 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
+    [SupportedOSPlatform("windows")]
     private static string? GetClipboardText()
     {
         try
@@ -361,8 +367,7 @@ public class SendInputSink : ITextOutputSink
             if (!OpenClipboard(HWND.NULL))
                 return null;
 
-            const uint CF_UNICODETEXT = 13;
-            IntPtr handle = (IntPtr)GetClipboardData(13); // CF_UNICODETEXT
+            IntPtr handle = (IntPtr)GetClipboardData(CF_UNICODETEXT);
             if (handle == IntPtr.Zero)
             {
                 CloseClipboard();
@@ -393,6 +398,7 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
+    [SupportedOSPlatform("windows")]
     private static bool SetClipboardText(string text)
     {
         try
@@ -409,7 +415,7 @@ public class SendInputSink : ITextOutputSink
                 return false;
             }
 
-            if ((IntPtr)SetClipboardData(13, hGlobal) == IntPtr.Zero) // CF_UNICODETEXT = 13
+            if ((IntPtr)SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(hGlobal);
                 CloseClipboard();
@@ -425,6 +431,7 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
+    [SupportedOSPlatform("windows")]
     private async Task<bool> SendTextViaWmCharAsync(string text, IntPtr targetWindow, CancellationToken cancellationToken)
     {
         try
@@ -489,7 +496,7 @@ public class SendInputSink : ITextOutputSink
         try
         {
                 if (!OperatingSystem.IsWindows()) return false;
-            GetWindowThreadProcessId(windowHandle, out uint processId);
+            GetWindowThreadProcessId(new HWND(windowHandle), out uint processId);
             IntPtr processHandle = OpenProcess(0x1000, false, processId); // PROCESS_QUERY_LIMITED_INFORMATION
             if (processHandle == IntPtr.Zero)
                 return false;
@@ -554,8 +561,7 @@ public class SendInputSink : ITextOutputSink
 
     // GetForegroundWindow, SendMessage now provided by Vanara.PInvoke
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    // GetWindowThreadProcessId now provided by Vanara.PInvoke
 
     [DllImport("kernel32.dll")]
     private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
@@ -566,8 +572,7 @@ public class SendInputSink : ITextOutputSink
     [DllImport("advapi32.dll")]
     private static extern bool GetTokenInformation(IntPtr TokenHandle, int TokenInformationClass, IntPtr TokenInformation, uint TokenInformationLength, out uint ReturnLength);
 
-    [DllImport("kernel32.dll")]
-    private static extern bool CloseHandle(IntPtr hObject);
+    // CloseHandle now provided by Vanara.PInvoke
 
     // ChangeWindowMessageFilter, GlobalLock, GlobalUnlock, GetWindowText, GetClassName now provided by Vanara.PInvoke
 

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.Versioning;
 using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Ime;
@@ -15,6 +16,7 @@ public static class ImeTestHelper
     /// <param name="testText">Text to use for testing (optional)</param>
     /// <param name="settings">IME settings to use (optional)</param>
     /// <returns>Test results</returns>
+    [SupportedOSPlatform("windows")]
     public static async Task<ImeTestResult> TestImeControlAsync(string? testText = null, ImeSettings? settings = null)
     {
         var result = new ImeTestResult();
@@ -110,6 +112,7 @@ public static class ImeTestHelper
     /// <summary>
     /// Quick test to check if IME control is working
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public static bool QuickImeTest()
     {
         try
@@ -129,6 +132,7 @@ public static class ImeTestHelper
     /// <summary>
     /// Gets detailed information about the current IME state
     /// </summary>
+    [SupportedOSPlatform("windows")]
     public static string GetImeStatusReport()
     {
         try

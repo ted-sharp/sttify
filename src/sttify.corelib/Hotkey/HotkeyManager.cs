@@ -1,12 +1,14 @@
-using System.Runtime.InteropServices;
 using Sttify.Corelib.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Vanara.PInvoke;
-using static Vanara.PInvoke.User32;
 using static Vanara.PInvoke.Kernel32;
+using static Vanara.PInvoke.User32;
 
 namespace Sttify.Corelib.Hotkey;
 
+[SupportedOSPlatform("windows")]
 [ExcludeFromCodeCoverage] // Win32 API integration, system dependent, difficult to mock effectively
 public class HotkeyManager : IDisposable
 {
@@ -30,6 +32,7 @@ public class HotkeyManager : IDisposable
         Telemetry.LogEvent("HotkeyManagerCreated", new { WindowHandle = _windowHandle.ToString("X") });
     }
 
+    [SupportedOSPlatform("windows")]
     public bool RegisterHotkey(string hotkeyString, string name)
     {
         if (string.IsNullOrWhiteSpace(hotkeyString) || string.IsNullOrWhiteSpace(name))
@@ -116,6 +119,7 @@ public class HotkeyManager : IDisposable
         return id;
     }
 
+    [SupportedOSPlatform("windows")]
     public void UnregisterHotkey(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -153,6 +157,7 @@ public class HotkeyManager : IDisposable
         }
     }
 
+    [SupportedOSPlatform("windows")]
     public void UnregisterAllHotkeys()
     {
         var hotkeysToRemove = _registeredHotkeys.Keys.ToList();
@@ -257,6 +262,7 @@ public class HotkeyManager : IDisposable
         return ParseHotkeyString(hotkeyString, out _, out _);
     }
 
+    [SupportedOSPlatform("windows")]
     public void Dispose()
     {
         if (!_disposed)

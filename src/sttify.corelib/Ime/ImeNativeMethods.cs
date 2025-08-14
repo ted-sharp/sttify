@@ -1,5 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Diagnostics.CodeAnalysis;
+using Vanara.PInvoke;
+using static Vanara.PInvoke.User32;
+using static Vanara.PInvoke.Kernel32;
 
 namespace Sttify.Corelib.Ime;
 
@@ -133,27 +136,5 @@ internal static class ImeNativeMethods
     [DllImport("imm32.dll")]
     public static extern bool ImmNotifyIME(IntPtr hIMC, int dwAction, int dwIndex, int dwValue);
 
-    /// <summary>
-    /// Retrieves the handle to the window that has the keyboard focus
-    /// </summary>
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetForegroundWindow();
-
-    /// <summary>
-    /// Retrieves the thread and process identifiers of the foreground window
-    /// </summary>
-    [DllImport("user32.dll")]
-    public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
-
-    /// <summary>
-    /// Retrieves the thread identifier of the calling thread
-    /// </summary>
-    [DllImport("kernel32.dll")]
-    public static extern int GetCurrentThreadId();
-
-    /// <summary>
-    /// Attaches or detaches the input processing mechanism of one thread to that of another thread
-    /// </summary>
-    [DllImport("user32.dll")]
-    public static extern bool AttachThreadInput(int idAttach, int idAttachTo, bool fAttach);
+    // GetForegroundWindow, GetWindowThreadProcessId, GetCurrentThreadId, AttachThreadInput now provided by Vanara.PInvoke
 }

@@ -1,9 +1,11 @@
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Hotkey;
+using System.Runtime.Versioning;
 
 namespace Sttify.Corelib.Services;
 
+[SupportedOSPlatform("windows")]
 public class HotkeyService : IDisposable
 {
     private readonly HotkeyManager _hotkeyManager;
@@ -12,9 +14,10 @@ public class HotkeyService : IDisposable
     private bool _disposed;
 
     public event EventHandler<HotkeyTriggeredEventArgs>? OnHotkeyTriggered;
-        public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
+    public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
-        public HotkeyService(HotkeyManager hotkeyManager, SettingsProvider settingsProvider)
+    [SupportedOSPlatform("windows")]
+    public HotkeyService(HotkeyManager hotkeyManager, SettingsProvider settingsProvider)
     {
         _hotkeyManager = hotkeyManager ?? throw new ArgumentNullException(nameof(hotkeyManager));
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
@@ -22,9 +25,10 @@ public class HotkeyService : IDisposable
         _hotkeyManager.OnHotkeyPressed += OnHotkeyPressed;
         _hotkeyManager.OnHotkeyRegistered += OnHotkeyRegistered;
         _hotkeyManager.OnHotkeyUnregistered += OnHotkeyUnregistered;
-            _hotkeyManager.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailedInternal;
+        _hotkeyManager.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailedInternal;
     }
 
+    [SupportedOSPlatform("windows")]
     public async Task InitializeAsync()
     {
         try
@@ -54,6 +58,7 @@ public class HotkeyService : IDisposable
         }
     }
 
+    [SupportedOSPlatform("windows")]
     public async Task RefreshHotkeysAsync()
     {
         try
@@ -74,6 +79,7 @@ public class HotkeyService : IDisposable
         }
     }
 
+    [SupportedOSPlatform("windows")]
     private Task RegisterApplicationHotkeysAsync()
     {
         if (_currentSettings?.Hotkeys == null) return Task.CompletedTask;
@@ -166,21 +172,25 @@ public class HotkeyService : IDisposable
         });
     }
 
+    [SupportedOSPlatform("windows")]
     public bool ProcessWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam)
     {
         return _hotkeyManager.ProcessWindowMessage(hwnd, msg, wParam, lParam);
     }
 
+    [SupportedOSPlatform("windows")]
     public IReadOnlyDictionary<string, string> GetRegisteredHotkeys()
     {
         return _hotkeyManager.GetRegisteredHotkeys();
     }
 
+    [SupportedOSPlatform("windows")]
     public bool ValidateHotkeyString(string hotkeyString)
     {
         return _hotkeyManager.ValidateHotkeyString(hotkeyString);
     }
 
+    [SupportedOSPlatform("windows")]
     public void Dispose()
     {
         if (!_disposed)
