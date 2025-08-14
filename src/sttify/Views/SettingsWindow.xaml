@@ -35,9 +35,6 @@
                         <CheckBox Content="Start minimized"
                                  IsChecked="{Binding Settings.Application.StartMinimized}"
                                  Margin="0,5"/>
-                         <CheckBox Content="Enable debug hotkeys (Win+Shift+F1..F4)"
-                                  IsChecked="{Binding Settings.Application.EnableDebugHotkeys}"
-                                  Margin="0,5"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -379,9 +376,6 @@
 
                             <TextBlock Text="🏮 How it works: Speech recognition sends Japanese text via Unicode SendInput. IME is temporarily managed to prevent composition conflicts, then restored to original state (日本語/ひらがな mode)."
                                       Background="LightYellow" Padding="8" Margin="0,10,0,5" TextWrapping="Wrap"/>
-
-                            <TextBlock Text="💡 Use Win+Shift+F4 to test IME control functionality with detailed debug information"
-                                      Background="LightBlue" Padding="8" Margin="0,5,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </GroupBox>
 

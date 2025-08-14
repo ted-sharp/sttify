@@ -331,11 +331,7 @@
                         <TextBlock Text="Skip text input if IME is actively composing text to avoid conflicts"
                                   Style="{StaticResource DescriptionStyle}"/>
 
-                        <TextBlock Text="🧪 Test IME Control: Press Win+Shift+F4 to test IME functionality with detailed debug output"
-                                  Style="{StaticResource DescriptionStyle}"
-                                  Background="#FFF0F8FF"
-                                  Padding="8"
-                                  Margin="0,10,0,5"/>
+                        <!-- Debug hotkey hint removed -->
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -397,36 +393,7 @@
                         <Label Content="Toggle Microphone:"/>
                         <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}" Margin="0,5,0,10" Width="200" HorizontalAlignment="Left"/>
 
-                        <TextBlock Text="Test Functions" Style="{StaticResource SectionHeaderStyle}"/>
-                        <TextBlock Text="Built-in test functions for debugging and troubleshooting"
-                                  Style="{StaticResource DescriptionStyle}"/>
-
-                        <Grid Margin="0,5,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Test SendInput functionality" Margin="10,0,0,0" VerticalAlignment="Center"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
-                            <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process functionality" Margin="10,5,0,0" VerticalAlignment="Center"/>
-
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F4" FontFamily="Consolas" FontWeight="Bold" VerticalAlignment="Center" Margin="0,5,0,0"/>
-                            <TextBlock Grid.Row="2" Grid.Column="1" Text="Test IME Control functionality" Margin="10,5,0,0" VerticalAlignment="Center"/>
-                        </Grid>
-
-                        <TextBlock Text="💡 Tip: Open any text editor (like Notepad) and press these keys to test text input functionality. Check the debug output in Visual Studio or the console for detailed test results."
-                                  Style="{StaticResource DescriptionStyle}"
-                                  Background="#FFF9F9F9"
-                                  Padding="8"
-                                  Margin="0,5,0,15"/>
+                        <!-- Debug test section removed -->
 
                         <TextBlock Text="Hotkey Format Examples:" Style="{StaticResource SectionHeaderStyle}"/>
                         <TextBlock Style="{StaticResource DescriptionStyle}">
