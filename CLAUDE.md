@@ -6,22 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Build the solution:**
 ```powershell
-.\src\build.ps1 -Configuration Release -Platform x64
+dotnet build src\sttify.sln -c Release -p:Platform=x64
 ```
 
 **Build with tests:**
 ```powershell
-.\src\build.ps1 -Configuration Release -Platform x64 -Test
+dotnet build src\sttify.sln -c Release -p:Platform=x64
+dotnet test src\tests\Sttify.Corelib.Tests\ -c Release
+dotnet test src\tests\Sttify.Integration.Tests\ -c Release
 ```
 
-**Build, test, and package:**
+**Publish application:**
 ```powershell
-.\src\build.ps1 -Configuration Release -Platform x64 -Test -Package
-```
-
-**Clean build:**
-```powershell
-.\src\build.ps1 -Clean
+.\src\_publish.cmd
 ```
 
 **Run tests individually:**
@@ -36,9 +33,9 @@ dotnet build src\sttify.corelib\
 dotnet build src\sttify\
 ```
 
-**Install after build:**
+**Clean build:**
 ```powershell
-.\src\install.ps1
+dotnet clean src\sttify.sln
 ```
 
 ## Architecture Overview
