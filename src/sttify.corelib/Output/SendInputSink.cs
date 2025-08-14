@@ -6,6 +6,12 @@ using System.Runtime.Versioning;
 using System.Text;
 using Vanara.PInvoke;
 using Windows.Win32; // Reserved for future CsWin32 migrations
+using Win32PInvoke = Windows.Win32.PInvoke;
+using CsINPUT = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT;
+using CsINPUT_TYPE = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE;
+using CsKEYBDINPUT = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBDINPUT;
+using CsKEYBD_EVENT_FLAGS = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS;
+using CsVIRTUAL_KEY = Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY;
 using static Vanara.PInvoke.Kernel32;
 using static Vanara.PInvoke.User32;
 
@@ -14,9 +20,6 @@ namespace Sttify.Corelib.Output;
 [ExcludeFromCodeCoverage] // Win32 SendInput API integration, difficult to mock effectively
 public class SendInputSink : ITextOutputSink
 {
-    private const uint INPUT_KEYBOARD = 1;
-    private const uint KEYEVENTF_UNICODE = 0x0004;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
         private const uint CF_UNICODETEXT = 13;
 
         public string Id => "sendinput";
@@ -64,7 +67,7 @@ public class SendInputSink : ITextOutputSink
         }
 
         // Debug: Check structure sizes
-        int inputSize = Marshal.SizeOf<INPUT>();
+        int inputSize = Marshal.SizeOf<CsINPUT>();
         int expectedSize = IntPtr.Size == 8 ? 40 : 28; // x64 vs x86
         System.Diagnostics.Debug.WriteLine($"*** INPUT structure size: {inputSize} bytes (expected: {expectedSize}) ***");
 
@@ -80,8 +83,8 @@ public class SendInputSink : ITextOutputSink
         {
             var windowTitle = new StringBuilder(256);
             var className = new StringBuilder(256);
-            GetWindowText(new HWND(targetWindow), windowTitle, windowTitle.Capacity);
-            GetClassName(new HWND(targetWindow), className, className.Capacity);
+            GetWindowText(new Vanara.PInvoke.HWND(targetWindow), windowTitle, windowTitle.Capacity);
+            GetClassName(new Vanara.PInvoke.HWND(targetWindow), className, className.Capacity);
             System.Diagnostics.Debug.WriteLine($"*** Target window: '{windowTitle}' (class: '{className}', handle: {targetWindow}) ***");
         }
 
@@ -178,23 +181,29 @@ public class SendInputSink : ITextOutputSink
             foreach (var ch in element)
             {
                 // Send UNICODE key down
-                var downInput = new INPUT
+                var downInput = new CsINPUT
                 {
-                    type = INPUT_KEYBOARD,
-                    union = new INPUTUNION
+                    type = CsINPUT_TYPE.INPUT_KEYBOARD,
+                    Anonymous = new()
                     {
-                        ki = new KEYBDINPUT
+                        ki = new CsKEYBDINPUT
                         {
-                            wVk = 0,
-                            wScan = ch,
-                            dwFlags = KEYEVENTF_UNICODE,
+                            wVk = default,
+                            wScan = (ushort)ch,
+                            dwFlags = CsKEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE,
                             time = 0,
-                            dwExtraInfo = IntPtr.Zero
+                            dwExtraInfo = UIntPtr.Zero
                         }
                     }
                 };
 
-                uint resultDown = SendInput(1, new[] { downInput }, Marshal.SizeOf<INPUT>());
+                uint resultDown;
+                unsafe
+                {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = downInput;
+                    resultDown = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 if (resultDown == 0)
                 {
                     uint error = (uint)Marshal.GetLastWin32Error();
@@ -213,23 +222,29 @@ public class SendInputSink : ITextOutputSink
                 }
 
                 // Send UNICODE key up (required to avoid stuck keys)
-                var upInput = new INPUT
+                var upInput = new CsINPUT
                 {
-                    type = INPUT_KEYBOARD,
-                    union = new INPUTUNION
+                    type = CsINPUT_TYPE.INPUT_KEYBOARD,
+                    Anonymous = new()
                     {
-                        ki = new KEYBDINPUT
+                        ki = new CsKEYBDINPUT
                         {
-                            wVk = 0,
-                            wScan = ch,
-                            dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                            wVk = default,
+                            wScan = (ushort)ch,
+                            dwFlags = CsKEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE | CsKEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP,
                             time = 0,
-                            dwExtraInfo = IntPtr.Zero
+                            dwExtraInfo = UIntPtr.Zero
                         }
                     }
                 };
 
-                uint resultUp = SendInput(1, new[] { upInput }, Marshal.SizeOf<INPUT>());
+                uint resultUp;
+                unsafe
+                {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = upInput;
+                    resultUp = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 if (resultUp == 0)
                 {
                     uint error = (uint)Marshal.GetLastWin32Error();
@@ -253,12 +268,16 @@ public class SendInputSink : ITextOutputSink
         // Send commit key if specified
         if (_settings.CommitKey != null)
         {
-            var commitInputs = new INPUT[]
+            var commitDown = CreateKeyInput(_settings.CommitKey.Value, false);
+            var commitUp = CreateKeyInput(_settings.CommitKey.Value, true);
+            uint result;
+            unsafe
             {
-                CreateKeyInput(_settings.CommitKey.Value, false),
-                CreateKeyInput(_settings.CommitKey.Value, true)
-            };
-            uint result = SendInput(2, commitInputs, Marshal.SizeOf<INPUT>());
+                var inputs = stackalloc CsINPUT[2];
+                inputs[0] = commitDown;
+                inputs[1] = commitUp;
+                result = Win32PInvoke.SendInput(2, inputs, Marshal.SizeOf<CsINPUT>());
+            }
             if (result > 0) anySuccess = true;
         }
 
@@ -296,13 +315,17 @@ public class SendInputSink : ITextOutputSink
                 var insertUp = CreateKeyInput(0x2D, true);    // Insert up
                 var shiftUp = CreateKeyInput(0x10, true);     // Shift up
 
-                uint sr1 = SendInput(1, new[] { shiftDown }, Marshal.SizeOf<INPUT>());
+                uint sr1;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = shiftDown; sr1 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
-                uint sr2 = SendInput(1, new[] { insertDown }, Marshal.SizeOf<INPUT>());
+                uint sr2;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = insertDown; sr2 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
-                uint sr3 = SendInput(1, new[] { insertUp }, Marshal.SizeOf<INPUT>());
+                uint sr3;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = insertUp; sr3 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
-                uint sr4 = SendInput(1, new[] { shiftUp }, Marshal.SizeOf<INPUT>());
+                uint sr4;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = shiftUp; sr4 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
 
                 System.Diagnostics.Debug.WriteLine($"*** Shift+Insert results: Shift={sr1}, Insert_down={sr2}, Insert_up={sr3}, Shift_up={sr4} ***");
 
@@ -315,13 +338,17 @@ public class SendInputSink : ITextOutputSink
                 var vUp = CreateKeyInput(0x56, true);        // V up
                 var ctrlUp = CreateKeyInput(0x11, true);     // Ctrl up
 
-                uint result1 = SendInput(1, new[] { ctrlDown }, Marshal.SizeOf<INPUT>());
+                uint result1;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = ctrlDown; result1 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
-                uint result2 = SendInput(1, new[] { vDown }, Marshal.SizeOf<INPUT>());
+                uint result2;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = vDown; result2 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
-                uint result3 = SendInput(1, new[] { vUp }, Marshal.SizeOf<INPUT>());
+                uint result3;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = vUp; result3 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
-                uint result4 = SendInput(1, new[] { ctrlUp }, Marshal.SizeOf<INPUT>());
+                uint result4;
+                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = ctrlUp; result4 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
 
                 System.Diagnostics.Debug.WriteLine($"*** Ctrl+V results: Ctrl={result1}, V_down={result2}, V_up={result3}, Ctrl_up={result4} ***");
 
@@ -333,7 +360,7 @@ public class SendInputSink : ITextOutputSink
                 if (currentWindow != IntPtr.Zero)
                 {
                     const int WM_PASTE = 0x0302;
-                    IntPtr result = SendMessage(new HWND(currentWindow), WM_PASTE, IntPtr.Zero, IntPtr.Zero);
+                    IntPtr result = SendMessage(new Vanara.PInvoke.HWND(currentWindow), WM_PASTE, IntPtr.Zero, IntPtr.Zero);
                     System.Diagnostics.Debug.WriteLine($"*** WM_PASTE result: {result} to window {currentWindow} ***");
                 }
 
@@ -364,7 +391,7 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OpenClipboard(HWND.NULL))
+            if (!OpenClipboard(Vanara.PInvoke.HWND.NULL))
                 return null;
 
             IntPtr handle = (IntPtr)GetClipboardData(CF_UNICODETEXT);
@@ -403,7 +430,7 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OpenClipboard(HWND.NULL))
+            if (!OpenClipboard(Vanara.PInvoke.HWND.NULL))
                 return false;
 
             EmptyClipboard();
@@ -451,7 +478,7 @@ public class SendInputSink : ITextOutputSink
                     break;
 
                 const int WM_CHAR = 0x0102;
-                IntPtr result = SendMessage(new HWND(targetWindow), WM_CHAR, new IntPtr(c), IntPtr.Zero);
+                IntPtr result = SendMessage(new Vanara.PInvoke.HWND(targetWindow), WM_CHAR, new IntPtr(c), IntPtr.Zero);
 
                 if (result != IntPtr.Zero)
                 {
@@ -533,27 +560,24 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
-    private static INPUT CreateKeyInput(int virtualKey, bool keyUp)
+    private static CsINPUT CreateKeyInput(int virtualKey, bool keyUp)
     {
-        return new INPUT
+        return new CsINPUT
         {
-            type = INPUT_KEYBOARD,
-            union = new INPUTUNION
+            type = CsINPUT_TYPE.INPUT_KEYBOARD,
+            Anonymous = new()
             {
-                ki = new KEYBDINPUT
+                ki = new CsKEYBDINPUT
                 {
-                    wVk = (ushort)virtualKey,
+                    wVk = (CsVIRTUAL_KEY)virtualKey,
                     wScan = 0,
-                    dwFlags = keyUp ? 0x0002u : 0u,
+                    dwFlags = keyUp ? CsKEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP : (CsKEYBD_EVENT_FLAGS)0,
                     time = 0,
-                    dwExtraInfo = IntPtr.Zero
+                    dwExtraInfo = UIntPtr.Zero
                 }
             }
         };
     }
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     // GetLastError: use CsWin32 PInvoke.GetLastError()
 
@@ -580,51 +604,6 @@ public class SendInputSink : ITextOutputSink
     private struct TOKEN_ELEVATION
     {
         public int TokenIsElevated;
-    }
-
-    // INPUT は Sequential のまま
-    [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT
-    {
-        public uint type;
-        public INPUTUNION union;   // ← フィールド名を U に
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct INPUTUNION   // ← 名前を INPUTUNION に
-    {
-        [FieldOffset(0)] public MOUSEINPUT mi;
-        [FieldOffset(0)] public KEYBDINPUT ki;
-        [FieldOffset(0)] public HARDWAREINPUT hi;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSEINPUT
-    {
-        public int dx;
-        public int dy;
-        public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;   // ← IntPtr
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT
-    {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;   // ← IntPtr
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct HARDWAREINPUT
-    {
-        public uint uMsg;
-        public ushort wParamL;
-        public ushort wParamH;
     }
 
 }
