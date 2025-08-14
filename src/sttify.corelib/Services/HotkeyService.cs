@@ -102,21 +102,12 @@ public class HotkeyService : IDisposable
             }
         }
 
-        // Register PTT hotkey if in PTT mode
-        if (!string.IsNullOrEmpty(_currentSettings.Hotkeys.PushToTalk))
+        // Register stop microphone hotkey
+        if (!string.IsNullOrEmpty(_currentSettings.Hotkeys.StopMic))
         {
-            if (_hotkeyManager.RegisterHotkey(_currentSettings.Hotkeys.PushToTalk, "PushToTalk"))
+            if (_hotkeyManager.RegisterHotkey(_currentSettings.Hotkeys.StopMic, "StopMic"))
             {
-                Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "PushToTalk", Hotkey = _currentSettings.Hotkeys.PushToTalk });
-            }
-        }
-
-        // Register emergency stop hotkey
-        if (!string.IsNullOrEmpty(_currentSettings.Hotkeys.EmergencyStop))
-        {
-            if (_hotkeyManager.RegisterHotkey(_currentSettings.Hotkeys.EmergencyStop, "EmergencyStop"))
-            {
-                Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "EmergencyStop", Hotkey = _currentSettings.Hotkeys.EmergencyStop });
+                Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "StopMic", Hotkey = _currentSettings.Hotkeys.StopMic });
             }
         }
 
@@ -131,8 +122,7 @@ public class HotkeyService : IDisposable
             {
                 "ToggleUI" => HotkeyAction.ToggleUI,
                 "ToggleMic" => HotkeyAction.ToggleMicrophone,
-                "PushToTalk" => HotkeyAction.PushToTalk,
-                "EmergencyStop" => HotkeyAction.EmergencyStop,
+                "StopMic" => HotkeyAction.StopMicrophone,
                 _ => HotkeyAction.Unknown
             };
 
@@ -221,8 +211,7 @@ public enum HotkeyAction
     Unknown,
     ToggleUI,
     ToggleMicrophone,
-    PushToTalk,
-    EmergencyStop
+    StopMicrophone
 }
 
 public class HotkeyTriggeredEventArgs : EventArgs

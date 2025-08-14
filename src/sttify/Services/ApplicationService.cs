@@ -298,11 +298,7 @@ public class ApplicationService : IDisposable
                         }
                         break;
 
-                    case HotkeyAction.PushToTalk:
-                        // Reserved for future PTT behavior
-                        break;
-
-                    case HotkeyAction.EmergencyStop:
+                    case HotkeyAction.StopMicrophone:
                         await StopRecognitionAsync().ConfigureAwait(false);
                         break;
                 }

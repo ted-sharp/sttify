@@ -299,9 +299,7 @@ public class SettingsProvider
             {
                 ToggleUi = "Win+Alt+H",
                 ToggleMic = "Alt+Win+N",
-                TestSendInput = "Win+Shift+F1",
-                TestExternalProcess = "Win+Shift+F2",
-                TestImeControl = "Win+Shift+F4"
+                StopMic = "Ctrl+Alt+X"
             },
             Privacy = new PrivacySettings
             {
@@ -592,11 +590,7 @@ public class HotkeySettings
 {
     public string ToggleUi { get; set; } = "Win+Alt+H";
     public string ToggleMic { get; set; } = "Alt+Win+N";
-    public string PushToTalk { get; set; } = "Ctrl+Space";
-    public string EmergencyStop { get; set; } = "Ctrl+Alt+X";
-    public string TestSendInput { get; set; } = "Win+Shift+F1";
-    public string TestExternalProcess { get; set; } = "Win+Shift+F2";
-    public string TestImeControl { get; set; } = "Win+Shift+F3";
+    public string StopMic { get; set; } = "Ctrl+Alt+X";
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

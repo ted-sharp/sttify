@@ -385,43 +385,7 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <!-- Test Section -->
-                    <GroupBox Header="Output Test" Margin="0,0,0,15">
-                        <StackPanel Margin="10">
-                            <TextBlock Text="Test output methods using global keyboard shortcuts (works from any application):"
-                                      Margin="0,0,0,10" TextWrapping="Wrap"/>
-                            <TextBox x:Name="TestTextBox" Text="Hello, this is a test from Sttify."
-                                    Margin="0,0,0,10"/>
-
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Win+Shift+F1:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="Test currently selected output method" Margin="0,2"/>
-
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Win+Shift+F2:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="Test External Process" Margin="0,2"/>
-
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Win+Shift+F3:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="Test SendInput (virtual keyboard)" Margin="0,2"/>
-
-                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Win+Shift+F4:" FontWeight="Bold" Margin="0,2,10,2"/>
-                                <TextBlock Grid.Row="3" Grid.Column="1" Text="Test IME Control (detailed debug output)" Margin="0,2"/>
-                            </Grid>
-
-                            <TextBlock Text="1. Focus a text editor (like Notepad)&#10;2. Press the desired global shortcut key (Win+Shift+F1/F2/F3/F4)&#10;3. The test text will be sent to the focused application (F4 provides detailed IME control debug output)"
-                                      Foreground="Gray" FontSize="11" Margin="0,10,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
-                    </GroupBox>
+                    <!-- Test Section removed -->
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -437,6 +401,10 @@
 
                                 <Label Content="Toggle Microphone:"/>
                                 <TextBox Text="{Binding Settings.Hotkeys.ToggleMic}"
+                                        Margin="0,5,0,10"/>
+
+                                <Label Content="Stop Microphone:"/>
+                                <TextBox Text="{Binding Settings.Hotkeys.StopMic}"
                                         Margin="0,5,0,10"/>
                             </StackPanel>
                         </GroupBox>
