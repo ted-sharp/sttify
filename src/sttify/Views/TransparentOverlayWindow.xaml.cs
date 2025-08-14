@@ -5,6 +5,8 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using System.Windows.Media.Animation;
+using Vanara.PInvoke;
+using static Vanara.PInvoke.User32;
 
 namespace Sttify.Views;
 
@@ -133,17 +135,17 @@ public partial class TransparentOverlayWindow : Window
     {
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero) return;
-        var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+        var exStyle = (int)GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
         if (isClickThrough)
         {
-            exStyle |= WS_EX_TRANSPARENT | WS_EX_LAYERED;
+            exStyle |= (int)(WindowStylesEx.WS_EX_TRANSPARENT | WindowStylesEx.WS_EX_LAYERED);
         }
         else
         {
-            exStyle &= ~(WS_EX_TRANSPARENT);
-            exStyle |= WS_EX_LAYERED;
+            exStyle &= ~(int)WindowStylesEx.WS_EX_TRANSPARENT;
+            exStyle |= (int)WindowStylesEx.WS_EX_LAYERED;
         }
-        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+        SetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE, exStyle);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -151,21 +153,13 @@ public partial class TransparentOverlayWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
-            var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            exStyle |= WS_EX_LAYERED;
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+            var exStyle = (int)GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
+            exStyle |= (int)WindowStylesEx.WS_EX_LAYERED;
+            SetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE, exStyle);
         }
     }
 
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_EX_TRANSPARENT = 0x00000020;
-    private const int WS_EX_LAYERED = 0x00080000;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+    // Win32 APIs now provided by Vanara.PInvoke
 }
 
 

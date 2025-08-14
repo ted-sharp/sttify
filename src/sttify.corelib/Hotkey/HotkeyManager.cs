@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
 using Sttify.Corelib.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Vanara.PInvoke;
+using static Vanara.PInvoke.User32;
+using static Vanara.PInvoke.Kernel32;
 
 namespace Sttify.Corelib.Hotkey;
 
@@ -52,7 +55,7 @@ public class HotkeyManager : IDisposable
 
         try
         {
-            if (RegisterHotKey(_windowHandle, id, (uint)modifiers, (uint)key))
+            if (RegisterHotKey(new HWND(_windowHandle), id, (HotKeyModifiers)modifiers, (uint)key))
             {
                 var hotkeyInfo = new HotkeyInfo(name, hotkeyString, modifiers, key);
                 _registeredHotkeys[id] = hotkeyInfo;
@@ -87,7 +90,7 @@ public class HotkeyManager : IDisposable
                 OnHotkeyRegistrationFailed?.Invoke(this, new HotkeyRegistrationFailedEventArgs(
                     name,
                     hotkeyString,
-                    lastError,
+                    (uint)lastError,
                     Array.Empty<string>()
                 ));
 
@@ -129,7 +132,7 @@ public class HotkeyManager : IDisposable
 
         try
         {
-            if (UnregisterHotKey(_windowHandle, id))
+            if (UnregisterHotKey(new HWND(_windowHandle), id))
             {
                 var hotkeyInfo = _registeredHotkeys[id];
                 _registeredHotkeys.Remove(id);
@@ -159,7 +162,7 @@ public class HotkeyManager : IDisposable
         {
             try
             {
-                if (UnregisterHotKey(_windowHandle, id))
+                if (UnregisterHotKey(new HWND(_windowHandle), id))
                 {
                     unregisteredCount++;
                 }
@@ -236,14 +239,7 @@ public class HotkeyManager : IDisposable
         return true;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-
-    [DllImport("kernel32.dll")]
-    private static extern uint GetLastError();
+    // Win32 APIs now provided by Vanara.PInvoke
 
     // Additional utility methods
     public bool IsHotkeyRegistered(string name)

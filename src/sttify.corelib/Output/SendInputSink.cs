@@ -4,6 +4,9 @@ using Windows.Win32; // Reserved for future CsWin32 migrations
 using System.Text;
 using Sttify.Corelib.Ime;
 using Sttify.Corelib.Diagnostics;
+using Vanara.PInvoke;
+using static Vanara.PInvoke.User32;
+using static Vanara.PInvoke.Kernel32;
 
 namespace Sttify.Corelib.Output;
 
@@ -64,7 +67,7 @@ public class SendInputSink : ITextOutputSink
         // Check if we're running elevated and target app privileges
         // This code path runs only on Windows. Mark as Windows-specific to satisfy CA1416 when cross-targeting.
         bool isElevated = OperatingSystem.IsWindows() && IsProcessElevated();
-        IntPtr targetWindow = OperatingSystem.IsWindows() ? GetForegroundWindow() : IntPtr.Zero;
+        IntPtr targetWindow = OperatingSystem.IsWindows() ? (IntPtr)GetForegroundWindow() : IntPtr.Zero;
         bool targetElevated = IsWindowElevated(targetWindow);
         System.Diagnostics.Debug.WriteLine($"*** Sttify elevated: {isElevated}, Target window elevated: {targetElevated} ***");
 
@@ -73,8 +76,8 @@ public class SendInputSink : ITextOutputSink
         {
             var windowTitle = new StringBuilder(256);
             var className = new StringBuilder(256);
-            GetWindowText(targetWindow, windowTitle, windowTitle.Capacity);
-            GetClassName(targetWindow, className, className.Capacity);
+            GetWindowText(new HWND(targetWindow), windowTitle, windowTitle.Capacity);
+            GetClassName(new HWND(targetWindow), className, className.Capacity);
             System.Diagnostics.Debug.WriteLine($"*** Target window: '{windowTitle}' (class: '{className}', handle: {targetWindow}) ***");
         }
 
@@ -85,14 +88,14 @@ public class SendInputSink : ITextOutputSink
             System.Diagnostics.Debug.WriteLine("*** Trying ChangeWindowMessageFilter to bypass UIPI ***");
 
             // Try to bypass UIPI by allowing specific messages
-            ChangeWindowMessageFilter(0x0100, 1); // WM_KEYDOWN
-            ChangeWindowMessageFilter(0x0101, 1); // WM_KEYUP
-            ChangeWindowMessageFilter(0x0102, 1); // WM_CHAR
-            ChangeWindowMessageFilter(0x0103, 1); // WM_DEADCHAR
-            ChangeWindowMessageFilter(0x0104, 1); // WM_SYSKEYDOWN
-            ChangeWindowMessageFilter(0x0105, 1); // WM_SYSKEYUP
-            ChangeWindowMessageFilter(0x0106, 1); // WM_SYSCHAR
-            ChangeWindowMessageFilter(0x0302, 1); // WM_PASTE
+            ChangeWindowMessageFilter(0x0100, MessageFilterFlag.MSGFLT_ADD); // WM_KEYDOWN
+            ChangeWindowMessageFilter(0x0101, MessageFilterFlag.MSGFLT_ADD); // WM_KEYUP
+            ChangeWindowMessageFilter(0x0102, MessageFilterFlag.MSGFLT_ADD); // WM_CHAR
+            ChangeWindowMessageFilter(0x0103, MessageFilterFlag.MSGFLT_ADD); // WM_DEADCHAR
+            ChangeWindowMessageFilter(0x0104, MessageFilterFlag.MSGFLT_ADD); // WM_SYSKEYDOWN
+            ChangeWindowMessageFilter(0x0105, MessageFilterFlag.MSGFLT_ADD); // WM_SYSKEYUP
+            ChangeWindowMessageFilter(0x0106, MessageFilterFlag.MSGFLT_ADD); // WM_SYSCHAR
+            ChangeWindowMessageFilter(0x0302, MessageFilterFlag.MSGFLT_ADD); // WM_PASTE
         }
 
         // Suppress IME before sending text to prevent conflicts
@@ -278,7 +281,7 @@ public class SendInputSink : ITextOutputSink
                 System.Diagnostics.Debug.WriteLine("*** Win32 clipboard set successfully ***");
 
                 // Check active window before sending Ctrl+V
-                IntPtr activeWindow = GetForegroundWindow();
+                IntPtr activeWindow = (IntPtr)GetForegroundWindow();
                 System.Diagnostics.Debug.WriteLine($"*** Active window handle: {activeWindow} ***");
 
                 // Try alternative: Send VK_INSERT with Shift (Shift+Insert = Paste)
@@ -321,11 +324,11 @@ public class SendInputSink : ITextOutputSink
 
                 // Final attempt: Send WM_PASTE message directly to active window
                 System.Diagnostics.Debug.WriteLine("*** Trying direct WM_PASTE message ***");
-                IntPtr currentWindow = GetForegroundWindow();
+                IntPtr currentWindow = (IntPtr)GetForegroundWindow();
                 if (currentWindow != IntPtr.Zero)
                 {
                     const int WM_PASTE = 0x0302;
-                    IntPtr result = SendMessage(currentWindow, WM_PASTE, IntPtr.Zero, IntPtr.Zero);
+                    IntPtr result = SendMessage(new HWND(currentWindow), WM_PASTE, IntPtr.Zero, IntPtr.Zero);
                     System.Diagnostics.Debug.WriteLine($"*** WM_PASTE result: {result} to window {currentWindow} ***");
                 }
 
@@ -355,11 +358,11 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OpenClipboard(IntPtr.Zero))
+            if (!OpenClipboard(HWND.NULL))
                 return null;
 
             const uint CF_UNICODETEXT = 13;
-            IntPtr handle = GetClipboardData(CF_UNICODETEXT);
+            IntPtr handle = (IntPtr)GetClipboardData(13); // CF_UNICODETEXT
             if (handle == IntPtr.Zero)
             {
                 CloseClipboard();
@@ -394,7 +397,7 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OpenClipboard(IntPtr.Zero))
+            if (!OpenClipboard(HWND.NULL))
                 return false;
 
             EmptyClipboard();
@@ -406,7 +409,7 @@ public class SendInputSink : ITextOutputSink
                 return false;
             }
 
-            if (SetClipboardData(13, hGlobal) == IntPtr.Zero) // CF_UNICODETEXT = 13
+            if ((IntPtr)SetClipboardData(13, hGlobal) == IntPtr.Zero) // CF_UNICODETEXT = 13
             {
                 Marshal.FreeHGlobal(hGlobal);
                 CloseClipboard();
@@ -441,7 +444,7 @@ public class SendInputSink : ITextOutputSink
                     break;
 
                 const int WM_CHAR = 0x0102;
-                IntPtr result = SendMessage(targetWindow, WM_CHAR, new IntPtr(c), IntPtr.Zero);
+                IntPtr result = SendMessage(new HWND(targetWindow), WM_CHAR, new IntPtr(c), IntPtr.Zero);
 
                 if (result != IntPtr.Zero)
                 {
@@ -547,26 +550,9 @@ public class SendInputSink : ITextOutputSink
 
     // GetLastError: use CsWin32 PInvoke.GetLastError()
 
-    [DllImport("user32.dll")]
-    private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+    // OpenClipboard, CloseClipboard, EmptyClipboard, SetClipboardData, GetClipboardData now provided by Vanara.PInvoke
 
-    [DllImport("user32.dll")]
-    private static extern bool CloseClipboard();
-
-    [DllImport("user32.dll")]
-    private static extern bool EmptyClipboard();
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetClipboardData(uint uFormat);
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+    // GetForegroundWindow, SendMessage now provided by Vanara.PInvoke
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
@@ -583,20 +569,7 @@ public class SendInputSink : ITextOutputSink
     [DllImport("kernel32.dll")]
     private static extern bool CloseHandle(IntPtr hObject);
 
-    [DllImport("user32.dll")]
-    private static extern bool ChangeWindowMessageFilter(uint message, uint dwFlag);
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GlobalLock(IntPtr hMem);
-
-    [DllImport("kernel32.dll")]
-    private static extern bool GlobalUnlock(IntPtr hMem);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-    private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+    // ChangeWindowMessageFilter, GlobalLock, GlobalUnlock, GetWindowText, GetClassName now provided by Vanara.PInvoke
 
     [StructLayout(LayoutKind.Sequential)]
     private struct TOKEN_ELEVATION
