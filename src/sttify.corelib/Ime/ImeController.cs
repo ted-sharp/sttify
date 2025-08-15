@@ -335,12 +335,17 @@ public class ImeStatus
 {
     public bool HasImeContext { get; set; } = false;
     public bool IsOpen { get; set; } = false;
+    [SupportedOSPlatform("windows")]
     public IME_CMODE ConversionMode { get; set; } = IME_CMODE.IME_CMODE_ALPHANUMERIC;
+    [SupportedOSPlatform("windows")]
     public IME_SMODE SentenceMode { get; set; } = IME_SMODE.IME_SMODE_NONE;
     public bool IsComposing { get; set; } = false;
     public IntPtr WindowHandle { get; set; } = IntPtr.Zero;
 
+    [SupportedOSPlatform("windows")]
     public bool IsNativeMode => (ConversionMode & IME_CMODE.IME_CMODE_NATIVE) != 0;
+    [SupportedOSPlatform("windows")]
     public bool IsAlphanumericMode => ConversionMode == IME_CMODE.IME_CMODE_ALPHANUMERIC;
+    [SupportedOSPlatform("windows")]
     public bool IsFullShape => (ConversionMode & IME_CMODE.IME_CMODE_FULLSHAPE) != 0;
 }

@@ -15,6 +15,8 @@ using CsVIRTUAL_KEY = Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY;
 using static Vanara.PInvoke.Kernel32;
 using static Vanara.PInvoke.User32;
 
+#pragma warning disable CA1416 // Validate platform compatibility
+
 namespace Sttify.Corelib.Output;
 
 [ExcludeFromCodeCoverage] // Win32 SendInput API integration, difficult to mock effectively

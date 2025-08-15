@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using Sttify.Corelib.Ime;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Imm32;
@@ -7,6 +8,7 @@ using Xunit;
 
 namespace Sttify.Corelib.Tests.Ime;
 
+[SupportedOSPlatform("windows")]
 public class ImeControllerTests
 {
     [Fact]

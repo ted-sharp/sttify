@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>AnyCPU;x64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-x86</RuntimeIdentifiers>
+    <SupportedOSPlatformVersion>5.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetFrameworkIdentifier('$(TargetFramework)')) == 'Microsoft.WindowsDesktopApp'">5.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetFrameworkIdentifier('$(TargetFramework)')) == 'Microsoft.NETCore.App'">5.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion>5.0</TargetPlatformMinVersion>
   </PropertyGroup>
 
   <ItemGroup>
