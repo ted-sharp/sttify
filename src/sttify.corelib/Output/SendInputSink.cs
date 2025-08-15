@@ -20,10 +20,10 @@ namespace Sttify.Corelib.Output;
 [ExcludeFromCodeCoverage] // Win32 SendInput API integration, difficult to mock effectively
 public class SendInputSink : ITextOutputSink
 {
-        private const uint CF_UNICODETEXT = 13;
+    private const uint CF_UNICODETEXT = 13;
 
-        public string Id => "sendinput";
-        public string Name => "SendInput";
+    public string Id => "sendinput";
+    public string Name => "SendInput";
     public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     private readonly SendInputSettings _settings;
@@ -208,7 +208,7 @@ public class SendInputSink : ITextOutputSink
                 }
                 if (resultDown == 0)
                 {
-                    uint error = (uint)Marshal.GetLastWin32Error();
+                    uint error = (uint)GetLastError();
                     string errorMsgDown = error switch
                     {
                         87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
@@ -249,7 +249,7 @@ public class SendInputSink : ITextOutputSink
                 }
                 if (resultUp == 0)
                 {
-                    uint error = (uint)Marshal.GetLastWin32Error();
+                    uint error = (uint)GetLastError();
                     string errorMsgUp = error switch
                     {
                         87 => "ERROR_INVALID_PARAMETER - Invalid input structure or blocked by target",
@@ -365,11 +365,11 @@ public class SendInputSink : ITextOutputSink
                 if (currentWindow != IntPtr.Zero)
                 {
                     const uint WM_PASTE = 0x0302;
-                    var lres = Windows.Win32.PInvoke.SendMessage(
-                        new Windows.Win32.Foundation.HWND(currentWindow),
+                    var lres = SendMessage(
+                        new Vanara.PInvoke.HWND(currentWindow),
                         WM_PASTE,
-                        new Windows.Win32.Foundation.WPARAM(0),
-                        new Windows.Win32.Foundation.LPARAM(0));
+                        new IntPtr(0),
+                        new IntPtr(0));
                     System.Diagnostics.Debug.WriteLine($"*** WM_PASTE result: {lres} to window {currentWindow} ***");
                 }
 
