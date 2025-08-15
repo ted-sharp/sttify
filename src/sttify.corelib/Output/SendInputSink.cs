@@ -15,8 +15,6 @@ using CsVIRTUAL_KEY = Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY;
 using static Vanara.PInvoke.Kernel32;
 using static Vanara.PInvoke.User32;
 
-#pragma warning disable CA1416 // Validate platform compatibility
-
 namespace Sttify.Corelib.Output;
 
 [ExcludeFromCodeCoverage] // Win32 SendInput API integration, difficult to mock effectively
@@ -35,6 +33,50 @@ public class SendInputSink : ITextOutputSink
     {
         _settings = settings ?? new SendInputSettings();
         _imeController = new ImeController(_settings.Ime);
+    }
+
+    /// <summary>
+    /// Check if the current Windows version supports SendInput API (Windows 5.0+)
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static bool IsSendInputSupported()
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+
+        try
+        {
+            // Check Windows version - SendInput is supported on Windows 5.0+
+            var version = Environment.OSVersion;
+            return version.Version.Major >= 10; // Windows 10+ (which is Windows 5.0+ internally)
+        }
+        catch
+        {
+            // Fallback: assume supported if we can't determine version
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Safely call SendInput with Windows 5.0+ compatibility check
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static unsafe uint SafeSendInput(uint nInputs, CsINPUT* pInputs, int cbSize)
+    {
+        if (!IsSendInputSupported())
+        {
+            System.Diagnostics.Debug.WriteLine("*** SendInput not supported on this Windows version ***");
+            return 0;
+        }
+
+        // Windows 5.0+ compatibility check for SendInput API
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0))
+        {
+            System.Diagnostics.Debug.WriteLine("*** SendInput requires Windows 10+ (Windows 5.0+) ***");
+            return 0;
+        }
+
+        return Win32PInvoke.SendInput(nInputs, pInputs, cbSize);
     }
 
     [SupportedOSPlatform("windows")]
@@ -206,7 +248,7 @@ public class SendInputSink : ITextOutputSink
                 {
                     var inputs = stackalloc CsINPUT[1];
                     inputs[0] = downInput;
-                    resultDown = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    resultDown = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
                 }
                 if (resultDown == 0)
                 {
@@ -247,7 +289,7 @@ public class SendInputSink : ITextOutputSink
                 {
                     var inputs = stackalloc CsINPUT[1];
                     inputs[0] = upInput;
-                    resultUp = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    resultUp = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
                 }
                 if (resultUp == 0)
                 {
@@ -280,7 +322,7 @@ public class SendInputSink : ITextOutputSink
                 var inputs = stackalloc CsINPUT[2];
                 inputs[0] = commitDown;
                 inputs[1] = commitUp;
-                result = Win32PInvoke.SendInput(2, inputs, Marshal.SizeOf<CsINPUT>());
+                result = SafeSendInput(2, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
             }
             if (result > 0) anySuccess = true;
         }
@@ -322,16 +364,32 @@ public class SendInputSink : ITextOutputSink
 
                 #pragma warning disable CA2014 // stackalloc をループ内で使用
                 uint sr1;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = shiftDown; sr1 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = shiftDown;
+                    sr1 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 await Task.Delay(10, cancellationToken);
                 uint sr2;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = insertDown; sr2 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = insertDown;
+                    sr2 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 await Task.Delay(10, cancellationToken);
                 uint sr3;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = insertUp; sr3 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = insertUp;
+                    sr3 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 await Task.Delay(10, cancellationToken);
                 uint sr4;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = shiftUp; sr4 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = shiftUp;
+                    sr4 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
 
                 System.Diagnostics.Debug.WriteLine($"*** Shift+Insert results: Shift={sr1}, Insert_down={sr2}, Insert_up={sr3}, Shift_up={sr4} ***");
 
@@ -345,16 +403,32 @@ public class SendInputSink : ITextOutputSink
                 var ctrlUp = CreateKeyInput(0x11, true);     // Ctrl up
 
                 uint result1;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = ctrlDown; result1 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = ctrlDown;
+                    result1 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 await Task.Delay(10, cancellationToken);
                 uint result2;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = vDown; result2 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = vDown;
+                    result2 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 await Task.Delay(10, cancellationToken);
                 uint result3;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = vUp; result3 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = vUp;
+                    result3 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 await Task.Delay(10, cancellationToken);
                 uint result4;
-                unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = ctrlUp; result4 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                unsafe {
+                    var inputs = stackalloc CsINPUT[1];
+                    inputs[0] = ctrlUp;
+                    result4 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                }
                 #pragma warning restore CA2014
 
                 System.Diagnostics.Debug.WriteLine($"*** Ctrl+V results: Ctrl={result1}, V_down={result2}, V_up={result3}, Ctrl_up={result4} ***");
