@@ -527,21 +527,20 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
-        private static bool IsWindowElevated(IntPtr windowHandle)
+    private static bool IsWindowElevated(IntPtr windowHandle)
     {
         try
         {
-                if (!OperatingSystem.IsWindows()) return false;
+            if (!OperatingSystem.IsWindows()) return false;
             GetWindowThreadProcessId(new Vanara.PInvoke.HWND(windowHandle), out uint processId);
-            IntPtr processHandle = OpenProcess(0x1000, false, processId); // PROCESS_QUERY_LIMITED_INFORMATION
+            using var processHandle = OpenProcess(0x1000, false, processId); // PROCESS_QUERY_LIMITED_INFORMATION
             if (processHandle == IntPtr.Zero)
                 return false;
 
-            bool result = OpenProcessToken(processHandle, 0x0008, out IntPtr tokenHandle); // TOKEN_QUERY
+            bool result = OpenProcessToken(processHandle.DangerousGetHandle(), 0x0008, out IntPtr tokenHandle); // TOKEN_QUERY
             if (!result)
             {
-                CloseHandle(processHandle);
-                return false;
+                return false; // processHandle will be disposed automatically
             }
 
             // Query TokenElevation (20) to determine if the target process is elevated
@@ -554,7 +553,6 @@ public class SendInputSink : ITextOutputSink
                 var elevation = gotInfo ? Marshal.PtrToStructure<TOKEN_ELEVATION>(elevationPtr) : default;
 
                 CloseHandle(tokenHandle);
-                CloseHandle(processHandle);
 
                 return gotInfo && elevation.TokenIsElevated != 0;
             }
@@ -598,8 +596,8 @@ public class SendInputSink : ITextOutputSink
 
     // ChangeWindowMessageFilter, GlobalLock, GlobalUnlock, GetWindowText, GetClassName now provided by Vanara.PInvoke
 
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+    // OpenProcess now provided by Vanara.PInvoke.Kernel32
+    // OpenProcessToken and GetTokenInformation require AdvApi32 which is not available in Vanara
 
     [DllImport("advapi32.dll")]
     private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
