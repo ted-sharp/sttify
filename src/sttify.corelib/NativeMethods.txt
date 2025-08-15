@@ -37,3 +37,6 @@ GlobalUnlock
 OpenProcessToken
 GetTokenInformation
 
+// Types
+TOKEN_ELEVATION
+

@@ -165,8 +165,10 @@ public class SendInputSink : ITextOutputSink
         System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Completed sending '{text}' ***");
     }
 
+    [SupportedOSPlatform("windows")]
     private async Task<bool> SendTextViaInputAsync(string text, CancellationToken cancellationToken)
     {
+        #pragma warning disable CA2014 // stackalloc をループ内で使用
         var delayMs = _settings.RateLimitCps > 0 ? 1000 / _settings.RateLimitCps : 0;
         bool anySuccess = false;
 
@@ -281,6 +283,7 @@ public class SendInputSink : ITextOutputSink
             if (result > 0) anySuccess = true;
         }
 
+        #pragma warning restore CA2014
         return anySuccess;
     }
 
@@ -315,6 +318,7 @@ public class SendInputSink : ITextOutputSink
                 var insertUp = CreateKeyInput(0x2D, true);    // Insert up
                 var shiftUp = CreateKeyInput(0x10, true);     // Shift up
 
+                #pragma warning disable CA2014 // stackalloc をループ内で使用
                 uint sr1;
                 unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = shiftDown; sr1 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
                 await Task.Delay(10, cancellationToken);
@@ -349,6 +353,7 @@ public class SendInputSink : ITextOutputSink
                 await Task.Delay(10, cancellationToken);
                 uint result4;
                 unsafe { var inputs = stackalloc CsINPUT[1]; inputs[0] = ctrlUp; result4 = Win32PInvoke.SendInput(1, inputs, Marshal.SizeOf<CsINPUT>()); }
+                #pragma warning restore CA2014
 
                 System.Diagnostics.Debug.WriteLine($"*** Ctrl+V results: Ctrl={result1}, V_down={result2}, V_up={result3}, Ctrl_up={result4} ***");
 
@@ -359,9 +364,13 @@ public class SendInputSink : ITextOutputSink
                 IntPtr currentWindow = (IntPtr)GetForegroundWindow();
                 if (currentWindow != IntPtr.Zero)
                 {
-                    const int WM_PASTE = 0x0302;
-                    IntPtr result = SendMessage(new Vanara.PInvoke.HWND(currentWindow), WM_PASTE, IntPtr.Zero, IntPtr.Zero);
-                    System.Diagnostics.Debug.WriteLine($"*** WM_PASTE result: {result} to window {currentWindow} ***");
+                    const uint WM_PASTE = 0x0302;
+                    var lres = Windows.Win32.PInvoke.SendMessage(
+                        new Windows.Win32.Foundation.HWND(currentWindow),
+                        WM_PASTE,
+                        new Windows.Win32.Foundation.WPARAM(0),
+                        new Windows.Win32.Foundation.LPARAM(0));
+                    System.Diagnostics.Debug.WriteLine($"*** WM_PASTE result: {lres} to window {currentWindow} ***");
                 }
 
                 await Task.Delay(50, cancellationToken); // Small delay for clipboard operation
@@ -523,7 +532,7 @@ public class SendInputSink : ITextOutputSink
         try
         {
                 if (!OperatingSystem.IsWindows()) return false;
-            GetWindowThreadProcessId(new HWND(windowHandle), out uint processId);
+            GetWindowThreadProcessId(new Vanara.PInvoke.HWND(windowHandle), out uint processId);
             IntPtr processHandle = OpenProcess(0x1000, false, processId); // PROCESS_QUERY_LIMITED_INFORMATION
             if (processHandle == IntPtr.Zero)
                 return false;
@@ -587,6 +596,8 @@ public class SendInputSink : ITextOutputSink
 
     // GetWindowThreadProcessId now provided by Vanara.PInvoke
 
+    // ChangeWindowMessageFilter, GlobalLock, GlobalUnlock, GetWindowText, GetClassName now provided by Vanara.PInvoke
+
     [DllImport("kernel32.dll")]
     private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
 
@@ -595,10 +606,6 @@ public class SendInputSink : ITextOutputSink
 
     [DllImport("advapi32.dll")]
     private static extern bool GetTokenInformation(IntPtr TokenHandle, int TokenInformationClass, IntPtr TokenInformation, uint TokenInformationLength, out uint ReturnLength);
-
-    // CloseHandle now provided by Vanara.PInvoke
-
-    // ChangeWindowMessageFilter, GlobalLock, GlobalUnlock, GetWindowText, GetClassName now provided by Vanara.PInvoke
 
     [StructLayout(LayoutKind.Sequential)]
     private struct TOKEN_ELEVATION

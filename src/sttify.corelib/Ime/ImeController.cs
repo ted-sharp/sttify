@@ -3,6 +3,7 @@ using Sttify.Corelib.Diagnostics;
 using System.Runtime.Versioning;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.User32;
+using static Vanara.PInvoke.Imm32;
 
 namespace Sttify.Corelib.Ime;
 
@@ -39,7 +40,7 @@ public class ImeController : IDisposable
                 return null;
             }
 
-            var imeContext = ImeNativeMethods.ImmGetContext(foregroundWindow);
+            var imeContext = ImmGetContext(foregroundWindow);
             if (imeContext == IntPtr.Zero)
             {
                 Telemetry.LogEvent("ImeSuppressionSkipped", new { Reason = "NoImeContext" });
@@ -47,48 +48,48 @@ public class ImeController : IDisposable
             }
 
             // Save current IME state
-            var isCurrentlyOpen = ImeNativeMethods.ImmGetOpenStatus(imeContext);
-            ImeNativeMethods.ImmGetConversionStatus(imeContext, out int currentConversion, out int currentSentence);
+            var isCurrentlyOpen = ImmGetOpenStatus(imeContext);
+            ImmGetConversionStatus(imeContext, out IME_CMODE currentConversion, out IME_SMODE currentSentence);
 
-            if (!isCurrentlyOpen && currentConversion == ImeNativeMethods.IME_CMODE_ALPHANUMERIC)
+            if (!isCurrentlyOpen && currentConversion == IME_CMODE.IME_CMODE_ALPHANUMERIC)
             {
                 // IME is already in the desired state
-                ImeNativeMethods.ImmReleaseContext(foregroundWindow, imeContext);
+                ImmReleaseContext(foregroundWindow, imeContext);
                 return new NoOpImeRestorer();
             }
 
             // Disable IME
             bool suppressionSuccess = true;
-            
+
             if (_settings.CloseImeWhenSending)
             {
-                suppressionSuccess &= ImeNativeMethods.ImmSetOpenStatus(imeContext, false);
+                suppressionSuccess &= ImmSetOpenStatus(imeContext, false);
                 Telemetry.LogEvent("ImeOpenStatusChanged", new { Open = false, Success = suppressionSuccess });
             }
 
             if (_settings.SetAlphanumericMode)
             {
-                var modeSuccess = ImeNativeMethods.ImmSetConversionStatus(imeContext, 
-                    ImeNativeMethods.IME_CMODE_ALPHANUMERIC, 
-                    ImeNativeMethods.IME_SMODE_NONE);
+                var modeSuccess = ImmSetConversionStatus(imeContext,
+                    IME_CMODE.IME_CMODE_ALPHANUMERIC,
+                    IME_SMODE.IME_SMODE_NONE);
                 suppressionSuccess &= modeSuccess;
                 Telemetry.LogEvent("ImeConversionModeChanged", new { Mode = "Alphanumeric", Success = modeSuccess });
             }
 
             if (_settings.ClearCompositionString)
             {
-                var clearSuccess = ImeNativeMethods.ImmSetCompositionString(imeContext, 
-                    ImeNativeMethods.SCS_SETSTR, "", 0, "", 0);
+                var clearSuccess = ImmSetCompositionString(imeContext,
+                    SCS.SCS_SETSTR, IntPtr.Zero, 0, IntPtr.Zero, 0);
                 suppressionSuccess &= clearSuccess;
                 Telemetry.LogEvent("ImeCompositionCleared", new { Success = clearSuccess });
             }
 
-            ImeNativeMethods.ImmReleaseContext(foregroundWindow, imeContext);
+            ImmReleaseContext(foregroundWindow, imeContext);
 
             if (suppressionSuccess)
             {
-                Telemetry.LogEvent("ImeSuppressionSucceeded", new 
-                { 
+                Telemetry.LogEvent("ImeSuppressionSucceeded", new
+                {
                     PreviousOpen = isCurrentlyOpen,
                     PreviousConversion = currentConversion,
                     PreviousSentence = currentSentence,
@@ -125,21 +126,21 @@ public class ImeController : IDisposable
             if (foregroundWindow == IntPtr.Zero)
                 return false;
 
-            var imeContext = ImeNativeMethods.ImmGetContext(foregroundWindow);
+            var imeContext = ImmGetContext(foregroundWindow);
             if (imeContext == IntPtr.Zero)
                 return false;
 
             try
             {
                 // Check if there's an active composition string
-                var compLength = ImeNativeMethods.ImmGetCompositionString(imeContext, 
-                    ImeNativeMethods.GCS_COMPSTR, IntPtr.Zero, 0);
-                
+                var compLength = ImmGetCompositionString(imeContext,
+                    GCS.GCS_COMPSTR, IntPtr.Zero, 0);
+
                 return compLength > 0;
             }
             finally
             {
-                ImeNativeMethods.ImmReleaseContext(foregroundWindow, imeContext);
+                ImmReleaseContext(foregroundWindow, imeContext);
             }
         }
         catch (Exception ex)
@@ -164,17 +165,17 @@ public class ImeController : IDisposable
             if (foregroundWindow == IntPtr.Zero)
                 return new ImeStatus();
 
-            var imeContext = ImeNativeMethods.ImmGetContext(foregroundWindow);
+            var imeContext = ImmGetContext(foregroundWindow);
             if (imeContext == IntPtr.Zero)
                 return new ImeStatus { HasImeContext = false };
 
             try
             {
-                var isOpen = ImeNativeMethods.ImmGetOpenStatus(imeContext);
-                ImeNativeMethods.ImmGetConversionStatus(imeContext, out int conversion, out int sentence);
-                
-                var compLength = ImeNativeMethods.ImmGetCompositionString(imeContext, 
-                    ImeNativeMethods.GCS_COMPSTR, IntPtr.Zero, 0);
+                var isOpen = ImmGetOpenStatus(imeContext);
+                ImmGetConversionStatus(imeContext, out IME_CMODE conversion, out IME_SMODE sentence);
+
+                var compLength = ImmGetCompositionString(imeContext,
+                    GCS.GCS_COMPSTR, IntPtr.Zero, 0);
 
                 return new ImeStatus
                 {
@@ -188,7 +189,7 @@ public class ImeController : IDisposable
             }
             finally
             {
-                ImeNativeMethods.ImmReleaseContext(foregroundWindow, imeContext);
+                ImmReleaseContext(foregroundWindow, imeContext);
             }
         }
         catch (Exception ex)
@@ -213,12 +214,12 @@ public class ImeController : IDisposable
     {
         private readonly IntPtr _window;
         private readonly bool _originalOpen;
-        private readonly int _originalConversion;
-        private readonly int _originalSentence;
+        private readonly IME_CMODE _originalConversion;
+        private readonly IME_SMODE _originalSentence;
         private readonly ImeSettings _settings;
         private bool _disposed = false;
 
-        public ImeRestorer(IntPtr window, bool originalOpen, int originalConversion, int originalSentence, ImeSettings settings)
+        public ImeRestorer(IntPtr window, bool originalOpen, IME_CMODE originalConversion, IME_SMODE originalSentence, ImeSettings settings)
         {
             _window = window;
             _originalOpen = originalOpen;
@@ -235,7 +236,7 @@ public class ImeController : IDisposable
 
             try
             {
-                var imeContext = ImeNativeMethods.ImmGetContext(_window);
+                var imeContext = ImmGetContext(_window);
                 if (imeContext == IntPtr.Zero)
                     return;
 
@@ -244,18 +245,18 @@ public class ImeController : IDisposable
                     // Restore original IME state
                     if (_settings.CloseImeWhenSending)
                     {
-                        var openSuccess = ImeNativeMethods.ImmSetOpenStatus(imeContext, _originalOpen);
+                        var openSuccess = ImmSetOpenStatus(imeContext, _originalOpen);
                         Telemetry.LogEvent("ImeOpenStatusRestored", new { Open = _originalOpen, Success = openSuccess });
                     }
 
                     if (_settings.SetAlphanumericMode)
                     {
-                        var modeSuccess = ImeNativeMethods.ImmSetConversionStatus(imeContext, _originalConversion, _originalSentence);
-                        Telemetry.LogEvent("ImeConversionModeRestored", new 
-                        { 
-                            Conversion = _originalConversion, 
-                            Sentence = _originalSentence, 
-                            Success = modeSuccess 
+                        var modeSuccess = ImmSetConversionStatus(imeContext, _originalConversion, _originalSentence);
+                        Telemetry.LogEvent("ImeConversionModeRestored", new
+                        {
+                            Conversion = _originalConversion,
+                            Sentence = _originalSentence,
+                            Success = modeSuccess
                         });
                     }
 
@@ -263,7 +264,7 @@ public class ImeController : IDisposable
                 }
                 finally
                 {
-                    ImeNativeMethods.ImmReleaseContext(_window, imeContext);
+                    ImmReleaseContext(_window, imeContext);
                 }
             }
             catch (Exception ex)
@@ -334,12 +335,12 @@ public class ImeStatus
 {
     public bool HasImeContext { get; set; } = false;
     public bool IsOpen { get; set; } = false;
-    public int ConversionMode { get; set; } = 0;
-    public int SentenceMode { get; set; } = 0;
+    public IME_CMODE ConversionMode { get; set; } = IME_CMODE.IME_CMODE_ALPHANUMERIC;
+    public IME_SMODE SentenceMode { get; set; } = IME_SMODE.IME_SMODE_NONE;
     public bool IsComposing { get; set; } = false;
     public IntPtr WindowHandle { get; set; } = IntPtr.Zero;
 
-    public bool IsNativeMode => (ConversionMode & ImeNativeMethods.IME_CMODE_NATIVE) != 0;
-    public bool IsAlphanumericMode => ConversionMode == ImeNativeMethods.IME_CMODE_ALPHANUMERIC;
-    public bool IsFullShape => (ConversionMode & ImeNativeMethods.IME_CMODE_FULLSHAPE) != 0;
+    public bool IsNativeMode => (ConversionMode & IME_CMODE.IME_CMODE_NATIVE) != 0;
+    public bool IsAlphanumericMode => ConversionMode == IME_CMODE.IME_CMODE_ALPHANUMERIC;
+    public bool IsFullShape => (ConversionMode & IME_CMODE.IME_CMODE_FULLSHAPE) != 0;
 }

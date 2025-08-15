@@ -24,6 +24,7 @@
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="System.Text.Json" Version="9.0.7" />
     <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Vanara.PInvoke.Imm32" Version="4.1.6" />
     <PackageReference Include="Vanara.PInvoke.User32" Version="4.1.6" />
     <PackageReference Include="Vanara.PInvoke.Kernel32" Version="4.1.6" />
     <PackageReference Include="Vosk" Version="0.3.38" />

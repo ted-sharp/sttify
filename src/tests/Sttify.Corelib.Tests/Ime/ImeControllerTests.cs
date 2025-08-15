@@ -1,4 +1,8 @@
+using System;
+using System.Runtime.InteropServices;
 using Sttify.Corelib.Ime;
+using Vanara.PInvoke;
+using static Vanara.PInvoke.Imm32;
 using Xunit;
 
 namespace Sttify.Corelib.Tests.Ime;
@@ -12,7 +16,7 @@ public class ImeControllerTests
         var settings = new ImeSettings();
 
         // Act
-        using var controller = new ImeController(settings);
+        var controller = new ImeController(settings);
 
         // Assert
         Assert.NotNull(controller);
@@ -96,8 +100,8 @@ public class ImeControllerTests
         // Assert
         Assert.False(status.HasImeContext);
         Assert.False(status.IsOpen);
-        Assert.Equal(0, status.ConversionMode);
-        Assert.Equal(0, status.SentenceMode);
+        Assert.Equal(IME_CMODE.IME_CMODE_ALPHANUMERIC, status.ConversionMode);
+        Assert.Equal(IME_SMODE.IME_SMODE_NONE, status.SentenceMode);
         Assert.False(status.IsComposing);
         Assert.Equal(IntPtr.Zero, status.WindowHandle);
         Assert.False(status.IsNativeMode);
@@ -111,26 +115,26 @@ public class ImeControllerTests
         // Arrange
         var status = new ImeStatus();
 
-        // Test alphanumeric mode (using known constant value)
-        status.ConversionMode = 0x0000; // IME_CMODE_ALPHANUMERIC
+        // Test alphanumeric mode
+        status.ConversionMode = IME_CMODE.IME_CMODE_ALPHANUMERIC;
         Assert.True(status.IsAlphanumericMode);
         Assert.False(status.IsNativeMode);
         Assert.False(status.IsFullShape);
 
-        // Test native mode (using known constant value)
-        status.ConversionMode = 0x0001; // IME_CMODE_NATIVE
+        // Test native mode
+        status.ConversionMode = IME_CMODE.IME_CMODE_NATIVE;
         Assert.False(status.IsAlphanumericMode);
         Assert.True(status.IsNativeMode);
         Assert.False(status.IsFullShape);
 
-        // Test full shape mode (using known constant value)
-        status.ConversionMode = 0x0008; // IME_CMODE_FULLSHAPE
+        // Test full shape mode
+        status.ConversionMode = IME_CMODE.IME_CMODE_FULLSHAPE;
         Assert.False(status.IsAlphanumericMode);
         Assert.False(status.IsNativeMode);
         Assert.True(status.IsFullShape);
 
-        // Test combined modes (using known constant values)
-        status.ConversionMode = 0x0001 | 0x0008; // IME_CMODE_NATIVE | IME_CMODE_FULLSHAPE
+        // Test combined modes
+        status.ConversionMode = IME_CMODE.IME_CMODE_NATIVE | IME_CMODE.IME_CMODE_FULLSHAPE;
         Assert.False(status.IsAlphanumericMode);
         Assert.True(status.IsNativeMode);
         Assert.True(status.IsFullShape);
@@ -145,7 +149,7 @@ public class ImeControllerTests
 
         // Act & Assert (should not throw)
         controller.Dispose();
-        
+
         // Multiple disposes should also not throw
         controller.Dispose();
     }
