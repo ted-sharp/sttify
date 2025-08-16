@@ -20,7 +20,7 @@ public class RecognitionSession : IDisposable
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
 
     // Voice activity detection events
-    public event EventHandler<VoiceActivityEventArgs>? OnVoiceActivity;
+    // OnVoiceActivity event removed - not used
 
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
     private SessionState _currentState = SessionState.Idle;
