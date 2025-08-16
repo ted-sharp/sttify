@@ -125,7 +125,6 @@ public class OutlinedText : FrameworkElement
     private FormattedText CreateFormattedText(string text, double constraintWidth)
     {
         var typeface = new Typeface(FontFamily, FontStyles.Normal, FontWeight, FontStretches.Normal);
-#pragma warning disable CS0618
         var formatted = new FormattedText(
             text ?? string.Empty,
             System.Globalization.CultureInfo.CurrentUICulture,
@@ -133,8 +132,8 @@ public class OutlinedText : FrameworkElement
             typeface,
             FontSize,
             Fill,
+            null,
             VisualTreeHelper.GetDpi(this).PixelsPerDip);
-#pragma warning restore CS0618
         formatted.TextAlignment = TextAlignment;
         if (!double.IsInfinity(constraintWidth))
         {

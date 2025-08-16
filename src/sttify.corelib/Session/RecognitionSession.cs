@@ -19,10 +19,8 @@ public class RecognitionSession : IDisposable
     public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
     public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
 
-    // Currently not implemented but reserved for future voice activity detection features
-#pragma warning disable CS0067 // Event is declared but never used - reserved for future features
+    // Voice activity detection events
     public event EventHandler<VoiceActivityEventArgs>? OnVoiceActivity;
-#pragma warning restore CS0067
 
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
     private SessionState _currentState = SessionState.Idle;
@@ -31,19 +29,15 @@ public class RecognitionSession : IDisposable
 
     // Silence detection timers removed; handled by engine/VAD components
 
-    // Wake word detection state - reserved for future implementation
-#pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
+    // Wake word detection state
     private bool _waitingForWakeWord = false;
-#pragma warning restore CS0414
     private readonly List<string> _wakeWords = ["スティファイ", "sttify"];
 
     // Continuous mode state
     private CancellationTokenSource? _continuousModeCts;
 
-    // PTT state - reserved for future implementation
-#pragma warning disable CS0414 // Field is assigned but never used - reserved for future features
+    // PTT state
     private bool _pttPressed = false;
-#pragma warning restore CS0414
 
     // Single utterance state removed (handled by endpoint detector callbacks)
 
@@ -105,6 +99,17 @@ public class RecognitionSession : IDisposable
                 {
                     var oldMode = _currentMode;
                     _currentMode = value;
+
+                    // Reset state when mode changes
+                    if (value == RecognitionMode.Ptt)
+                    {
+                        _pttPressed = false;
+                    }
+                    else if (value == RecognitionMode.WakeWord)
+                    {
+                        _waitingForWakeWord = true;
+                    }
+
                     OnModeChanged(oldMode, value);
                 }
             }
@@ -359,22 +364,58 @@ public class RecognitionSession : IDisposable
 
     // Removed unused silence/finalize timers; engine-side VAD handles boundaries
 
-    // PTT control methods
+    /// <summary>
+    /// Start PTT (Push-to-Talk) mode
+    /// </summary>
     public void StartPtt()
     {
-        if (CurrentMode != RecognitionMode.Ptt) return;
-
-        _pttPressed = true;
-        Telemetry.LogEvent("PttPressed");
+        if (_currentMode == RecognitionMode.Ptt)
+        {
+            _pttPressed = true;
+            // Additional PTT logic can be added here
+        }
     }
 
+    /// <summary>
+    /// Stop PTT (Push-to-Talk) mode
+    /// </summary>
     public void StopPtt()
     {
-        if (CurrentMode != RecognitionMode.Ptt) return;
-
-        _pttPressed = false;
-        Telemetry.LogEvent("PttReleased");
+        if (_currentMode == RecognitionMode.Ptt)
+        {
+            _pttPressed = false;
+            // Additional PTT logic can be added here
+        }
     }
+
+    /// <summary>
+    /// Check if PTT is currently pressed
+    /// </summary>
+    public bool IsPttPressed => _pttPressed;
+
+    /// <summary>
+    /// Check if wake word is detected in the given text
+    /// </summary>
+    public bool IsWakeWordDetected(string text)
+    {
+        if (!_waitingForWakeWord || string.IsNullOrEmpty(text))
+            return false;
+
+        foreach (var wakeWord in _wakeWords)
+        {
+            if (text.Contains(wakeWord, StringComparison.OrdinalIgnoreCase))
+            {
+                _waitingForWakeWord = false;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Check if currently waiting for wake word
+    /// </summary>
+    public bool IsWaitingForWakeWord => _waitingForWakeWord;
 
     // Voice activity detection
     private bool DetectVoiceActivity(ReadOnlySpan<byte> audioData)

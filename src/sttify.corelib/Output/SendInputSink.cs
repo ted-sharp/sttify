@@ -212,9 +212,12 @@ public class SendInputSink : ITextOutputSink
     [SupportedOSPlatform("windows")]
     private async Task<bool> SendTextViaInputAsync(string text, CancellationToken cancellationToken)
     {
-        #pragma warning disable CA2014 // stackalloc をループ内で使用
         var delayMs = _settings.RateLimitCps > 0 ? 1000 / _settings.RateLimitCps : 0;
         bool anySuccess = false;
+
+        // Pre-allocate input arrays to avoid stackalloc in loops
+        var singleInput = new CsINPUT[1];
+        var doubleInput = new CsINPUT[2];
 
         // Iterate over text by Unicode scalar values to handle surrogate pairs
         var enumerator = System.Globalization.StringInfo.GetTextElementEnumerator(text);
@@ -246,9 +249,11 @@ public class SendInputSink : ITextOutputSink
                 uint resultDown;
                 unsafe
                 {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = downInput;
-                    resultDown = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
+                        singleInput[0] = downInput;
+                        resultDown = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 if (resultDown == 0)
                 {
@@ -287,9 +292,11 @@ public class SendInputSink : ITextOutputSink
                 uint resultUp;
                 unsafe
                 {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = upInput;
-                    resultUp = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
+                        singleInput[0] = upInput;
+                        resultUp = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 if (resultUp == 0)
                 {
@@ -319,15 +326,16 @@ public class SendInputSink : ITextOutputSink
             uint result;
             unsafe
             {
-                var inputs = stackalloc CsINPUT[2];
-                inputs[0] = commitDown;
-                inputs[1] = commitUp;
-                result = SafeSendInput(2, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                fixed (CsINPUT* inputs = doubleInput)
+                {
+                    inputs[0] = commitDown;
+                    inputs[1] = commitUp;
+                    result = SafeSendInput(2, inputs, Marshal.SizeOf<CsINPUT>());
+                }
             }
             if (result > 0) anySuccess = true;
         }
 
-        #pragma warning restore CA2014
         return anySuccess;
     }
 
@@ -355,6 +363,9 @@ public class SendInputSink : ITextOutputSink
                 IntPtr activeWindow = (IntPtr)GetForegroundWindow();
                 System.Diagnostics.Debug.WriteLine($"*** Active window handle: {activeWindow} ***");
 
+                // Pre-allocate input arrays to avoid stackalloc in loops
+                var singleInput = new CsINPUT[1];
+
                 // Try alternative: Send VK_INSERT with Shift (Shift+Insert = Paste)
                 System.Diagnostics.Debug.WriteLine("*** Trying Shift+Insert (alternative paste) ***");
                 var shiftDown = CreateKeyInput(0x10, false);  // Shift down
@@ -362,33 +373,36 @@ public class SendInputSink : ITextOutputSink
                 var insertUp = CreateKeyInput(0x2D, true);    // Insert up
                 var shiftUp = CreateKeyInput(0x10, true);     // Shift up
 
-                #pragma warning disable CA2014 // stackalloc をループ内で使用
                 uint sr1;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = shiftDown;
-                    sr1 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = shiftDown;
+                        sr1 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint sr2;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = insertDown;
-                    sr2 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = insertDown;
+                        sr2 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint sr3;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = insertUp;
-                    sr3 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = insertUp;
+                        sr3 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint sr4;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = shiftUp;
-                    sr4 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = shiftUp;
+                        sr4 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
 
                 System.Diagnostics.Debug.WriteLine($"*** Shift+Insert results: Shift={sr1}, Insert_down={sr2}, Insert_up={sr3}, Shift_up={sr4} ***");
@@ -404,32 +418,35 @@ public class SendInputSink : ITextOutputSink
 
                 uint result1;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = ctrlDown;
-                    result1 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = ctrlDown;
+                        result1 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint result2;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = vDown;
-                    result2 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = vDown;
+                        result2 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint result3;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = vUp;
-                    result3 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = vUp;
+                        result3 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint result4;
                 unsafe {
-                    var inputs = stackalloc CsINPUT[1];
-                    inputs[0] = ctrlUp;
-                    result4 = SafeSendInput(1, (CsINPUT*)inputs, Marshal.SizeOf<CsINPUT>());
+                    fixed (CsINPUT* inputs = singleInput) {
+                        singleInput[0] = ctrlUp;
+                        result4 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
+                    }
                 }
-                #pragma warning restore CA2014
 
                 System.Diagnostics.Debug.WriteLine($"*** Ctrl+V results: Ctrl={result1}, V_down={result2}, V_up={result3}, Ctrl_up={result4} ***");
 
