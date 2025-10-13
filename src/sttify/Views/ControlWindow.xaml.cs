@@ -41,7 +41,7 @@ public partial class ControlWindow
 
         // Add drag functionality after window is loaded (for XAML instantiation)
         Debug.WriteLine("ControlWindow: Adding Loaded event handler in parameterless constructor");
-        Loaded += (s, e) =>
+        Loaded += (_, _) =>
         {
             Debug.WriteLine("ControlWindow: Loaded event fired from parameterless constructor");
             SetupDragFunctionality();
@@ -52,8 +52,8 @@ public partial class ControlWindow
         };
 
         // Save position when window is moved or closed
-        LocationChanged += (s, e) => SaveWindowPosition();
-        Closing += (s, e) => SaveWindowPosition();
+        LocationChanged += (_, _) => SaveWindowPosition();
+        Closing += (_, _) => SaveWindowPosition();
     }
 
     // Constructor for dependency injection
@@ -195,7 +195,7 @@ public partial class ControlWindow
         }
     }
 
-    private void OnMicrophoneClick(object sender, MouseButtonEventArgs e)
+    private void OnMicrophoneClick(object _, MouseButtonEventArgs __)
     {
         Debug.WriteLine("OnMicrophoneClick: Click detected");
 
@@ -273,12 +273,12 @@ public partial class ControlWindow
             if (currentState == Corelib.Session.SessionState.Listening)
             {
                 micItem.Header = LocalizationManager.GetString("menu.stop_recognition");
-                micItem.Click += (s, args) => AsyncHelper.FireAndForget(() => applicationService.StopRecognitionAsync(), "MenuStopRecognition");
+                micItem.Click += (_, _) => AsyncHelper.FireAndForget(() => applicationService.StopRecognitionAsync(), "MenuStopRecognition");
             }
             else
             {
                 micItem.Header = LocalizationManager.GetString("menu.start_recognition");
-                micItem.Click += (s, args) => AsyncHelper.FireAndForget(() => applicationService.StartRecognitionAsync(), "MenuStartRecognition");
+                micItem.Click += (_, _) => AsyncHelper.FireAndForget(() => applicationService.StartRecognitionAsync(), "MenuStartRecognition");
             }
 
             contextMenu.Items.Add(micItem);
@@ -286,17 +286,17 @@ public partial class ControlWindow
         }
 
         var settingsItem = new MenuItem { Header = LocalizationManager.GetString("menu.settings") };
-        settingsItem.Click += (s, args) => ShowSettingsWindow();
+        settingsItem.Click += (_, _) => ShowSettingsWindow();
         contextMenu.Items.Add(settingsItem);
 
         contextMenu.Items.Add(new Separator());
 
         var hideItem = new MenuItem { Header = LocalizationManager.GetString("menu.hide") };
-        hideItem.Click += (s, args) => Hide();
+        hideItem.Click += (_, _) => Hide();
         contextMenu.Items.Add(hideItem);
 
         var exitItem = new MenuItem { Header = LocalizationManager.GetString("menu.exit") };
-        exitItem.Click += (s, args) => System.Windows.Application.Current.Shutdown();
+        exitItem.Click += (_, _) => System.Windows.Application.Current.Shutdown();
         contextMenu.Items.Add(exitItem);
 
         contextMenu.IsOpen = true;
@@ -458,7 +458,7 @@ public partial class ControlWindow
             }
 
             // Set up completion handler to update icon and start state-specific animations
-            flipAnimation.Completed += (s, e) =>
+            flipAnimation.Completed += (_, _) =>
             {
                 MicrophoneIcon.Text = iconText;
 

@@ -125,7 +125,7 @@ public class EndpointDetector : IDisposable
                 Telemetry.LogEvent("SilenceEndpointDetected", new
                 {
                     SilenceDuration = silenceDuration.TotalMilliseconds,
-                    Confidence = result.Confidence
+                    result.Confidence
                 });
             }
         }
@@ -219,7 +219,7 @@ public class EndpointDetector : IDisposable
         return result;
     }
 
-    private EndpointResult DetectAdaptiveEndpoint(VadResult vadResult, DateTime timestamp)
+    private EndpointResult DetectAdaptiveEndpoint(VadResult _, DateTime timestamp)
     {
         var result = new EndpointResult { HasEndpoint = false };
 
@@ -273,7 +273,7 @@ public class EndpointDetector : IDisposable
             Telemetry.LogEvent("UtteranceStarted", new
             {
                 UtteranceNumber = UtteranceCount,
-                Confidence = e.Confidence,
+                e.Confidence,
                 SessionDuration = (e.Timestamp - _sessionStartTime).TotalSeconds
             });
         }
@@ -345,7 +345,7 @@ public class EndpointDetector : IDisposable
                 UtteranceNumber = UtteranceCount,
                 Duration = utteranceDuration.TotalMilliseconds,
                 EndpointType = result.EndpointType.ToString(),
-                Confidence = result.Confidence
+                result.Confidence
             });
         }
 

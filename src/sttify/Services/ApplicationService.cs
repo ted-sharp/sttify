@@ -100,7 +100,7 @@ public class ApplicationService : IDisposable
     {
         try
         {
-            _hotkeyThreadHandler = (ref MSG msg, ref bool handled) =>
+            _hotkeyThreadHandler = (ref MSG msg, ref bool _) =>
             {
                 // WM_HOTKEY = 0x0312
                 if (msg.message == 0x0312)
@@ -320,11 +320,11 @@ public class ApplicationService : IDisposable
                         break;
                 }
 
-                Telemetry.LogEvent("HotkeyTriggeredHandled", new { Name = e.Name, Hotkey = e.HotkeyString, Action = e.Action.ToString() });
+                Telemetry.LogEvent("HotkeyTriggeredHandled", new { e.Name, e.HotkeyString, Action = e.Action.ToString() });
             }
             catch (Exception ex)
             {
-                Telemetry.LogError("HotkeyProcessingFailed", ex, new { Name = e.Name, Action = e.Action.ToString() });
+                Telemetry.LogError("HotkeyProcessingFailed", ex, new { e.Name, Action = e.Action.ToString() });
             }
         }, nameof(OnHotkeyTriggered), new { e.Name, e.HotkeyString, Action = e.Action.ToString() });
     }
@@ -378,9 +378,9 @@ public class ApplicationService : IDisposable
     {
         Telemetry.LogError("RecoveryFailed", e.Exception, new
         {
-            OperationName = e.OperationName,
-            AttemptNumber = e.AttemptNumber,
-            MaxAttempts = e.MaxAttempts
+            e.OperationName,
+            e.AttemptNumber,
+            e.MaxAttempts
         });
 
         // Show user notification for critical failures

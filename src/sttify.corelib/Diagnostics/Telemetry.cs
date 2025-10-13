@@ -265,7 +265,7 @@ internal class LogEntry
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class TelemetrySettings
 {
-    public bool EnableConsoleLogging { get; set; } = false;
-    public bool MaskTextInLogs { get; set; } = false;
+    public bool EnableConsoleLogging { get; set; }
+    public bool MaskTextInLogs { get; set; }
     public LogEventLevel MinimumLevel { get; set; } = LogEventLevel.Information;
 }

@@ -144,7 +144,7 @@ public class DiagnosticCollector : IDisposable
         }
     }
 
-    private void CollectCustomDiagnostics(DateTime timestamp)
+    private void CollectCustomDiagnostics(DateTime _)
     {
         // This method can be extended by specific components to add their own diagnostics
         // For now, we'll add some basic counters that can be incremented by other parts of the system
@@ -206,7 +206,7 @@ public class DiagnosticCollector : IDisposable
     {
         _diagnostics.AddOrUpdate(key,
             new DiagnosticData(key, value, timestamp),
-            (k, existing) =>
+            (_, existing) =>
             {
                 existing.PreviousValue = existing.CurrentValue;
                 existing.CurrentValue = value;
@@ -254,8 +254,8 @@ public class DiagnosticCollector : IDisposable
 
                     Telemetry.LogWarning("DiagnosticThresholdExceeded", $"Threshold exceeded for {threshold.Key}", new
                     {
-                        Key = threshold.Key,
-                        CurrentValue = data.CurrentValue,
+                        threshold.Key,
+                        data.CurrentValue,
                         ThresholdValue = threshold.Value,
                         ComparisonType = threshold.ComparisonType.ToString()
                     });

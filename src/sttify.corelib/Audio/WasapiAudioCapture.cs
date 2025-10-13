@@ -94,10 +94,10 @@ public class WasapiAudioCapture : IDisposable
 
                 Telemetry.LogEvent("WasapiCaptureStarted", new
                 {
-                    SampleRate = CurrentWaveFormat?.SampleRate,
-                    Channels = CurrentWaveFormat?.Channels,
-                    BitsPerSample = CurrentWaveFormat?.BitsPerSample,
-                    DeviceId = _settings.DeviceId
+                    CurrentWaveFormat?.SampleRate,
+                    CurrentWaveFormat?.Channels,
+                    CurrentWaveFormat?.BitsPerSample,
+                    _settings.DeviceId
                 });
             }
         }
@@ -155,7 +155,7 @@ public class WasapiAudioCapture : IDisposable
             {
                 Telemetry.LogWarning("AudioDeviceNotFound",
                     $"Specified device not found: {_settings.DeviceId}",
-                    new { DeviceId = _settings.DeviceId });
+                    new { _settings.DeviceId });
 
                 // Fall back to default policy: Communications or Console based on Channels
                 var role = _settings.Channels == 1 ? Role.Communications : Role.Console;

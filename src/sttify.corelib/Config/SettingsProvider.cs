@@ -489,7 +489,7 @@ public class OutputSettings
 {
     public string Primary { get; set; } = "sendinput";
     public string[] Fallbacks { get; set; } = ["external-process", "stream"];
-    public int PrimaryOutputIndex { get; set; } = 0; // 0=SendInput, 1=External Process, 2=Stream
+    public int PrimaryOutputIndex { get; set; } // 0=SendInput, 1=External Process, 2=Stream
     public SendInputOutputSettings SendInput { get; set; } = new();
     public ExternalProcessOutputSettings ExternalProcess { get; set; } = new();
     public StreamOutputSettings Stream { get; set; } = new();
@@ -595,7 +595,7 @@ public class HotkeySettings
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
 public class PrivacySettings
 {
-    public bool MaskInLogs { get; set; } = false;
+    public bool MaskInLogs { get; set; }
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
@@ -606,7 +606,7 @@ public class VibeEngineSettings
     public string Language { get; set; } = "ja";
     public string Model { get; set; } = "base";
     public string OutputFormat { get; set; } = "json";
-    public bool EnableDiarization { get; set; } = false;
+    public bool EnableDiarization { get; set; }
     public bool EnablePostProcessing { get; set; } = true;
     public bool AutoCapitalize { get; set; } = true;
     public bool AutoPunctuation { get; set; } = true;

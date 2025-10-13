@@ -128,8 +128,6 @@ public class StreamSink : ITextOutputSink, IDisposable
 
             throw new TextOutputFailedException($"Failed to write to {_settings.OutputType}: {ex.Message}", ex);
         }
-
-        return;
     }
 
     private bool GetAvailability()
@@ -231,14 +229,14 @@ public class StreamSink : ITextOutputSink, IDisposable
 
             Telemetry.LogEvent("StreamSinkFileInitialized", new
             {
-                FilePath = _settings.FilePath,
+                _settings.FilePath,
                 AppendMode = _settings.AppendToFile,
                 MaxFileSize = _settings.MaxFileSizeBytes
             });
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("StreamSinkFileInitializationFailed", ex, new { FilePath = _settings.FilePath });
+            Telemetry.LogError("StreamSinkFileInitializationFailed", ex, new { _settings.FilePath });
             throw;
         }
     }
@@ -278,7 +276,7 @@ public class StreamSink : ITextOutputSink, IDisposable
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("StreamSinkFileRotationFailed", ex, new { FilePath = _settings.FilePath });
+            Telemetry.LogError("StreamSinkFileRotationFailed", ex, new { _settings.FilePath });
             // Try to reinitialize the file writer
             InitializeFileOutput();
         }

@@ -185,8 +185,8 @@ public class PluginManager : IDisposable
 
             Telemetry.LogEvent("PluginLoaded", new
             {
-                Name = metadata.Name,
-                Version = metadata.Version,
+                metadata.Name,
+                metadata.Version,
                 Capabilities = metadata.Capabilities.ToString()
             });
 

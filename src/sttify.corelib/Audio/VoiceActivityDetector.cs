@@ -418,7 +418,7 @@ public class VoiceActivityDetector : IDisposable
         }
     }
 
-    private void UpdateAdaptiveThreshold(double energy)
+    private void UpdateAdaptiveThreshold(double _)
     {
         // Adaptive threshold based on noise floor and recent energy history
         var margin = _settings.AdaptiveMarginDb;
@@ -437,7 +437,7 @@ public class VoiceActivityDetector : IDisposable
         }
     }
 
-    private VadResult DetectVoiceActivity(double energy, double zcr, double spectralCentroid, double spectralRolloff)
+    private VadResult DetectVoiceActivity(double energy, double zcr, double spectralCentroid, double _)
     {
         var confidence = 0.0;
 
@@ -511,8 +511,8 @@ public class VoiceActivityDetector : IDisposable
 
                 Telemetry.LogEvent("VoiceActivityStarted", new
                 {
-                    Confidence = result.Confidence,
-                    Energy = result.Energy,
+                    result.Confidence,
+                    result.Energy,
                     SilenceDuration = (result.Timestamp - _lastSilenceTime).TotalMilliseconds
                 });
             }
@@ -533,7 +533,7 @@ public class VoiceActivityDetector : IDisposable
                     Telemetry.LogEvent("VoiceActivityStopped", new
                     {
                         VoiceDuration = voiceDuration.TotalMilliseconds,
-                        Energy = result.Energy
+                        result.Energy
                     });
                 }
             }

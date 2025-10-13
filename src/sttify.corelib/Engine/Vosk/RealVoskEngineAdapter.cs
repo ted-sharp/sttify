@@ -17,11 +17,11 @@ public class RealVoskEngineAdapter : ISttEngine
 
     // Track last partial text to avoid duplicate events
     private string _currentPartialText = string.Empty;
-    private int _frameCount = 0;
+    private int _frameCount;
     private bool _isRunning;
 
     // Voice Activity Detection (VAD) - for forced finalization on silence
-    private bool _isSpeaking = false;
+    private bool _isSpeaking;
     private Model? _model;
     private DateTime _recognitionStartTime;
     private VoskRecognizer? _recognizer;
@@ -62,9 +62,9 @@ public class RealVoskEngineAdapter : ISttEngine
 
             Telemetry.LogEvent("VoskEngineStarted", new
             {
-                ModelPath = _settings.ModelPath,
-                Language = _settings.Language,
-                Punctuation = _settings.Punctuation,
+                _settings.ModelPath,
+                _settings.Language,
+                _settings.Punctuation,
                 VadEnabled = true
             });
         }
@@ -201,7 +201,7 @@ public class RealVoskEngineAdapter : ISttEngine
 
             Telemetry.LogEvent("VoskModelLoaded", new
             {
-                ModelPath = _settings.ModelPath,
+                _settings.ModelPath,
                 ModelSize = GetDirectorySize(_settings.ModelPath)
             });
         }

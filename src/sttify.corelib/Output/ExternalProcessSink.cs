@@ -49,10 +49,10 @@ public class ExternalProcessSink : ITextOutputSink
 
             Telemetry.LogEvent("ExternalProcessStarting", new
             {
-                ExecutablePath = _settings.ExecutablePath,
+                _settings.ExecutablePath,
                 Arguments = _settings.LogArguments ? arguments : "[REDACTED]",
                 TextLength = text.Length,
-                WaitForExit = _settings.WaitForExit
+                _settings.WaitForExit
             });
 
             using var process = new Process();
@@ -103,7 +103,7 @@ public class ExternalProcessSink : ITextOutputSink
 
                     Telemetry.LogEvent("ExternalProcessFailed", new
                     {
-                        ExitCode = process.ExitCode,
+                        process.ExitCode,
                         StandardError = error,
                         StandardOutput = output
                     });
@@ -136,7 +136,7 @@ public class ExternalProcessSink : ITextOutputSink
             Telemetry.LogError("ExternalProcessFailed", ex, new
             {
                 DurationMs = duration.TotalMilliseconds,
-                ExecutablePath = _settings.ExecutablePath
+                _settings.ExecutablePath
             });
 
             throw new TextOutputFailedException($"Failed to execute external process: {ex.Message}", ex);
@@ -162,10 +162,10 @@ public class ExternalProcessSettings
     public string ExecutablePath { get; set; } = "";
     public string ArgumentTemplate { get; set; } = "{text_quoted}";
     public bool WaitForExit { get; set; } = true;
-    public int ThrottleMs { get; set; } = 0;
+    public int ThrottleMs { get; set; }
     public int TimeoutMs { get; set; } = 30000; // 30 seconds default timeout
     public Dictionary<string, string> EnvironmentVariables { get; set; } = new();
-    public bool LogArguments { get; set; } = false; // For security - don't log arguments by default
-    public bool LogOutput { get; set; } = false; // Don't log process output by default
+    public bool LogArguments { get; set; } // For security - don't log arguments by default
+    public bool LogOutput { get; set; } // Don't log process output by default
     public string WorkingDirectory { get; set; } = ""; // Working directory for the process
 }

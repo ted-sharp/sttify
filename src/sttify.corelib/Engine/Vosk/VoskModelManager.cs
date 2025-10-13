@@ -70,7 +70,7 @@ public class VoskModelManager
 
         try
         {
-            Telemetry.LogEvent("VoskModelDownloadStarted", new { Model = modelInfo.Name, Size = modelInfo.Size });
+            Telemetry.LogEvent("VoskModelDownloadStarted", new { modelInfo.Name, modelInfo.Size });
 
             // Download the model
             using var response = await _httpClient.GetAsync(modelInfo.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);

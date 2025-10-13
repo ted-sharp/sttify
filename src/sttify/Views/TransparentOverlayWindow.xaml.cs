@@ -133,7 +133,7 @@ public partial class TransparentOverlayWindow
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == IntPtr.Zero)
             return;
-        var exStyle = (int)GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
+        var exStyle = GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
         if (isClickThrough)
         {
             exStyle |= (int)WindowStylesEx.WS_EX_TRANSPARENT | (int)WindowStylesEx.WS_EX_LAYERED;
@@ -151,7 +151,7 @@ public partial class TransparentOverlayWindow
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
-            var exStyle = (int)GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
+            var exStyle = GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
             exStyle |= (int)WindowStylesEx.WS_EX_LAYERED;
             SetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE, exStyle);
         }

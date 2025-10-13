@@ -101,7 +101,7 @@ public class AudioCapture : IDisposable
             Telemetry.LogError("WasapiAudioError", e.Exception, new
             {
                 Component = "AudioCapture",
-                Message = e.Message
+                e.Message
             });
 
             if (IsTransientAudioError(e.Exception))

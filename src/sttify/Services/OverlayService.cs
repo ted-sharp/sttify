@@ -226,7 +226,6 @@ public class OverlayService : IDisposable
             case "right":
                 left = areaLeft + Math.Max(0, areaWidth - width - overlay.MarginX);
                 break;
-            case "stretch":
             case "center":
             default:
                 left = areaLeft + Math.Max(0, (areaWidth - width) / 2.0);
@@ -240,7 +239,6 @@ public class OverlayService : IDisposable
             case "top":
                 top = areaTop + overlay.MarginY;
                 break;
-            case "stretch":
             case "center":
                 top = areaTop + Math.Max(0, (areaHeight - height) / 2.0);
                 break;

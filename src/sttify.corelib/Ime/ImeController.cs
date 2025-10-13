@@ -13,7 +13,7 @@ namespace Sttify.Corelib.Ime;
 public class ImeController : IDisposable
 {
     private readonly ImeSettings _settings;
-    private bool _disposed = false;
+    private bool _disposed;
 
     public ImeController(ImeSettings settings)
     {
@@ -216,7 +216,7 @@ public class ImeController : IDisposable
         private readonly IME_SMODE _originalSentence;
         private readonly ImeSettings _settings;
         private readonly IntPtr _window;
-        private bool _disposed = false;
+        private bool _disposed;
 
         public ImeRestorer(IntPtr window, bool originalOpen, IME_CMODE originalConversion, IME_SMODE originalSentence, ImeSettings settings)
         {
@@ -332,8 +332,8 @@ public class ImeSettings
 /// </summary>
 public class ImeStatus
 {
-    public bool HasImeContext { get; set; } = false;
-    public bool IsOpen { get; set; } = false;
+    public bool HasImeContext { get; set; }
+    public bool IsOpen { get; set; }
 
     [SupportedOSPlatform("windows")]
     public IME_CMODE ConversionMode { get; set; } = IME_CMODE.IME_CMODE_ALPHANUMERIC;
@@ -341,7 +341,7 @@ public class ImeStatus
     [SupportedOSPlatform("windows")]
     public IME_SMODE SentenceMode { get; set; } = IME_SMODE.IME_SMODE_NONE;
 
-    public bool IsComposing { get; set; } = false;
+    public bool IsComposing { get; set; }
     public IntPtr WindowHandle { get; set; } = IntPtr.Zero;
 
     [SupportedOSPlatform("windows")]

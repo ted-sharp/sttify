@@ -243,7 +243,7 @@ public class AwsTranscribeEngine : CloudSttEngine
         }
     }
 
-    private Dictionary<string, string> CreateAwsHeaders(string httpMethod, string endpoint, byte[] payload, DateTimeOffset timestamp)
+    private Dictionary<string, string> CreateAwsHeaders(string _, string endpoint, byte[] __, DateTimeOffset timestamp)
     {
         // Simplified AWS signature v4 implementation
         // In production, use AWS SDK which handles this automatically

@@ -163,7 +163,7 @@ public partial class App
             {
                 services.AddSingleton<SettingsProvider>();
                 services.AddSingleton<AudioCapture>();
-                services.AddSingleton<HotkeyManager>(provider =>
+                services.AddSingleton<HotkeyManager>(_ =>
                 {
                     // Create HotkeyManager with default IntPtr (0) for window handle
                     return new HotkeyManager(IntPtr.Zero);
@@ -207,7 +207,7 @@ public partial class App
 
                 services.AddSingleton<IOutputSinkProvider, OutputSinkProvider>();
 
-                services.AddSingleton<RecognitionSessionSettings>(provider =>
+                services.AddSingleton<RecognitionSessionSettings>(_ =>
                 {
                     return new RecognitionSessionSettings
                     {

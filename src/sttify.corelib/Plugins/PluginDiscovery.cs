@@ -149,8 +149,8 @@ public class PluginDiscovery
             {
                 Telemetry.LogEvent("PluginDiscovered", new
                 {
-                    Name = metadata.Name,
-                    Version = metadata.Version,
+                    metadata.Name,
+                    metadata.Version,
                     Capabilities = capabilities.ToString(),
                     Directory = pluginDirectory
                 });

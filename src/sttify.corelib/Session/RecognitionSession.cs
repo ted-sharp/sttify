@@ -78,7 +78,7 @@ public class RecognitionSession : IDisposable
         Telemetry.LogEvent("RecognitionSessionCreated", new
         {
             Mode = _currentMode.ToString(),
-            EndpointSilenceMs = _settings.EndpointSilenceMs,
+            _settings.EndpointSilenceMs,
             WakeWordsCount = _wakeWords.Count
         });
     }
@@ -143,12 +143,12 @@ public class RecognitionSession : IDisposable
     /// <summary>
     /// Check if PTT is currently pressed
     /// </summary>
-    public bool IsPttPressed { get; private set; } = false;
+    public bool IsPttPressed { get; private set; }
 
     /// <summary>
     /// Check if currently waiting for wake word
     /// </summary>
-    public bool IsWaitingForWakeWord { get; private set; } = false;
+    public bool IsWaitingForWakeWord { get; private set; }
 
     public void Dispose()
     {
@@ -273,7 +273,7 @@ public class RecognitionSession : IDisposable
         }
     }
 
-    private Task InitializeModeAsync(CancellationToken cancellationToken)
+    private Task InitializeModeAsync(CancellationToken _)
     {
         switch (CurrentMode)
         {

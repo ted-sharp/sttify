@@ -60,8 +60,8 @@ public abstract class CloudSttEngine : ISttEngine
             Telemetry.LogEvent("CloudEngineStarted", new
             {
                 Provider = GetProviderName(),
-                Language = _settings.Language,
-                Endpoint = _settings.Endpoint
+                _settings.Language,
+                _settings.Endpoint
             });
         }
         catch (Exception ex)

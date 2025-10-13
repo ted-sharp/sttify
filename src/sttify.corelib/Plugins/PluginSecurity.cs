@@ -74,16 +74,16 @@ public class PluginSecurity
             {
                 Telemetry.LogEvent("PluginSecurityValidationPassed", new
                 {
-                    PluginName = result.PluginName,
+                    result.PluginName,
                     ThreatLevel = result.ThreatLevel.ToString(),
-                    Author = pluginInfo.Metadata.Author
+                    pluginInfo.Metadata.Author
                 });
             }
             else
             {
                 Telemetry.LogWarning("PluginSecurityValidationFailed", $"Plugin {result.PluginName} validation failed", new
                 {
-                    PluginName = result.PluginName,
+                    result.PluginName,
                     ThreatLevel = result.ThreatLevel.ToString(),
                     Issues = result.SecurityIssues.ToArray()
                 });
@@ -95,7 +95,7 @@ public class PluginSecurity
             result.ThreatLevel = ThreatLevel.High;
             result.ValidationException = ex;
 
-            Telemetry.LogError("PluginSecurityValidationError", ex, new { PluginName = result.PluginName });
+            Telemetry.LogError("PluginSecurityValidationError", ex, new { result.PluginName });
         }
 
         return result;

@@ -57,9 +57,9 @@ public class ErrorRecoveryManager : IDisposable
                 Telemetry.LogError("ComponentDisabledDueToErrors", exception, new
                 {
                     ComponentName = componentName,
-                    ErrorCount = state.ErrorCount,
-                    ConsecutiveFailures = state.ConsecutiveFailures,
-                    DisabledUntil = state.DisabledUntil
+                    state.ErrorCount,
+                    state.ConsecutiveFailures,
+                    state.DisabledUntil
                 });
             }
 
@@ -84,9 +84,9 @@ public class ErrorRecoveryManager : IDisposable
             {
                 ComponentName = componentName,
                 Severity = severity.ToString(),
-                ErrorCount = state.ErrorCount,
-                ConsecutiveFailures = state.ConsecutiveFailures,
-                IsDisabled = state.IsDisabled
+                state.ErrorCount,
+                state.ConsecutiveFailures,
+                state.IsDisabled
             });
         }
     }
@@ -154,7 +154,7 @@ public class ErrorRecoveryManager : IDisposable
 
     public async Task<bool> ForceRecoveryAsync(string componentName)
     {
-        if (!_componentStates.TryGetValue(componentName, out var state))
+        if (!_componentStates.TryGetValue(componentName, out _))
             return true; // Component has no errors
 
         try
@@ -205,7 +205,7 @@ public class ErrorRecoveryManager : IDisposable
                 Telemetry.LogError("RecoveryQueueProcessingError", ex, new
                 {
                     ActionType = action.ActionType.ToString(),
-                    ComponentName = action.ComponentName
+                    action.ComponentName
                 });
             }
         }
@@ -217,7 +217,7 @@ public class ErrorRecoveryManager : IDisposable
         {
             Telemetry.LogEvent("RecoveryActionStarted", new
             {
-                ComponentName = action.ComponentName,
+                action.ComponentName,
                 ActionType = action.ActionType.ToString(),
                 QueueTime = (DateTime.UtcNow - action.QueuedTime).TotalSeconds
             });
@@ -254,7 +254,7 @@ public class ErrorRecoveryManager : IDisposable
 
             Telemetry.LogEvent("RecoveryActionCompleted", new
             {
-                ComponentName = action.ComponentName,
+                action.ComponentName,
                 ActionType = action.ActionType.ToString(),
                 Success = success,
                 ExecutionTime = (DateTime.UtcNow - action.QueuedTime).TotalSeconds
@@ -266,42 +266,42 @@ public class ErrorRecoveryManager : IDisposable
         {
             Telemetry.LogError("RecoveryActionExecutionError", ex, new
             {
-                ComponentName = action.ComponentName,
+                action.ComponentName,
                 ActionType = action.ActionType.ToString()
             });
             return false;
         }
     }
 
-    private async Task<bool> RestartComponentAsync(string componentName)
+    private async Task<bool> RestartComponentAsync(string _)
     {
         // Implementation would depend on the specific component
         await Task.Delay(100); // Simulate restart time
         return true;
     }
 
-    private async Task<bool> ResetComponentAsync(string componentName)
+    private async Task<bool> ResetComponentAsync(string _)
     {
         // Implementation would depend on the specific component
         await Task.Delay(50); // Simulate reset time
         return true;
     }
 
-    private async Task<bool> ReinitializeComponentAsync(string componentName)
+    private async Task<bool> ReinitializeComponentAsync(string _)
     {
         // Implementation would depend on the specific component
         await Task.Delay(200); // Simulate reinitialize time
         return true;
     }
 
-    private async Task<bool> ForceRestartComponentAsync(string componentName)
+    private async Task<bool> ForceRestartComponentAsync(string _)
     {
         // Implementation would depend on the specific component
         await Task.Delay(500); // Simulate force restart time
         return true;
     }
 
-    private async Task<bool> EnableFallbackAsync(string componentName)
+    private async Task<bool> EnableFallbackAsync(string _)
     {
         // Implementation would enable fallback mechanisms
         await Task.Delay(10); // Simulate fallback enablement

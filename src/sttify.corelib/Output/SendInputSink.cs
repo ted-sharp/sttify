@@ -734,6 +734,6 @@ public class SendInputSink : ITextOutputSink
 public class SendInputSettings
 {
     public int RateLimitCps { get; set; } = 50;
-    public int? CommitKey { get; set; } = null;
+    public int? CommitKey { get; set; }
     public ImeSettings Ime { get; set; } = new ImeSettings();
 }

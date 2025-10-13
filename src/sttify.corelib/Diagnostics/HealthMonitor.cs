@@ -105,7 +105,7 @@ public class HealthMonitor : IDisposable
                 Telemetry.LogEvent("HealthStatusChanged", new
                 {
                     WasHealthy = wasHealthy,
-                    IsHealthy = IsHealthy,
+                    IsHealthy,
                     UnhealthyChecks = unhealthyChecks.Select(c => new { c.Key, c.Value.Description })
                 });
 

@@ -24,8 +24,8 @@ public class BasicIntegrationTests
         services.AddSingleton<SettingsProvider>();
         services.AddSingleton<AudioCapture>();
         // Engine is constructed on session start now; keep a dummy registration if required elsewhere
-        services.AddSingleton<ISttEngine>(provider => new Mock<ISttEngine>().Object);
-        services.AddSingleton<IOutputSinkProvider>(provider =>
+        services.AddSingleton<ISttEngine>(_ => new Mock<ISttEngine>().Object);
+        services.AddSingleton<IOutputSinkProvider>(_ =>
         {
             // Minimal provider for integration test
             var sp = new Mock<IOutputSinkProvider>();

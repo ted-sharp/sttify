@@ -58,9 +58,9 @@ public class VibeSttEngine : ISttEngine
 
             Telemetry.LogEvent("VibeEngineStarted", new
             {
-                Endpoint = _settings.Endpoint,
-                Language = _settings.Language,
-                Model = _settings.Model
+                _settings.Endpoint,
+                _settings.Language,
+                _settings.Model
             });
         }
         catch (Exception ex)
@@ -323,8 +323,8 @@ public class VibeSttEngine : ISttEngine
         {
             TextLength = text.Length,
             Confidence = confidence,
-            Language = result.Language,
-            Duration = result.Duration,
+            result.Language,
+            result.Duration,
             SegmentCount = result.Segments.Length
         });
     }

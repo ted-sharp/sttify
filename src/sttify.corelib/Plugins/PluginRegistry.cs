@@ -54,14 +54,14 @@ public class PluginRegistry : IDisposable
             {
                 _enginePlugins[plugin.Name] = enginePlugin;
                 registered = true;
-                Telemetry.LogEvent("SpeechEnginePluginRegistered", new { Name = plugin.Name });
+                Telemetry.LogEvent("SpeechEnginePluginRegistered", new { plugin.Name });
             }
 
             if (plugin is ITextOutputPlugin outputPlugin)
             {
                 _outputPlugins[plugin.Name] = outputPlugin;
                 registered = true;
-                Telemetry.LogEvent("TextOutputPluginRegistered", new { Name = plugin.Name });
+                Telemetry.LogEvent("TextOutputPluginRegistered", new { plugin.Name });
             }
 
             if (plugin is ITextProcessorPlugin processorPlugin)
@@ -70,8 +70,8 @@ public class PluginRegistry : IDisposable
                 registered = true;
                 Telemetry.LogEvent("TextProcessorPluginRegistered", new
                 {
-                    Name = plugin.Name,
-                    SupportedLanguages = processorPlugin.SupportedLanguages
+                    plugin.Name,
+                    processorPlugin.SupportedLanguages
                 });
             }
 
@@ -96,19 +96,19 @@ public class PluginRegistry : IDisposable
             if (_enginePlugins.TryRemove(plugin.Name, out _))
             {
                 unregistered = true;
-                Telemetry.LogEvent("SpeechEnginePluginUnregistered", new { Name = plugin.Name });
+                Telemetry.LogEvent("SpeechEnginePluginUnregistered", new { plugin.Name });
             }
 
             if (_outputPlugins.TryRemove(plugin.Name, out _))
             {
                 unregistered = true;
-                Telemetry.LogEvent("TextOutputPluginUnregistered", new { Name = plugin.Name });
+                Telemetry.LogEvent("TextOutputPluginUnregistered", new { plugin.Name });
             }
 
             if (_processorPlugins.TryRemove(plugin.Name, out _))
             {
                 unregistered = true;
-                Telemetry.LogEvent("TextProcessorPluginUnregistered", new { Name = plugin.Name });
+                Telemetry.LogEvent("TextProcessorPluginUnregistered", new { plugin.Name });
             }
 
             if (unregistered)
@@ -233,7 +233,7 @@ public class PluginRegistry : IDisposable
                     PluginName = processorName,
                     SourceLanguage = sourceLanguage,
                     TargetLanguage = targetLanguage,
-                    SupportedLanguages = plugin.SupportedLanguages
+                    plugin.SupportedLanguages
                 });
                 return null;
             }

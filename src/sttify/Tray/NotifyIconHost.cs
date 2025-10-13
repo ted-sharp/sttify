@@ -116,12 +116,12 @@ public class NotifyIconHost : IDisposable
         exitItem.Click += OnExit;
         contextMenu.Items.Add(exitItem);
 
-        contextMenu.Opening += (s, e) => UpdateContextMenu();
+        contextMenu.Opening += (_, _) => UpdateContextMenu();
         _notifyIcon.ContextMenuStrip = contextMenu;
 
         if (_applicationService != null)
         {
-            _applicationService.SessionStateChanged += (s, e) => UpdateContextMenu();
+            _applicationService.SessionStateChanged += (_, _) => UpdateContextMenu();
         }
     }
 
@@ -300,7 +300,7 @@ public class NotifyIconHost : IDisposable
         });
     }
 
-    private void OnExit(object? sender, EventArgs e)
+    private void OnExit(object? _, EventArgs __)
     {
         Application.Current.Shutdown();
     }

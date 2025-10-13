@@ -156,15 +156,15 @@ public class HotkeyService : IDisposable
 
             Telemetry.LogEvent("HotkeyTriggered", new
             {
-                Name = e.Name,
-                HotkeyString = e.HotkeyString,
+                e.Name,
+                e.HotkeyString,
                 Action = action.ToString(),
-                Timestamp = e.Timestamp
+                e.Timestamp
             });
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("HotkeyHandlingFailed", ex, new { Name = e.Name, HotkeyString = e.HotkeyString });
+            Telemetry.LogError("HotkeyHandlingFailed", ex, new { e.Name, e.HotkeyString });
         }
     }
 
@@ -172,9 +172,9 @@ public class HotkeyService : IDisposable
     {
         Telemetry.LogEvent("HotkeyRegistrationChanged", new
         {
-            Name = e.Name,
-            HotkeyString = e.HotkeyString,
-            IsRegistered = e.IsRegistered
+            e.Name,
+            e.HotkeyString,
+            e.IsRegistered
         });
     }
 
@@ -182,9 +182,9 @@ public class HotkeyService : IDisposable
     {
         Telemetry.LogEvent("HotkeyRegistrationChanged", new
         {
-            Name = e.Name,
-            HotkeyString = e.HotkeyString,
-            IsRegistered = e.IsRegistered
+            e.Name,
+            e.HotkeyString,
+            e.IsRegistered
         });
     }
 
