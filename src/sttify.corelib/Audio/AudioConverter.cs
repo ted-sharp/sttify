@@ -1,6 +1,6 @@
+﻿using System.Buffers;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using System.Buffers;
 
 namespace Sttify.Corelib.Audio;
 
@@ -31,7 +31,7 @@ public static class AudioConverter
             try
             {
                 audioData.CopyTo(tempBuffer);
-                
+
                 using var sourceStream = new MemoryStream(tempBuffer, 0, audioData.Length);
                 using var sourceProvider = new RawSourceWaveStream(sourceStream, sourceFormat);
 
@@ -53,7 +53,7 @@ public static class AudioConverter
                 // Convert back to wave format
                 var targetFormat = new WaveFormat(TargetSampleRate, TargetBitsPerSample, TargetChannels);
                 var waveProvider = new SampleToWaveProvider16(sampleProvider);
-                
+
                 using var outputStream = new MemoryStream();
                 var readBuffer = pool.Rent(4096);
                 try
@@ -198,7 +198,7 @@ public static class AudioConverter
                     short sample = (short)(result[i] | (result[i + 1] << 8));
                     int amplified = (int)(sample * gainFactor);
                     amplified = Math.Max(short.MinValue, Math.Min(short.MaxValue, amplified));
-                    
+
                     result[i] = (byte)(amplified & 0xFF);
                     result[i + 1] = (byte)((amplified >> 8) & 0xFF);
                 }
@@ -209,7 +209,7 @@ public static class AudioConverter
                 {
                     float sample = BitConverter.ToSingle(result, i);
                     float amplified = Math.Max(-1.0f, Math.Min(1.0f, sample * gainFactor));
-                    
+
                     var bytes = BitConverter.GetBytes(amplified);
                     Array.Copy(bytes, 0, result, i, 4);
                 }

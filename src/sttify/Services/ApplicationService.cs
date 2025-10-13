@@ -1,28 +1,25 @@
-using Sttify.Corelib.Audio;
+﻿using System.Windows;
+using System.Windows.Interop;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
-using Sttify.Corelib.Engine;
 using Sttify.Corelib.Hotkey;
-using Sttify.Corelib.Output;
-using Sttify.Corelib.Session;
-using System.Windows;
-using System.Windows.Interop;
 using Sttify.Corelib.Services;
+using Sttify.Corelib.Session;
+
 // duplicate using removed
 
 namespace Sttify.Services;
 
 public class ApplicationService : IDisposable
 {
-    private readonly SettingsProvider _settingsProvider;
-    private readonly RecognitionSession _recognitionSession;
-    private readonly HotkeyService _hotkeyService;
-    private readonly OverlayService _overlayService;
     private readonly ErrorRecovery _errorRecovery;
     private readonly HealthMonitor _healthMonitor;
+    private readonly HotkeyService _hotkeyService;
+    private readonly OverlayService _overlayService;
+    private readonly RecognitionSession _recognitionSession;
+    private readonly SettingsProvider _settingsProvider;
 
-    public event EventHandler<SessionStateChangedEventArgs>? SessionStateChanged;
-    public event EventHandler<TextRecognizedEventArgs>? TextRecognized;
+    private ThreadMessageEventHandler? _hotkeyThreadHandler;
 
     public ApplicationService(
         SettingsProvider settingsProvider,
@@ -49,6 +46,27 @@ public class ApplicationService : IDisposable
 
         SetupHealthChecks();
     }
+
+    public void Dispose()
+    {
+        _healthMonitor?.Dispose();
+        if (_hotkeyThreadHandler is not null)
+        {
+            ComponentDispatcher.ThreadPreprocessMessage -= _hotkeyThreadHandler;
+            _hotkeyThreadHandler = null;
+        }
+        if (_hotkeyService is not null)
+        {
+            _hotkeyService.OnHotkeyTriggered -= OnHotkeyTriggered;
+            _hotkeyService.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
+            _hotkeyService.Dispose();
+        }
+        _recognitionSession?.Dispose();
+        _overlayService?.Dispose();
+    }
+
+    public event EventHandler<SessionStateChangedEventArgs>? SessionStateChanged;
+    public event EventHandler<TextRecognizedEventArgs>? TextRecognized;
 
     public void Initialize()
     {
@@ -77,8 +95,6 @@ public class ApplicationService : IDisposable
             throw;
         }
     }
-
-    private ThreadMessageEventHandler? _hotkeyThreadHandler;
 
     private void RegisterHotkeyMessageHook()
     {
@@ -244,7 +260,8 @@ public class ApplicationService : IDisposable
         // Avoid UI thread sync while holding potential locks upstream
         SessionStateChanged?.Invoke(this, e);
 
-        Telemetry.LogEvent("SessionStateChanged", new {
+        Telemetry.LogEvent("SessionStateChanged", new
+        {
             OldState = e.OldState.ToString(),
             NewState = e.NewState.ToString()
         });
@@ -402,24 +419,6 @@ public class ApplicationService : IDisposable
         return await _healthMonitor.GetHealthStatusAsync();
     }
 
-    public void Dispose()
-    {
-        _healthMonitor?.Dispose();
-        if (_hotkeyThreadHandler is not null)
-        {
-            ComponentDispatcher.ThreadPreprocessMessage -= _hotkeyThreadHandler;
-            _hotkeyThreadHandler = null;
-        }
-        if (_hotkeyService is not null)
-        {
-            _hotkeyService.OnHotkeyTriggered -= OnHotkeyTriggered;
-            _hotkeyService.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
-            _hotkeyService.Dispose();
-        }
-        _recognitionSession?.Dispose();
-        _overlayService?.Dispose();
-    }
-
     private void OnHotkeyRegistrationFailed(object? sender, HotkeyRegistrationFailedEventArgs e)
     {
         try
@@ -427,7 +426,8 @@ public class ApplicationService : IDisposable
             var userMessage = $"ホットキー登録に失敗しました: {e.HotkeyString}\nエラーコード: {e.Win32Error}";
 
             // Log the same user-facing message for traceability
-            Telemetry.LogWarning("HotkeyRegistrationUserMessage", userMessage, new {
+            Telemetry.LogWarning("HotkeyRegistrationUserMessage", userMessage, new
+            {
                 e.Name,
                 e.HotkeyString,
                 e.Win32Error

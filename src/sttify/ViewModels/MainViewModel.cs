@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Sttify.Corelib.Session;
 using Sttify.Services;
@@ -10,24 +10,24 @@ public partial class MainViewModel : ObservableObject
     private readonly ApplicationService _applicationService;
 
     [ObservableProperty]
-    private SessionState _currentState = SessionState.Idle;
-
-    [ObservableProperty]
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
 
     [ObservableProperty]
-    private string _recognizedText = "";
+    private SessionState _currentState = SessionState.Idle;
 
     [ObservableProperty]
     private bool _isListening;
 
+    [ObservableProperty]
+    private string _recognizedText = "";
+
     public MainViewModel(ApplicationService applicationService)
     {
         _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
-        
+
         _applicationService.SessionStateChanged += OnSessionStateChanged;
         _applicationService.TextRecognized += OnTextRecognized;
-        
+
         CurrentState = _applicationService.GetCurrentState();
         CurrentMode = _applicationService.GetCurrentMode();
         IsListening = CurrentState == SessionState.Listening;

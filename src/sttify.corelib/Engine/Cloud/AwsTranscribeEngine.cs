@@ -1,19 +1,15 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Config;
-using Sttify.Corelib.Diagnostics;
-using System.Net.Http;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Security.Cryptography;
+using Sttify.Corelib.Config;
 
 namespace Sttify.Corelib.Engine.Cloud;
 
 [ExcludeFromCodeCoverage] // External AWS API integration, network dependent, difficult to mock effectively
 public class AwsTranscribeEngine : CloudSttEngine
 {
-    private readonly string _region;
     private readonly string _accessKeyId;
+    private readonly string _region;
     private readonly string _secretAccessKey;
 
     public AwsTranscribeEngine(CloudEngineSettings settings) : base(settings)
@@ -37,26 +33,26 @@ public class AwsTranscribeEngine : CloudSttEngine
             // AWS Transcribe requires starting a transcription job and polling for results
             // For real-time transcription, we'd use AWS Transcribe Streaming
             // This is a simplified implementation for batch transcription
-            
+
             var jobName = $"sttify-job-{Guid.NewGuid():N}";
             var bucketName = "sttify-transcribe-temp"; // Would need to be configurable
-            
+
             // Step 1: Upload audio to S3 (simplified - would need actual S3 client)
             var s3Uri = await UploadToS3Async(audioData, bucketName, jobName, cancellationToken);
-            
+
             // Step 2: Start transcription job
             var startJobResult = await StartTranscriptionJobAsync(jobName, s3Uri, cancellationToken);
             if (!startJobResult.Success)
             {
                 return startJobResult;
             }
-            
+
             // Step 3: Poll for completion
             var result = await PollTranscriptionJobAsync(jobName, cancellationToken);
-            
+
             // Step 4: Cleanup S3 object (optional)
             await CleanupS3ObjectAsync(bucketName, jobName, cancellationToken);
-            
+
             return result;
         }
         catch (Exception ex)
@@ -74,11 +70,11 @@ public class AwsTranscribeEngine : CloudSttEngine
         // This is a simplified placeholder
         // In a real implementation, you would use AWS SDK to upload to S3
         // For now, we'll simulate with a direct API call
-        
+
         var endpoint = $"https://{bucketName}.s3.{_region}.amazonaws.com/{objectKey}.wav";
         var timestamp = DateTimeOffset.UtcNow;
         var headers = CreateAwsHeaders("PUT", endpoint, audioData, timestamp);
-        
+
         using var request = new HttpRequestMessage(HttpMethod.Put, endpoint);
         foreach (var header in headers)
         {
@@ -86,10 +82,10 @@ public class AwsTranscribeEngine : CloudSttEngine
         }
         request.Content = new ByteArrayContent(audioData);
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
-        
+
         var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
-        
+
         return $"s3://{bucketName}/{objectKey}.wav";
     }
 
@@ -97,7 +93,7 @@ public class AwsTranscribeEngine : CloudSttEngine
     {
         var endpoint = $"https://transcribe.{_region}.amazonaws.com/";
         var timestamp = DateTimeOffset.UtcNow;
-        
+
         var requestBody = new AwsTranscribeJobRequest
         {
             TranscriptionJobName = jobName,
@@ -214,7 +210,7 @@ public class AwsTranscribeEngine : CloudSttEngine
 
         var response = await _httpClient.GetAsync(transcriptUri, cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
-        
+
         // Parse AWS transcript JSON format
         var transcript = JsonSerializer.Deserialize<AwsTranscriptResult>(content);
         return transcript?.Results?.Transcripts?.FirstOrDefault()?.Transcript ?? "";

@@ -1,7 +1,7 @@
+﻿using System.Collections.Concurrent;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
-using System.Collections.Concurrent;
 
 namespace Sttify.Corelib.Plugins;
 
@@ -9,19 +9,29 @@ public class PluginRegistry : IDisposable
 {
     private readonly ConcurrentDictionary<string, ISpeechEnginePlugin> _enginePlugins = new();
     private readonly ConcurrentDictionary<string, ITextOutputPlugin> _outputPlugins = new();
-    private readonly ConcurrentDictionary<string, ITextProcessorPlugin> _processorPlugins = new();
     private readonly PluginManager _pluginManager;
-
-    public event EventHandler<PluginRegisteredEventArgs>? OnPluginRegistered;
-    public event EventHandler<PluginUnregisteredEventArgs>? OnPluginUnregistered;
+    private readonly ConcurrentDictionary<string, ITextProcessorPlugin> _processorPlugins = new();
 
     public PluginRegistry(PluginManager pluginManager)
     {
         _pluginManager = pluginManager ?? throw new ArgumentNullException(nameof(pluginManager));
-        
+
         _pluginManager.OnPluginLoaded += OnPluginLoaded;
         _pluginManager.OnPluginUnloaded += OnPluginUnloaded;
     }
+
+    public void Dispose()
+    {
+        _pluginManager.OnPluginLoaded -= OnPluginLoaded;
+        _pluginManager.OnPluginUnloaded -= OnPluginUnloaded;
+
+        _enginePlugins.Clear();
+        _outputPlugins.Clear();
+        _processorPlugins.Clear();
+    }
+
+    public event EventHandler<PluginRegisteredEventArgs>? OnPluginRegistered;
+    public event EventHandler<PluginUnregisteredEventArgs>? OnPluginUnregistered;
 
     private void OnPluginLoaded(object? sender, PluginEventArgs e)
     {
@@ -58,9 +68,10 @@ public class PluginRegistry : IDisposable
             {
                 _processorPlugins[plugin.Name] = processorPlugin;
                 registered = true;
-                Telemetry.LogEvent("TextProcessorPluginRegistered", new { 
+                Telemetry.LogEvent("TextProcessorPluginRegistered", new
+                {
                     Name = plugin.Name,
-                    SupportedLanguages = processorPlugin.SupportedLanguages 
+                    SupportedLanguages = processorPlugin.SupportedLanguages
                 });
             }
 
@@ -153,18 +164,20 @@ public class PluginRegistry : IDisposable
             }
 
             var engine = plugin.CreateEngine(configuration);
-            Telemetry.LogEvent("EngineCreatedFromPlugin", new { 
+            Telemetry.LogEvent("EngineCreatedFromPlugin", new
+            {
                 PluginName = engineName,
-                EngineType = engine.GetType().Name 
+                EngineType = engine.GetType().Name
             });
-            
+
             return engine;
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("EngineCreationFromPluginFailed", ex, new { 
+            Telemetry.LogError("EngineCreationFromPluginFailed", ex, new
+            {
                 PluginName = engineName,
-                ConfigurationType = configuration.GetType().Name 
+                ConfigurationType = configuration.GetType().Name
             });
             return null;
         }
@@ -182,18 +195,20 @@ public class PluginRegistry : IDisposable
             }
 
             var sink = plugin.CreateOutputSink(configuration);
-            Telemetry.LogEvent("OutputSinkCreatedFromPlugin", new { 
+            Telemetry.LogEvent("OutputSinkCreatedFromPlugin", new
+            {
                 PluginName = outputName,
-                SinkType = sink.GetType().Name 
+                SinkType = sink.GetType().Name
             });
-            
+
             return sink;
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("OutputSinkCreationFromPluginFailed", ex, new { 
+            Telemetry.LogError("OutputSinkCreationFromPluginFailed", ex, new
+            {
                 PluginName = outputName,
-                ConfigurationType = configuration.GetType().Name 
+                ConfigurationType = configuration.GetType().Name
             });
             return null;
         }
@@ -210,35 +225,38 @@ public class PluginRegistry : IDisposable
                 return null;
             }
 
-            if (!plugin.SupportedLanguages.Contains(sourceLanguage) || 
+            if (!plugin.SupportedLanguages.Contains(sourceLanguage) ||
                 !plugin.SupportedLanguages.Contains(targetLanguage))
             {
-                Telemetry.LogWarning("ProcessorLanguageNotSupported", $"Language not supported by {processorName}", new { 
+                Telemetry.LogWarning("ProcessorLanguageNotSupported", $"Language not supported by {processorName}", new
+                {
                     PluginName = processorName,
                     SourceLanguage = sourceLanguage,
                     TargetLanguage = targetLanguage,
-                    SupportedLanguages = plugin.SupportedLanguages 
+                    SupportedLanguages = plugin.SupportedLanguages
                 });
                 return null;
             }
 
             var result = await plugin.ProcessTextAsync(text, sourceLanguage, targetLanguage);
-            Telemetry.LogEvent("TextProcessedByPlugin", new { 
+            Telemetry.LogEvent("TextProcessedByPlugin", new
+            {
                 PluginName = processorName,
                 SourceLanguage = sourceLanguage,
                 TargetLanguage = targetLanguage,
                 InputLength = text.Length,
-                OutputLength = result.Length 
+                OutputLength = result.Length
             });
-            
+
             return result;
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("TextProcessingByPluginFailed", ex, new { 
+            Telemetry.LogError("TextProcessingByPluginFailed", ex, new
+            {
                 PluginName = processorName,
                 SourceLanguage = sourceLanguage,
-                TargetLanguage = targetLanguage 
+                TargetLanguage = targetLanguage
             });
             return null;
         }
@@ -256,40 +274,30 @@ public class PluginRegistry : IDisposable
             ProcessorPluginNames = _processorPlugins.Keys.ToArray()
         };
     }
-
-    public void Dispose()
-    {
-        _pluginManager.OnPluginLoaded -= OnPluginLoaded;
-        _pluginManager.OnPluginUnloaded -= OnPluginUnloaded;
-        
-        _enginePlugins.Clear();
-        _outputPlugins.Clear();
-        _processorPlugins.Clear();
-    }
 }
 
 public class PluginRegisteredEventArgs : EventArgs
 {
-    public string PluginName { get; }
-    public Type PluginType { get; }
-
     public PluginRegisteredEventArgs(string pluginName, Type pluginType)
     {
         PluginName = pluginName;
         PluginType = pluginType;
     }
+
+    public string PluginName { get; }
+    public Type PluginType { get; }
 }
 
 public class PluginUnregisteredEventArgs : EventArgs
 {
-    public string PluginName { get; }
-    public Type PluginType { get; }
-
     public PluginUnregisteredEventArgs(string pluginName, Type pluginType)
     {
         PluginName = pluginName;
         PluginType = pluginType;
     }
+
+    public string PluginName { get; }
+    public Type PluginType { get; }
 }
 
 public class PluginRegistryInfo

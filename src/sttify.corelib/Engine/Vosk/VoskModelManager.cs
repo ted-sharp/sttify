@@ -1,8 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Diagnostics;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
-using System.Net.Http;
-using System.Text.Json;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
@@ -10,7 +8,7 @@ namespace Sttify.Corelib.Engine.Vosk;
 public class VoskModelManager
 {
     private static readonly HttpClient _httpClient = new();
-    
+
     public static readonly VoskModelInfo[] AvailableModels = new[]
     {
         new VoskModelInfo
@@ -25,7 +23,7 @@ public class VoskModelManager
         new VoskModelInfo
         {
             Name = "vosk-model-small-ja-0.22",
-            Language = "ja", 
+            Language = "ja",
             Size = "40 MB",
             Description = "Japanese small model, faster but lower accuracy",
             DownloadUrl = "https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip",
@@ -35,7 +33,7 @@ public class VoskModelManager
         {
             Name = "vosk-model-en-us-0.22",
             Language = "en",
-            Size = "1.8 GB", 
+            Size = "1.8 GB",
             Description = "English US large model",
             DownloadUrl = "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip",
             IsRecommended = false
@@ -57,8 +55,8 @@ public class VoskModelManager
         return Path.Combine(appDataPath, "sttify", "models");
     }
 
-    public static async Task<string> DownloadModelAsync(VoskModelInfo modelInfo, 
-        string targetDirectory, 
+    public static async Task<string> DownloadModelAsync(VoskModelInfo modelInfo,
+        string targetDirectory,
         Action<DownloadProgressEventArgs>? onProgress = null,
         CancellationToken cancellationToken = default)
     {
@@ -66,7 +64,7 @@ public class VoskModelManager
             throw new ArgumentNullException(nameof(modelInfo));
 
         Directory.CreateDirectory(targetDirectory);
-        
+
         var zipPath = Path.Combine(targetDirectory, $"{modelInfo.Name}.zip");
         var extractPath = Path.Combine(targetDirectory, modelInfo.Name);
 
@@ -103,7 +101,7 @@ public class VoskModelManager
 
             // Extract the model
             onProgress?.Invoke(new DownloadProgressEventArgs(100, downloadedBytes, totalBytes, "Extracting model"));
-            
+
             if (Directory.Exists(extractPath))
             {
                 Directory.Delete(extractPath, true);
@@ -124,13 +122,13 @@ public class VoskModelManager
             Telemetry.LogEvent("VoskModelDownloadCompleted", new { Model = modelInfo.Name, Path = extractPath });
 
             onProgress?.Invoke(new DownloadProgressEventArgs(100, downloadedBytes, totalBytes, "Model ready"));
-            
+
             return extractPath;
         }
         catch (Exception ex)
         {
             Telemetry.LogError("VoskModelDownloadFailed", ex, new { Model = modelInfo.Name });
-            
+
             // Clean up on failure
             try
             {
@@ -153,13 +151,13 @@ public class VoskModelManager
         // Check for essential Vosk model files
         var acousticModel = Path.Combine(modelPath, "am/final.mdl");
         var vocabulary = Path.Combine(modelPath, "graph/words.txt");
-        
+
         // Check for decoding graph - either HCLG.fst (large models) or HCLR.fst (small models)
         var largeGraph = Path.Combine(modelPath, "graph/HCLG.fst");
         var smallGraph = Path.Combine(modelPath, "graph/HCLR.fst");
 
-        return File.Exists(acousticModel) && 
-               File.Exists(vocabulary) && 
+        return File.Exists(acousticModel) &&
+               File.Exists(vocabulary) &&
                (File.Exists(largeGraph) || File.Exists(smallGraph));
     }
 
@@ -220,11 +218,6 @@ public class VoskModelInfo
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class DownloadProgressEventArgs : EventArgs
 {
-    public double ProgressPercentage { get; }
-    public long BytesDownloaded { get; }
-    public long TotalBytes { get; }
-    public string Status { get; }
-
     public DownloadProgressEventArgs(double progressPercentage, long bytesDownloaded, long totalBytes, string status)
     {
         ProgressPercentage = progressPercentage;
@@ -232,6 +225,11 @@ public class DownloadProgressEventArgs : EventArgs
         TotalBytes = totalBytes;
         Status = status;
     }
+
+    public double ProgressPercentage { get; }
+    public long BytesDownloaded { get; }
+    public long TotalBytes { get; }
+    public string Status { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple exception class with no business logic

@@ -1,6 +1,6 @@
+﻿using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Plugins;
 
@@ -10,13 +10,13 @@ public interface IPlugin : IDisposable
     string Version { get; }
     string Description { get; }
     string Author { get; }
-    
+
+    bool IsEnabled { get; set; }
+    PluginCapabilities Capabilities { get; }
+
     Task InitializeAsync(IPluginContext context);
     Task StartAsync();
     Task StopAsync();
-    
-    bool IsEnabled { get; set; }
-    PluginCapabilities Capabilities { get; }
 }
 
 [Flags]
@@ -35,13 +35,13 @@ public interface IPluginContext
 {
     IServiceProvider ServiceProvider { get; }
     string PluginDataDirectory { get; }
-    
+
     void RegisterService<T>(T service) where T : class;
     T? GetService<T>() where T : class;
-    
+
     Task<string> GetConfigurationAsync(string key, string defaultValue = "");
     Task SetConfigurationAsync(string key, string value);
-    
+
     void LogInfo(string message, object? data = null);
     void LogWarning(string message, object? data = null);
     void LogError(string message, Exception? exception = null, object? data = null);
@@ -49,20 +49,20 @@ public interface IPluginContext
 
 public interface ISpeechEnginePlugin : IPlugin
 {
-    ISttEngine CreateEngine(object configuration);
     Type ConfigurationType { get; }
+    ISttEngine CreateEngine(object configuration);
 }
 
 public interface ITextOutputPlugin : IPlugin
 {
-    ITextOutputSink CreateOutputSink(object configuration);
     Type ConfigurationType { get; }
+    ITextOutputSink CreateOutputSink(object configuration);
 }
 
 public interface ITextProcessorPlugin : IPlugin
 {
-    Task<string> ProcessTextAsync(string text, string sourceLanguage, string targetLanguage);
     string[] SupportedLanguages { get; }
+    Task<string> ProcessTextAsync(string text, string sourceLanguage, string targetLanguage);
 }
 
 public static class PluginExtensions

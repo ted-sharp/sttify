@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Collections;
@@ -10,21 +10,26 @@ namespace Sttify.Corelib.Collections;
 /// <typeparam name="T">The type of items in the queue</typeparam>
 public class BoundedQueue<T> : IDisposable
 {
-    private readonly ConcurrentQueue<T> _queue = new();
-    private readonly int _maxCapacity;
-    private volatile int _count;
     private readonly object _lockObject = new();
-
-    public int Count => _count;
-    public int MaxCapacity => _maxCapacity;
-    public bool IsFull => _count >= _maxCapacity;
+    private readonly ConcurrentQueue<T> _queue = new();
+    private volatile int _count;
 
     public BoundedQueue(int maxCapacity)
     {
         if (maxCapacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxCapacity), "Capacity must be positive");
-            
-        _maxCapacity = maxCapacity;
+
+        MaxCapacity = maxCapacity;
+    }
+
+    public int Count => _count;
+    public int MaxCapacity { get; }
+
+    public bool IsFull => _count >= MaxCapacity;
+
+    public void Dispose()
+    {
+        Clear();
     }
 
     /// <summary>
@@ -36,17 +41,17 @@ public class BoundedQueue<T> : IDisposable
     {
         lock (_lockObject)
         {
-            var wasAtCapacity = _count >= _maxCapacity;
-            
+            var wasAtCapacity = _count >= MaxCapacity;
+
             // Drop oldest items if at capacity
-            while (_count >= _maxCapacity && _queue.TryDequeue(out _))
+            while (_count >= MaxCapacity && _queue.TryDequeue(out _))
             {
                 _count--;
             }
-            
+
             _queue.Enqueue(item);
             _count++;
-            
+
             return !wasAtCapacity;
         }
     }
@@ -65,7 +70,7 @@ public class BoundedQueue<T> : IDisposable
                 _count--;
                 return true;
             }
-            
+
             item = default;
             return false;
         }
@@ -118,7 +123,7 @@ public class BoundedQueue<T> : IDisposable
     {
         var result = new List<T>();
         var drained = 0;
-        
+
         lock (_lockObject)
         {
             while (drained < maxItems && _queue.TryDequeue(out var item))
@@ -128,12 +133,7 @@ public class BoundedQueue<T> : IDisposable
                 drained++;
             }
         }
-        
-        return result;
-    }
 
-    public void Dispose()
-    {
-        Clear();
+        return result;
     }
 }

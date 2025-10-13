@@ -1,10 +1,8 @@
-using Sttify.Corelib.Config;
-using Sttify.Corelib.Diagnostics;
-using System.Net.Http;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Diagnostics.CodeAnalysis;
+using Sttify.Corelib.Config;
 
 namespace Sttify.Corelib.Engine.Cloud;
 
@@ -28,7 +26,7 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
         try
         {
             var endpoint = $"{_settings.Endpoint}/v1/speech:recognize";
-            
+
             var request = new GoogleSpeechRequest
             {
                 Config = new GoogleSpeechConfig
@@ -113,7 +111,7 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
             // Test connection with a minimal request
             var endpoint = $"{_settings.Endpoint}/v1/operations";
             var response = await _httpClient.GetAsync(endpoint, cancellationToken);
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException($"Google Cloud Speech API validation failed: {response.StatusCode}");
@@ -136,7 +134,7 @@ internal class GoogleSpeechRequest
 {
     [JsonPropertyName("config")]
     public GoogleSpeechConfig Config { get; set; } = new();
-    
+
     [JsonPropertyName("audio")]
     public GoogleSpeechAudio Audio { get; set; } = new();
 }
@@ -145,19 +143,19 @@ internal class GoogleSpeechConfig
 {
     [JsonPropertyName("encoding")]
     public string Encoding { get; set; } = "LINEAR16";
-    
+
     [JsonPropertyName("sampleRateHertz")]
     public int SampleRateHertz { get; set; } = 16000;
-    
+
     [JsonPropertyName("languageCode")]
     public string LanguageCode { get; set; } = "ja-JP";
-    
+
     [JsonPropertyName("enableWordTimeOffsets")]
     public bool EnableWordTimeOffsets { get; set; } = true;
-    
+
     [JsonPropertyName("enableAutomaticPunctuation")]
     public bool EnableAutomaticPunctuation { get; set; } = true;
-    
+
     [JsonPropertyName("model")]
     public string Model { get; set; } = "latest_long";
 }
@@ -187,7 +185,7 @@ internal class GoogleSpeechAlternative
 {
     [JsonPropertyName("transcript")]
     public string? Transcript { get; set; }
-    
+
     [JsonPropertyName("confidence")]
     public float? Confidence { get; set; }
 }

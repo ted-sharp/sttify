@@ -1,34 +1,31 @@
+﻿using System.Text;
+using System.Text.Json;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
-using System.Text;
-using System.Text.Json;
 using Vosk;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
 public class RealVoskEngineAdapter : ISttEngine, IDisposable
 {
-    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
-    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
-    public event EventHandler<SttErrorEventArgs>? OnError;
+    private const int SilenceThresholdMs = 800; // 800ms of silence to trigger processing
+    private const double VoiceThreshold = 0.005; // Minimum voice level threshold (raised to allow silence detection)
+    private readonly object _lockObject = new();
 
     private readonly VoskEngineSettings _settings;
-    private global::Vosk.Model? _model;
-    private global::Vosk.VoskRecognizer? _recognizer;
+    private readonly System.Timers.Timer _silenceTimer;
+
+    // Track last partial text to avoid duplicate events
+    private string _currentPartialText = string.Empty;
+    private int _frameCount = 0;
     private bool _isRunning;
-    private readonly object _lockObject = new();
-    private DateTime _recognitionStartTime;
 
     // Voice Activity Detection (VAD) - for forced finalization on silence
     private bool _isSpeaking = false;
     private DateTime _lastVoiceActivity = DateTime.MinValue;
-    private readonly System.Timers.Timer _silenceTimer;
-    private int _frameCount = 0;
-    private const int SilenceThresholdMs = 800; // 800ms of silence to trigger processing
-    private const double VoiceThreshold = 0.005; // Minimum voice level threshold (raised to allow silence detection)
-
-    // Track last partial text to avoid duplicate events
-    private string _currentPartialText = string.Empty;
+    private Model? _model;
+    private DateTime _recognitionStartTime;
+    private VoskRecognizer? _recognizer;
 
     public RealVoskEngineAdapter(VoskEngineSettings settings)
     {
@@ -39,6 +36,10 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         _silenceTimer.Elapsed += OnSilenceDetected;
         _silenceTimer.AutoReset = false; // Only trigger once per silence period
     }
+
+    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
+    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
+    public event EventHandler<SttErrorEventArgs>? OnError;
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -169,6 +170,21 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         }
     }
 
+    public void Dispose()
+    {
+        try
+        {
+            // Avoid potential deadlock by running stop without capturing context and with a short timeout
+            Task.Run(async () => await StopAsync().ConfigureAwait(false)).Wait(TimeSpan.FromSeconds(3));
+        }
+        catch { }
+
+        _silenceTimer?.Stop();
+        _silenceTimer?.Dispose();
+        _recognizer?.Dispose();
+        _model?.Dispose();
+    }
+
     private void InitializeVoskModel()
     {
         if (string.IsNullOrEmpty(_settings.ModelPath) || !Directory.Exists(_settings.ModelPath))
@@ -182,7 +198,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
             global::Vosk.Vosk.SetLogLevel(0);
 
             // Load Vosk model only - recognizer will be created for streaming
-            _model = new global::Vosk.Model(_settings.ModelPath);
+            _model = new Model(_settings.ModelPath);
             System.Diagnostics.Debug.WriteLine($"*** Vosk Model loaded from: {_settings.ModelPath} ***");
 
             Telemetry.LogEvent("VoskModelLoaded", new
@@ -285,7 +301,8 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
                     if (jsonDoc.RootElement.TryGetProperty("result", out var resultArray) &&
                         resultArray.ValueKind == JsonValueKind.Array)
                     {
-                        double sum = 0.0; int count = 0;
+                        double sum = 0.0;
+                        int count = 0;
                         foreach (var w in resultArray.EnumerateArray())
                         {
                             if (w.TryGetProperty("conf", out var confEl) && confEl.ValueKind == JsonValueKind.Number)
@@ -355,21 +372,6 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            // Avoid potential deadlock by running stop without capturing context and with a short timeout
-            Task.Run(async () => await StopAsync().ConfigureAwait(false)).Wait(TimeSpan.FromSeconds(3));
-        }
-        catch { }
-
-        _silenceTimer?.Stop();
-        _silenceTimer?.Dispose();
-        _recognizer?.Dispose();
-        _model?.Dispose();
-    }
-
     private void CreateStreamingRecognizer()
     {
         if (_model == null)
@@ -379,7 +381,7 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
         {
             _recognizer?.Dispose();
             var sampleRate = _settings.SampleRate > 0 ? _settings.SampleRate : 16000;
-            _recognizer = new global::Vosk.VoskRecognizer(_model, sampleRate);
+            _recognizer = new VoskRecognizer(_model, sampleRate);
             _recognizer.SetMaxAlternatives(0);
             _recognizer.SetWords(true);
             // Note: Vosk C# bindings may not expose SetGrammar; relying on SetWords and configuration-only
@@ -408,7 +410,8 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
 
     private static string NormalizeJapaneseSpacing(string input)
     {
-        if (string.IsNullOrEmpty(input)) return input;
+        if (string.IsNullOrEmpty(input))
+            return input;
 
         // Remove ASCII spaces between two Japanese chars only. Keep spaces elsewhere.
         var sb = new StringBuilder(input.Length);
@@ -419,9 +422,11 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
             {
                 // Look at previous and next visible characters
                 int prev = i - 1;
-                while (prev >= 0 && char.IsWhiteSpace(input[prev])) prev--;
+                while (prev >= 0 && char.IsWhiteSpace(input[prev]))
+                    prev--;
                 int next = i + 1;
-                while (next < input.Length && char.IsWhiteSpace(input[next])) next++;
+                while (next < input.Length && char.IsWhiteSpace(input[next]))
+                    next++;
 
                 if (prev >= 0 && next < input.Length)
                 {
@@ -443,7 +448,8 @@ public class RealVoskEngineAdapter : ISttEngine, IDisposable
     {
         try
         {
-            if (string.IsNullOrEmpty(partialJson)) return string.Empty;
+            if (string.IsNullOrEmpty(partialJson))
+                return string.Empty;
             using var doc = JsonDocument.Parse(partialJson);
             if (doc.RootElement.TryGetProperty("partial", out var p))
             {

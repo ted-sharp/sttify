@@ -1,7 +1,6 @@
-using Sttify.Corelib.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
+using Sttify.Corelib.Diagnostics;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Kernel32;
 using static Vanara.PInvoke.User32;
@@ -14,23 +13,44 @@ public class HotkeyManager : IDisposable
 {
     private const int WM_HOTKEY = 0x0312;
     private const int ERROR_HOTKEY_ALREADY_REGISTERED = 1409;
-
-    private readonly Dictionary<int, HotkeyInfo> _registeredHotkeys = new();
     private readonly Dictionary<string, int> _hotkeyNameToId = new();
     private readonly Random _random = new();
+
+    private readonly Dictionary<int, HotkeyInfo> _registeredHotkeys = new();
     private readonly IntPtr _windowHandle;
     private bool _disposed;
-
-    public event EventHandler<HotkeyPressedEventArgs>? OnHotkeyPressed;
-    public event EventHandler<HotkeyRegistrationEventArgs>? OnHotkeyRegistered;
-    public event EventHandler<HotkeyRegistrationEventArgs>? OnHotkeyUnregistered;
-    public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
     public HotkeyManager(IntPtr windowHandle = default)
     {
         _windowHandle = windowHandle;
         Telemetry.LogEvent("HotkeyManagerCreated", new { WindowHandle = _windowHandle.ToString("X") });
     }
+
+    [SupportedOSPlatform("windows")]
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            try
+            {
+                UnregisterAllHotkeys();
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("HotkeyManagerDisposeFailed", ex);
+            }
+            finally
+            {
+                _disposed = true;
+                Telemetry.LogEvent("HotkeyManagerDisposed");
+            }
+        }
+    }
+
+    public event EventHandler<HotkeyPressedEventArgs>? OnHotkeyPressed;
+    public event EventHandler<HotkeyRegistrationEventArgs>? OnHotkeyRegistered;
+    public event EventHandler<HotkeyRegistrationEventArgs>? OnHotkeyUnregistered;
+    public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
     [SupportedOSPlatform("windows")]
     public bool RegisterHotkey(string hotkeyString, string name)
@@ -261,27 +281,6 @@ public class HotkeyManager : IDisposable
     {
         return ParseHotkeyString(hotkeyString, out _, out _);
     }
-
-    [SupportedOSPlatform("windows")]
-    public void Dispose()
-    {
-        if (!_disposed)
-        {
-            try
-            {
-                UnregisterAllHotkeys();
-            }
-            catch (Exception ex)
-            {
-                Telemetry.LogError("HotkeyManagerDisposeFailed", ex);
-            }
-            finally
-            {
-                _disposed = true;
-                Telemetry.LogEvent("HotkeyManagerDisposed");
-            }
-        }
-    }
 }
 
 [Flags]
@@ -297,11 +296,6 @@ public enum ModifierKeys
 [ExcludeFromCodeCoverage] // Simple data container class
 public class HotkeyInfo
 {
-    public string Name { get; }
-    public string HotkeyString { get; }
-    public ModifierKeys Modifiers { get; }
-    public VirtualKey Key { get; }
-
     public HotkeyInfo(string name, string hotkeyString, ModifierKeys modifiers, VirtualKey key)
     {
         Name = name;
@@ -309,6 +303,11 @@ public class HotkeyInfo
         Modifiers = modifiers;
         Key = key;
     }
+
+    public string Name { get; }
+    public string HotkeyString { get; }
+    public ModifierKeys Modifiers { get; }
+    public VirtualKey Key { get; }
 }
 
 public enum VirtualKey
@@ -331,26 +330,21 @@ public enum VirtualKey
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class HotkeyPressedEventArgs : EventArgs
 {
-    public string Name { get; }
-    public string HotkeyString { get; }
-    public DateTime Timestamp { get; }
-
     public HotkeyPressedEventArgs(string name, string hotkeyString)
     {
         Name = name;
         HotkeyString = hotkeyString;
         Timestamp = DateTime.UtcNow;
     }
+
+    public string Name { get; }
+    public string HotkeyString { get; }
+    public DateTime Timestamp { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class HotkeyRegistrationEventArgs : EventArgs
 {
-    public string Name { get; }
-    public string HotkeyString { get; }
-    public bool IsRegistered { get; }
-    public DateTime Timestamp { get; }
-
     public HotkeyRegistrationEventArgs(string name, string hotkeyString, bool isRegistered)
     {
         Name = name;
@@ -358,16 +352,16 @@ public class HotkeyRegistrationEventArgs : EventArgs
         IsRegistered = isRegistered;
         Timestamp = DateTime.UtcNow;
     }
+
+    public string Name { get; }
+    public string HotkeyString { get; }
+    public bool IsRegistered { get; }
+    public DateTime Timestamp { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class HotkeyRegistrationFailedEventArgs : EventArgs
 {
-    public string Name { get; }
-    public string HotkeyString { get; }
-    public uint Win32Error { get; }
-    public string[] Suggestions { get; }
-
     public HotkeyRegistrationFailedEventArgs(string name, string hotkeyString, uint win32Error, string[] suggestions)
     {
         Name = name;
@@ -375,4 +369,9 @@ public class HotkeyRegistrationFailedEventArgs : EventArgs
         Win32Error = win32Error;
         Suggestions = suggestions;
     }
+
+    public string Name { get; }
+    public string HotkeyString { get; }
+    public uint Win32Error { get; }
+    public string[] Suggestions { get; }
 }

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 
@@ -10,15 +10,16 @@ public class ExternalProcessSink : ITextOutputSink
     private readonly ExternalProcessSettings _settings;
     private DateTime _lastSent = DateTime.MinValue;
 
-    public string Id => "external-process";
-    public string Name => "External Process";
-    public bool IsAvailable => !string.IsNullOrEmpty(_settings.ExecutablePath) &&
-                              File.Exists(_settings.ExecutablePath);
-
     public ExternalProcessSink(ExternalProcessSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
     }
+
+    public string Id => "external-process";
+    public string Name => "External Process";
+
+    public bool IsAvailable => !string.IsNullOrEmpty(_settings.ExecutablePath) &&
+                               File.Exists(_settings.ExecutablePath);
 
     public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {

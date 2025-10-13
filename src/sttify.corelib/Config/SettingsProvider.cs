@@ -1,25 +1,23 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.Extensions.Configuration;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine.Vosk;
-using System.IO;
 using Sttify.Corelib.Output;
 
 namespace Sttify.Corelib.Config;
 
 public class SettingsProvider
 {
+    private const int DebounceMs = 250;
     private readonly string _configPath;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly object _lockObject = new();
     private SttifySettings? _cachedSettings;
-    private DateTime _lastModified;
-    private FileSystemWatcher? _fileWatcher;
     private volatile bool _configChanged;
     private Timer? _debounceTimer;
-    private const int DebounceMs = 250;
-    private readonly object _lockObject = new();
+    private FileSystemWatcher? _fileWatcher;
+    private DateTime _lastModified;
 
     public SettingsProvider()
     {
@@ -195,7 +193,8 @@ public class SettingsProvider
 
                 _debounceTimer = new Timer(_ =>
                 {
-                    lock (_lockObject) { _configChanged = true; }
+                    lock (_lockObject)
+                    { _configChanged = true; }
                     Telemetry.LogEvent("ConfigFileChangedDebounced", new { Path = _configPath });
                 }, null, Timeout.Infinite, Timeout.Infinite);
             }

@@ -1,13 +1,13 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Diagnostics;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Plugins;
 
 public class PluginDiscovery
 {
-    private readonly string _pluginsDirectory;
     private readonly string _manifestFileName;
+    private readonly string _pluginsDirectory;
 
     public PluginDiscovery(string pluginsDirectory, string manifestFileName = "plugin.json")
     {
@@ -29,11 +29,11 @@ public class PluginDiscovery
             }
 
             var pluginDirs = Directory.GetDirectories(_pluginsDirectory);
-            
+
             foreach (var pluginDir in pluginDirs)
             {
                 var discoveryInfo = await DiscoverPluginAsync(pluginDir);
-                
+
                 if (discoveryInfo.IsValid)
                 {
                     result.ValidPlugins.Add(discoveryInfo);
@@ -44,7 +44,8 @@ public class PluginDiscovery
                 }
             }
 
-            Telemetry.LogEvent("PluginDiscoveryCompleted", new { 
+            Telemetry.LogEvent("PluginDiscoveryCompleted", new
+            {
                 Directory = _pluginsDirectory,
                 ValidCount = result.ValidPlugins.Count,
                 InvalidCount = result.InvalidPlugins.Count,
@@ -71,7 +72,7 @@ public class PluginDiscovery
         try
         {
             var manifestPath = Path.Combine(pluginDirectory, _manifestFileName);
-            
+
             if (!File.Exists(manifestPath))
             {
                 info.ValidationErrors.Add($"Manifest file '{_manifestFileName}' not found");
@@ -82,7 +83,7 @@ public class PluginDiscovery
 
             var manifestJson = await File.ReadAllTextAsync(manifestPath);
             var metadata = JsonSerializer.Deserialize<PluginMetadata>(manifestJson);
-            
+
             if (metadata == null)
             {
                 info.ValidationErrors.Add("Failed to deserialize manifest JSON");
@@ -94,13 +95,13 @@ public class PluginDiscovery
             // Validate required fields
             if (string.IsNullOrEmpty(metadata.Name))
                 info.ValidationErrors.Add("Plugin name is required");
-            
+
             if (string.IsNullOrEmpty(metadata.Version))
                 info.ValidationErrors.Add("Plugin version is required");
-            
+
             if (string.IsNullOrEmpty(metadata.AssemblyPath))
                 info.ValidationErrors.Add("Assembly path is required");
-            
+
             if (string.IsNullOrEmpty(metadata.MainClass))
                 info.ValidationErrors.Add("Main class is required");
 
@@ -146,7 +147,8 @@ public class PluginDiscovery
 
             if (info.IsValid)
             {
-                Telemetry.LogEvent("PluginDiscovered", new { 
+                Telemetry.LogEvent("PluginDiscovered", new
+                {
                     Name = metadata.Name,
                     Version = metadata.Version,
                     Capabilities = capabilities.ToString(),
@@ -155,7 +157,8 @@ public class PluginDiscovery
             }
             else
             {
-                Telemetry.LogWarning("InvalidPluginDiscovered", $"Invalid plugin in {pluginDirectory}", new { 
+                Telemetry.LogWarning("InvalidPluginDiscovered", $"Invalid plugin in {pluginDirectory}", new
+                {
                     Directory = pluginDirectory,
                     Errors = info.ValidationErrors.ToArray()
                 });
@@ -165,7 +168,7 @@ public class PluginDiscovery
         {
             info.ValidationErrors.Add($"Discovery failed: {ex.Message}");
             info.DiscoveryException = ex;
-            
+
             Telemetry.LogError("PluginDiscoveryError", ex, new { Directory = pluginDirectory });
         }
 
@@ -200,7 +203,7 @@ public class PluginDiscoveryResult
     public List<PluginDiscoveryInfo> ValidPlugins { get; } = new();
     public List<PluginDiscoveryInfo> InvalidPlugins { get; } = new();
     public Exception? DiscoveryError { get; set; }
-    
+
     public int TotalPlugins => ValidPlugins.Count + InvalidPlugins.Count;
     public bool HasErrors => DiscoveryError != null || InvalidPlugins.Any();
 }
@@ -213,19 +216,19 @@ public class PluginDiscoveryInfo
     public string AssemblyPath { get; set; } = "";
     public string ReadmePath { get; set; } = "";
     public long AssemblySize { get; set; }
-    
+
     public PluginMetadata? Metadata { get; set; }
     public bool IsValid { get; set; }
-    
+
     public List<string> ValidationErrors { get; } = new();
     public List<string> ValidationWarnings { get; } = new();
     public Exception? DiscoveryException { get; set; }
-    
-    public DateTime CreatedTime => System.IO.Directory.Exists(Directory) 
-        ? System.IO.Directory.GetCreationTime(Directory) 
+
+    public DateTime CreatedTime => System.IO.Directory.Exists(Directory)
+        ? System.IO.Directory.GetCreationTime(Directory)
         : DateTime.MinValue;
-        
-    public DateTime ModifiedTime => System.IO.Directory.Exists(Directory) 
-        ? System.IO.Directory.GetLastWriteTime(Directory) 
+
+    public DateTime ModifiedTime => System.IO.Directory.Exists(Directory)
+        ? System.IO.Directory.GetLastWriteTime(Directory)
         : DateTime.MinValue;
 }

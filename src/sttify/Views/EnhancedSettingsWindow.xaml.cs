@@ -1,6 +1,6 @@
-using Sttify.ViewModels;
-using System.Windows;
+﻿using System.Windows;
 using Sttify.Corelib.Diagnostics;
+using Sttify.ViewModels;
 
 namespace Sttify.Views;
 

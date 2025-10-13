@@ -1,29 +1,24 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Config;
-using Sttify.Corelib.Diagnostics;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using Sttify.Corelib.Caching;
 using Sttify.Corelib.Collections;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
+using Sttify.Corelib.Config;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Engine.Cloud;
 
 public abstract class CloudSttEngine : ISttEngine
 {
-    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
-    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
-    public event EventHandler<SttErrorEventArgs>? OnError;
+    protected readonly BoundedQueue<byte[]> _audioQueue;
+    protected readonly HttpClient _httpClient;
+    protected readonly object _lockObject = new();
+    protected readonly ResponseCache<CloudRecognitionResult> _responseCache;
 
     protected readonly CloudEngineSettings _settings;
-    protected readonly HttpClient _httpClient;
     protected bool _isRunning;
-    protected readonly BoundedQueue<byte[]> _audioQueue;
-    protected readonly object _lockObject = new();
     protected CancellationTokenSource? _processingCancellation;
     protected Task? _processingTask;
     protected DateTime _recognitionStartTime;
-    protected readonly ResponseCache<CloudRecognitionResult> _responseCache;
 
     protected CloudSttEngine(CloudEngineSettings settings)
     {
@@ -40,8 +35,9 @@ public abstract class CloudSttEngine : ISttEngine
         ConfigureHttpClient();
     }
 
-    protected abstract void ConfigureHttpClient();
-    protected abstract Task<CloudRecognitionResult> ProcessAudioChunkAsync(byte[] audioData, CancellationToken cancellationToken);
+    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
+    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
+    public event EventHandler<SttErrorEventArgs>? OnError;
 
     public virtual async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -117,6 +113,16 @@ public abstract class CloudSttEngine : ISttEngine
             Telemetry.LogWarning("CloudAudioQueueFull", "Audio queue full, dropping oldest data", new { QueueSize = _audioQueue.Count });
         }
     }
+
+    public virtual void Dispose()
+    {
+        StopAsync().Wait();
+        _httpClient?.Dispose();
+        _responseCache?.Dispose();
+    }
+
+    protected abstract void ConfigureHttpClient();
+    protected abstract Task<CloudRecognitionResult> ProcessAudioChunkAsync(byte[] audioData, CancellationToken cancellationToken);
 
     protected virtual async Task ProcessAudioLoop(CancellationToken cancellationToken)
     {
@@ -220,13 +226,6 @@ public abstract class CloudSttEngine : ISttEngine
         return "audio/wav"; // Default format, override as needed
     }
 
-    public virtual void Dispose()
-    {
-        StopAsync().Wait();
-        _httpClient?.Dispose();
-        _responseCache?.Dispose();
-    }
-
     protected static byte[] WrapAsWav(byte[] pcmLittleEndian, int sampleRate = 16000, short channels = 1, short bitsPerSample = 16)
     {
         // Build a minimal PCM WAV container around the provided PCM payload
@@ -239,7 +238,8 @@ public abstract class CloudSttEngine : ISttEngine
         var buffer = new byte[44 + dataSize];
         void WriteString(int offset, string s)
         {
-            for (int i = 0; i < s.Length; i++) buffer[offset + i] = (byte)s[i];
+            for (int i = 0; i < s.Length; i++)
+                buffer[offset + i] = (byte)s[i];
         }
         void WriteInt32LE(int offset, int value)
         {

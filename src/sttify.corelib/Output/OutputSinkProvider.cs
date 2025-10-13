@@ -1,6 +1,6 @@
-using Sttify.Corelib.Config;
-using Sttify.Corelib.Ime;
+﻿using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Ime;
 
 namespace Sttify.Corelib.Output;
 
@@ -12,8 +12,8 @@ public interface IOutputSinkProvider
 
 public class OutputSinkProvider : IOutputSinkProvider
 {
-    private readonly SettingsProvider _settingsProvider;
     private readonly object _lock = new();
+    private readonly SettingsProvider _settingsProvider;
     private List<ITextOutputSink> _current = new();
 
     public OutputSinkProvider(SettingsProvider settingsProvider)

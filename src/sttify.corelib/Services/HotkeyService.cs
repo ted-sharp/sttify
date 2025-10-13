@@ -1,7 +1,7 @@
+﻿using System.Runtime.Versioning;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Hotkey;
-using System.Runtime.Versioning;
 
 namespace Sttify.Corelib.Services;
 
@@ -12,9 +12,6 @@ public class HotkeyService : IDisposable
     private readonly SettingsProvider _settingsProvider;
     private SttifySettings? _currentSettings;
     private bool _disposed;
-
-    public event EventHandler<HotkeyTriggeredEventArgs>? OnHotkeyTriggered;
-    public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
     [SupportedOSPlatform("windows")]
     public HotkeyService(HotkeyManager hotkeyManager, SettingsProvider settingsProvider)
@@ -27,6 +24,34 @@ public class HotkeyService : IDisposable
         _hotkeyManager.OnHotkeyUnregistered += OnHotkeyUnregistered;
         _hotkeyManager.OnHotkeyRegistrationFailed += OnHotkeyRegistrationFailedInternal;
     }
+
+    [SupportedOSPlatform("windows")]
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            try
+            {
+                _hotkeyManager.OnHotkeyPressed -= OnHotkeyPressed;
+                _hotkeyManager.OnHotkeyRegistered -= OnHotkeyRegistered;
+                _hotkeyManager.OnHotkeyUnregistered -= OnHotkeyUnregistered;
+
+                _hotkeyManager.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("HotkeyServiceDisposeFailed", ex);
+            }
+            finally
+            {
+                _disposed = true;
+                Telemetry.LogEvent("HotkeyServiceDisposed");
+            }
+        }
+    }
+
+    public event EventHandler<HotkeyTriggeredEventArgs>? OnHotkeyTriggered;
+    public event EventHandler<HotkeyRegistrationFailedEventArgs>? OnHotkeyRegistrationFailed;
 
     [SupportedOSPlatform("windows")]
     public async Task InitializeAsync()
@@ -82,7 +107,8 @@ public class HotkeyService : IDisposable
     [SupportedOSPlatform("windows")]
     private Task RegisterApplicationHotkeysAsync()
     {
-        if (_currentSettings?.Hotkeys == null) return Task.CompletedTask;
+        if (_currentSettings?.Hotkeys == null)
+            return Task.CompletedTask;
 
         // Register UI toggle hotkey
         if (!string.IsNullOrEmpty(_currentSettings.Hotkeys.ToggleUi))
@@ -179,31 +205,6 @@ public class HotkeyService : IDisposable
     {
         return _hotkeyManager.ValidateHotkeyString(hotkeyString);
     }
-
-    [SupportedOSPlatform("windows")]
-    public void Dispose()
-    {
-        if (!_disposed)
-        {
-            try
-            {
-                _hotkeyManager.OnHotkeyPressed -= OnHotkeyPressed;
-                _hotkeyManager.OnHotkeyRegistered -= OnHotkeyRegistered;
-                _hotkeyManager.OnHotkeyUnregistered -= OnHotkeyUnregistered;
-
-                _hotkeyManager.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Telemetry.LogError("HotkeyServiceDisposeFailed", ex);
-            }
-            finally
-            {
-                _disposed = true;
-                Telemetry.LogEvent("HotkeyServiceDisposed");
-            }
-        }
-    }
 }
 
 public enum HotkeyAction
@@ -216,11 +217,6 @@ public enum HotkeyAction
 
 public class HotkeyTriggeredEventArgs : EventArgs
 {
-    public string Name { get; }
-    public string HotkeyString { get; }
-    public HotkeyAction Action { get; }
-    public DateTime Timestamp { get; }
-
     public HotkeyTriggeredEventArgs(string name, string hotkeyString, HotkeyAction action)
     {
         Name = name;
@@ -228,4 +224,9 @@ public class HotkeyTriggeredEventArgs : EventArgs
         Action = action;
         Timestamp = DateTime.UtcNow;
     }
+
+    public string Name { get; }
+    public string HotkeyString { get; }
+    public HotkeyAction Action { get; }
+    public DateTime Timestamp { get; }
 }

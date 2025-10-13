@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Serilog.Events;
 using Sttify.Corelib.Diagnostics;
@@ -65,11 +65,11 @@ public class AppConfiguration
 
     public static bool IsDebugMode()
     {
-        #if DEBUG
-            return true;
-        #else
+#if DEBUG
+        return true;
+#else
             return Configuration.GetValue<bool>("Application:EnableDetailedLogging");
-        #endif
+#endif
     }
 
     public static TelemetrySettings GetTelemetrySettings()
@@ -80,9 +80,9 @@ public class AppConfiguration
         // Override with computed log level
         settings.MinimumLevel = GetLogLevel();
 
-        #if DEBUG
-            settings.EnableConsoleLogging = true;
-        #endif
+#if DEBUG
+        settings.EnableConsoleLogging = true;
+#endif
 
         return settings;
     }

@@ -1,4 +1,4 @@
-using Sttify.Corelib.Audio;
+﻿using Sttify.Corelib.Audio;
 using Xunit;
 
 namespace Sttify.Corelib.Tests.Audio;
@@ -41,7 +41,7 @@ public class VoiceActivityDetectorTests
         // Arrange
         var detector = new VoiceActivityDetector();
         var audioData = new byte[1024];
-        
+
         // Fill with some sample data
         for (int i = 0; i < audioData.Length; i += 2)
         {

@@ -1,5 +1,4 @@
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace Sttify.Corelib.Diagnostics;
 
@@ -26,10 +25,10 @@ public class ErrorRecovery
             try
             {
                 var result = await operation();
-                
+
                 // Reset error count on successful execution
                 ResetErrorCount(operationType);
-                
+
                 return result;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -39,7 +38,7 @@ public class ErrorRecovery
             catch (Exception ex)
             {
                 lastException = ex;
-                
+
                 Telemetry.LogError($"OperationFailed_{operationName}", ex, new
                 {
                     Attempt = attempt,
@@ -156,12 +155,6 @@ public class ErrorRecovery
 
 public class ErrorRecoveryEventArgs : EventArgs
 {
-    public string OperationName { get; }
-    public Exception Exception { get; }
-    public int AttemptNumber { get; }
-    public int MaxAttempts { get; }
-    public bool IsFinalAttempt => AttemptNumber >= MaxAttempts;
-
     public ErrorRecoveryEventArgs(string operationName, Exception exception, int attemptNumber, int maxAttempts)
     {
         OperationName = operationName;
@@ -169,6 +162,12 @@ public class ErrorRecoveryEventArgs : EventArgs
         AttemptNumber = attemptNumber;
         MaxAttempts = maxAttempts;
     }
+
+    public string OperationName { get; }
+    public Exception Exception { get; }
+    public int AttemptNumber { get; }
+    public int MaxAttempts { get; }
+    public bool IsFinalAttempt => AttemptNumber >= MaxAttempts;
 }
 
 [ExcludeFromCodeCoverage] // Simple exception class with no business logic

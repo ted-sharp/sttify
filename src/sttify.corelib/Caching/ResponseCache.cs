@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,27 +12,36 @@ namespace Sttify.Corelib.Caching;
 /// </summary>
 public class ResponseCache<TResponse> : IDisposable where TResponse : class
 {
-    private readonly ConcurrentDictionary<string, CacheEntry<TResponse>> _cache = new();
     private readonly ConcurrentQueue<string> _accessOrder = new();
-    private readonly int _maxEntries;
-    private readonly TimeSpan _ttl;
+    private readonly ConcurrentDictionary<string, CacheEntry<TResponse>> _cache = new();
     private readonly Timer _cleanupTimer;
     private readonly object _lockObject = new();
+    private readonly TimeSpan _ttl;
     private volatile bool _disposed;
-
-    public int Count => _cache.Count;
-    public int MaxEntries => _maxEntries;
 
     public ResponseCache(int maxEntries = 1000, TimeSpan? ttl = null)
     {
         if (maxEntries <= 0)
             throw new ArgumentOutOfRangeException(nameof(maxEntries), "Max entries must be positive");
 
-        _maxEntries = maxEntries;
+        MaxEntries = maxEntries;
         _ttl = ttl ?? TimeSpan.FromMinutes(30); // Default 30 minute TTL
 
         // Cleanup expired entries every 5 minutes
         _cleanupTimer = new Timer(CleanupExpiredEntries, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+    }
+
+    public int Count => _cache.Count;
+    public int MaxEntries { get; }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _cleanupTimer.Dispose();
+        Clear();
     }
 
     /// <summary>
@@ -46,7 +55,7 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
         using var sha256 = SHA256.Create();
         var hash = sha256.ComputeHash(audioData.ToArray());
         var hashString = Convert.ToHexString(hash);
-        
+
         return string.IsNullOrEmpty(prefix) ? hashString : $"{prefix}:{hashString}";
     }
 
@@ -83,9 +92,9 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
                 // Update access order for LRU
                 _accessOrder.Enqueue(key);
                 entry.LastAccessed = DateTime.UtcNow;
-                
+
                 response = entry.Response;
-                
+
                 Telemetry.LogEvent("CacheHit", new { Key = key[..Math.Min(8, key.Length)], Type = typeof(TResponse).Name });
                 return true;
             }
@@ -123,15 +132,16 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
         _accessOrder.Enqueue(key);
 
         // Enforce size limit
-        if (_cache.Count > _maxEntries)
+        if (_cache.Count > MaxEntries)
         {
             Task.Run(EnforceSizeLimit);
         }
 
-        Telemetry.LogEvent("CacheSet", new { 
-            Key = key[..Math.Min(8, key.Length)], 
+        Telemetry.LogEvent("CacheSet", new
+        {
+            Key = key[..Math.Min(8, key.Length)],
             Type = typeof(TResponse).Name,
-            CacheSize = _cache.Count 
+            CacheSize = _cache.Count
         });
     }
 
@@ -157,10 +167,11 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
     {
         var count = _cache.Count;
         _cache.Clear();
-        
+
         // Clear access order queue
-        while (_accessOrder.TryDequeue(out _)) { }
-        
+        while (_accessOrder.TryDequeue(out _))
+        { }
+
         Telemetry.LogEvent("CacheClear", new { Type = typeof(TResponse).Name, ClearedCount = count });
     }
 
@@ -172,17 +183,17 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
     {
         var now = DateTime.UtcNow;
         var entries = _cache.Values.ToArray();
-        
+
         return new CacheStatistics
         {
             TotalEntries = entries.Length,
-            MaxEntries = _maxEntries,
+            MaxEntries = MaxEntries,
             ExpiredEntries = entries.Count(e => now - e.CreatedAt > _ttl),
-            AverageAge = entries.Length > 0 ? 
-                TimeSpan.FromTicks((long)entries.Average(e => (now - e.CreatedAt).Ticks)) : 
+            AverageAge = entries.Length > 0 ?
+                TimeSpan.FromTicks((long)entries.Average(e => (now - e.CreatedAt).Ticks)) :
                 TimeSpan.Zero,
-            OldestEntry = entries.Length > 0 ? 
-                now - entries.Min(e => e.CreatedAt) : 
+            OldestEntry = entries.Length > 0 ?
+                now - entries.Min(e => e.CreatedAt) :
                 TimeSpan.Zero
         };
     }
@@ -195,7 +206,7 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
         lock (_lockObject)
         {
             var currentCount = _cache.Count;
-            var targetCount = (int)(_maxEntries * 0.8); // Remove 20% when over limit
+            var targetCount = (int)(MaxEntries * 0.8); // Remove 20% when over limit
             var toRemove = currentCount - targetCount;
 
             if (toRemove <= 0)
@@ -203,10 +214,10 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
 
             // Build LRU list from access order
             var keysByAccess = new Dictionary<string, DateTime>();
-            
+
             // Process recent access order
             var recentAccesses = new List<string>();
-            while (_accessOrder.TryDequeue(out var key) && recentAccesses.Count < _maxEntries)
+            while (_accessOrder.TryDequeue(out var key) && recentAccesses.Count < MaxEntries)
             {
                 recentAccesses.Add(key);
                 if (_cache.TryGetValue(key, out var entry))
@@ -236,10 +247,11 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
                 _cache.TryRemove(key, out _);
             }
 
-            Telemetry.LogEvent("CacheSizeLimitEnforced", new { 
+            Telemetry.LogEvent("CacheSizeLimitEnforced", new
+            {
                 Type = typeof(TResponse).Name,
                 RemovedCount = keysToRemove.Count,
-                NewSize = _cache.Count 
+                NewSize = _cache.Count
             });
         }
     }
@@ -267,22 +279,13 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
 
         if (expiredKeys.Count > 0)
         {
-            Telemetry.LogEvent("CacheExpiredCleanup", new { 
+            Telemetry.LogEvent("CacheExpiredCleanup", new
+            {
                 Type = typeof(TResponse).Name,
                 ExpiredCount = expiredKeys.Count,
-                RemainingCount = _cache.Count 
+                RemainingCount = _cache.Count
             });
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        _cleanupTimer.Dispose();
-        Clear();
     }
 }
 

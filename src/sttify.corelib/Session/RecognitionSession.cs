@@ -1,8 +1,8 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Audio;
+using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Output;
-using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Plugins;
 
 namespace Sttify.Corelib.Session;
@@ -10,40 +10,35 @@ namespace Sttify.Corelib.Session;
 public class RecognitionSession : IDisposable
 {
     private readonly AudioCapture _audioCapture;
-    private ISttEngine? _sttEngine;
+    private readonly EndpointDetector _endpointDetector;
+    private readonly object _lockObject = new();
     private readonly IOutputSinkProvider _outputSinkProvider;
-    private readonly RecognitionSessionSettings _settings;
     private readonly PluginManager? _pluginManager;
-    private readonly Sttify.Corelib.Config.SettingsProvider _settingsProvider;
+    private readonly RecognitionSessionSettings _settings;
+    private readonly Config.SettingsProvider _settingsProvider;
+    private readonly List<string> _wakeWords = ["スティファイ", "sttify"];
 
-    public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
-    public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
+    // Continuous mode state
+    private CancellationTokenSource? _continuousModeCts;
 
     // Voice activity detection events
     // OnVoiceActivity event removed - not used
 
     private RecognitionMode _currentMode = RecognitionMode.Ptt;
     private SessionState _currentState = SessionState.Idle;
-    private readonly object _lockObject = new();
-    private readonly EndpointDetector _endpointDetector;
+
+    // PTT state
+    private ISttEngine? _sttEngine;
 
     // Silence detection timers removed; handled by engine/VAD components
 
     // Wake word detection state
-    private bool _waitingForWakeWord = false;
-    private readonly List<string> _wakeWords = ["スティファイ", "sttify"];
-
-    // Continuous mode state
-    private CancellationTokenSource? _continuousModeCts;
-
-    // PTT state
-    private bool _pttPressed = false;
 
     // Single utterance state removed (handled by endpoint detector callbacks)
 
     public RecognitionSession(
         AudioCapture audioCapture,
-        Sttify.Corelib.Config.SettingsProvider settingsProvider,
+        Config.SettingsProvider settingsProvider,
         IOutputSinkProvider outputSinkProvider,
         RecognitionSessionSettings settings,
         PluginManager? pluginManager = null)
@@ -103,11 +98,11 @@ public class RecognitionSession : IDisposable
                     // Reset state when mode changes
                     if (value == RecognitionMode.Ptt)
                     {
-                        _pttPressed = false;
+                        IsPttPressed = false;
                     }
                     else if (value == RecognitionMode.WakeWord)
                     {
-                        _waitingForWakeWord = true;
+                        IsWaitingForWakeWord = true;
                     }
 
                     OnModeChanged(oldMode, value);
@@ -144,6 +139,50 @@ public class RecognitionSession : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Check if PTT is currently pressed
+    /// </summary>
+    public bool IsPttPressed { get; private set; } = false;
+
+    /// <summary>
+    /// Check if currently waiting for wake word
+    /// </summary>
+    public bool IsWaitingForWakeWord { get; private set; } = false;
+
+    public void Dispose()
+    {
+        try
+        {
+            _continuousModeCts?.Cancel();
+            _continuousModeCts?.Dispose();
+
+            // Dispose endpoint detector
+            _endpointDetector?.Dispose();
+
+            // Unsubscribe events to prevent memory leaks
+            _audioCapture.OnFrame -= OnAudioFrame;
+            if (_sttEngine != null)
+            {
+                _sttEngine.OnPartial -= OnPartialRecognition;
+                _sttEngine.OnFinal -= OnFinalRecognition;
+            }
+
+            StopAsync().Wait(5000); // Wait max 5 seconds
+        }
+        catch (Exception ex)
+        {
+            Telemetry.LogError("RecognitionSessionDisposeFailed", ex);
+        }
+        finally
+        {
+            _audioCapture.Dispose();
+            _sttEngine?.Dispose();
+        }
+    }
+
+    public event EventHandler<SessionStateChangedEventArgs>? OnStateChanged;
+    public event EventHandler<TextRecognizedEventArgs>? OnTextRecognized;
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -185,7 +224,7 @@ public class RecognitionSession : IDisposable
             }
 
             var appSettings = await _settingsProvider.GetSettingsAsync().ConfigureAwait(false);
-            var engine = Sttify.Corelib.Engine.SttEngineFactory.CreateEngine(appSettings.Engine);
+            var engine = SttEngineFactory.CreateEngine(appSettings.Engine);
             engine.OnPartial += OnPartialRecognition;
             engine.OnFinal += OnFinalRecognition;
             _sttEngine = engine;
@@ -244,7 +283,7 @@ public class RecognitionSession : IDisposable
                 break;
 
             case RecognitionMode.WakeWord:
-                _waitingForWakeWord = true;
+                IsWaitingForWakeWord = true;
                 Telemetry.LogEvent("WakeWordModeStarted", new { WakeWords = _wakeWords });
                 break;
 
@@ -371,7 +410,7 @@ public class RecognitionSession : IDisposable
     {
         if (_currentMode == RecognitionMode.Ptt)
         {
-            _pttPressed = true;
+            IsPttPressed = true;
             // Additional PTT logic can be added here
         }
     }
@@ -383,44 +422,35 @@ public class RecognitionSession : IDisposable
     {
         if (_currentMode == RecognitionMode.Ptt)
         {
-            _pttPressed = false;
+            IsPttPressed = false;
             // Additional PTT logic can be added here
         }
     }
-
-    /// <summary>
-    /// Check if PTT is currently pressed
-    /// </summary>
-    public bool IsPttPressed => _pttPressed;
 
     /// <summary>
     /// Check if wake word is detected in the given text
     /// </summary>
     public bool IsWakeWordDetected(string text)
     {
-        if (!_waitingForWakeWord || string.IsNullOrEmpty(text))
+        if (!IsWaitingForWakeWord || string.IsNullOrEmpty(text))
             return false;
 
         foreach (var wakeWord in _wakeWords)
         {
             if (text.Contains(wakeWord, StringComparison.OrdinalIgnoreCase))
             {
-                _waitingForWakeWord = false;
+                IsWaitingForWakeWord = false;
                 return true;
             }
         }
         return false;
     }
 
-    /// <summary>
-    /// Check if currently waiting for wake word
-    /// </summary>
-    public bool IsWaitingForWakeWord => _waitingForWakeWord;
-
     // Voice activity detection
     private bool DetectVoiceActivity(ReadOnlySpan<byte> audioData)
     {
-        if (audioData.Length == 0) return false;
+        if (audioData.Length == 0)
+            return false;
 
         // Simple RMS calculation for voice activity detection
         double sum = 0;
@@ -442,7 +472,8 @@ public class RecognitionSession : IDisposable
     // Wake word detection
     private bool DetectWakeWord(string text)
     {
-        if (string.IsNullOrEmpty(text)) return false;
+        if (string.IsNullOrEmpty(text))
+            return false;
 
         var lowerText = text.ToLowerInvariant();
 
@@ -521,40 +552,10 @@ public class RecognitionSession : IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            _continuousModeCts?.Cancel();
-            _continuousModeCts?.Dispose();
-
-            // Dispose endpoint detector
-            _endpointDetector?.Dispose();
-
-            // Unsubscribe events to prevent memory leaks
-            _audioCapture.OnFrame -= OnAudioFrame;
-            if (_sttEngine != null)
-            {
-                _sttEngine.OnPartial -= OnPartialRecognition;
-                _sttEngine.OnFinal -= OnFinalRecognition;
-            }
-
-            StopAsync().Wait(5000); // Wait max 5 seconds
-        }
-        catch (Exception ex)
-        {
-            Telemetry.LogError("RecognitionSessionDisposeFailed", ex);
-        }
-        finally
-        {
-            _audioCapture.Dispose();
-            _sttEngine?.Dispose();
-        }
-    }
-
     private void OnEndpointTriggered(object? sender, EndpointTriggeredEventArgs e)
     {
-        Telemetry.LogEvent("RecognitionSession_EndpointTriggered", new {
+        Telemetry.LogEvent("RecognitionSession_EndpointTriggered", new
+        {
             e.Result.EndpointType,
             e.Result.Confidence,
             e.Result.SilenceDuration,
@@ -604,27 +605,27 @@ public class RecognitionSessionSettings
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class SessionStateChangedEventArgs : EventArgs
 {
-    public SessionState OldState { get; }
-    public SessionState NewState { get; }
-
     public SessionStateChangedEventArgs(SessionState oldState, SessionState newState)
     {
         OldState = oldState;
         NewState = newState;
     }
+
+    public SessionState OldState { get; }
+    public SessionState NewState { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class TextRecognizedEventArgs : EventArgs
 {
-    public string Text { get; }
-    public bool IsFinal { get; }
-    public double Confidence { get; }
-
     public TextRecognizedEventArgs(string text, bool isFinal, double confidence)
     {
         Text = text;
         IsFinal = isFinal;
         Confidence = confidence;
     }
+
+    public string Text { get; }
+    public bool IsFinal { get; }
+    public double Confidence { get; }
 }

@@ -1,6 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
-
-namespace Sttify.Corelib.Diagnostics;
+﻿namespace Sttify.Corelib.Diagnostics;
 
 /// <summary>
 /// Categorizes errors by their nature and recovery potential
@@ -11,22 +9,22 @@ public enum ErrorCategory
     /// Temporary errors that may resolve themselves (network timeouts, temporary resource unavailability)
     /// </summary>
     Transient,
-    
+
     /// <summary>
     /// Configuration-related errors (invalid settings, missing files, incorrect values)
     /// </summary>
     Configuration,
-    
+
     /// <summary>
     /// Hardware or system-level errors (audio device failures, insufficient resources)
     /// </summary>
     Hardware,
-    
+
     /// <summary>
     /// Integration errors with external systems (external process errors, API failures)
     /// </summary>
     Integration,
-    
+
     /// <summary>
     /// Critical errors that may compromise application stability
     /// </summary>
@@ -44,17 +42,17 @@ public enum NotificationMode
     /// No user notification, log only
     /// </summary>
     None,
-    
+
     /// <summary>
     /// Silent notification via system tray or status indicator
     /// </summary>
     Silent,
-    
+
     /// <summary>
     /// Brief toast notification
     /// </summary>
     Toast,
-    
+
     /// <summary>
     /// Modal dialog requiring user acknowledgment
     /// </summary>
@@ -66,16 +64,6 @@ public enum NotificationMode
 /// </summary>
 public class ErrorContext
 {
-    public string ComponentName { get; }
-    public string ErrorCode { get; }
-    public string Message { get; }
-    public Exception? Exception { get; }
-    public ErrorCategory Category { get; }
-    public ErrorSeverity Severity { get; }
-    public NotificationMode NotificationMode { get; }
-    public Dictionary<string, object> ContextData { get; }
-    public DateTime Timestamp { get; }
-
     public ErrorContext(
         string componentName,
         string errorCode,
@@ -96,6 +84,16 @@ public class ErrorContext
         ContextData = contextData ?? new Dictionary<string, object>();
         Timestamp = DateTime.UtcNow;
     }
+
+    public string ComponentName { get; }
+    public string ErrorCode { get; }
+    public string Message { get; }
+    public Exception? Exception { get; }
+    public ErrorCategory Category { get; }
+    public ErrorSeverity Severity { get; }
+    public NotificationMode NotificationMode { get; }
+    public Dictionary<string, object> ContextData { get; }
+    public DateTime Timestamp { get; }
 }
 
 /// <summary>
@@ -103,12 +101,12 @@ public class ErrorContext
 /// </summary>
 public class ErrorEventArgs : EventArgs
 {
-    public ErrorContext ErrorContext { get; }
-
     public ErrorEventArgs(ErrorContext errorContext)
     {
         ErrorContext = errorContext;
     }
+
+    public ErrorContext ErrorContext { get; }
 }
 
 // ErrorRecoveryEventArgs is defined in ErrorRecovery.cs
@@ -122,7 +120,7 @@ public static class ErrorHandler
     /// Global error event that components can subscribe to for error notifications
     /// </summary>
     public static event EventHandler<ErrorEventArgs>? OnError;
-    
+
     // Error recovery events are handled through Telemetry logging
 
     /// <summary>
@@ -205,10 +203,10 @@ public static class ErrorContextFactory
             ErrorCategory.Configuration,
             ErrorSeverity.Medium,
             NotificationMode.Silent,
-            new Dictionary<string, object> 
-            { 
-                ["Setting"] = setting, 
-                ["Value"] = value ?? "null" 
+            new Dictionary<string, object>
+            {
+                ["Setting"] = setting,
+                ["Value"] = value ?? "null"
             }
         );
     }
@@ -223,8 +221,8 @@ public static class ErrorContextFactory
             ErrorCategory.Integration,
             ErrorSeverity.High,
             NotificationMode.Toast,
-            new Dictionary<string, object> 
-            { 
+            new Dictionary<string, object>
+            {
                 ["EngineName"] = engineName,
                 ["Operation"] = operation
             }
@@ -241,8 +239,8 @@ public static class ErrorContextFactory
             ErrorCategory.Integration,
             ErrorSeverity.Medium,
             NotificationMode.Silent,
-            new Dictionary<string, object> 
-            { 
+            new Dictionary<string, object>
+            {
                 ["SinkName"] = sinkName,
                 ["Operation"] = operation
             }
@@ -273,8 +271,8 @@ public static class ErrorContextFactory
             ErrorCategory.Hardware,
             ErrorSeverity.High,
             NotificationMode.Dialog,
-            new Dictionary<string, object> 
-            { 
+            new Dictionary<string, object>
+            {
                 ["Resource"] = resource,
                 ["Operation"] = operation
             }

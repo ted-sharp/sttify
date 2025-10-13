@@ -1,14 +1,14 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
-using Sttify.Corelib.Engine;
-// using Sttify.Corelib.Engine.Vosk;
-using Sttify.Corelib.Output;
-using Sttify.Corelib.Session;
-using Sttify.Corelib.Plugins;
 using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Engine;
+using Sttify.Corelib.Output;
+using Sttify.Corelib.Plugins;
+using Sttify.Corelib.Session;
 using Xunit;
+// using Sttify.Corelib.Engine.Vosk;
 
 namespace Sttify.Integration.Tests;
 

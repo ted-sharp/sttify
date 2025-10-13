@@ -1,9 +1,8 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Diagnostics;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
-using Vanara.PInvoke;
-using static Vanara.PInvoke.User32;
+using Sttify.Corelib.Diagnostics;
 using static Vanara.PInvoke.Imm32;
+using static Vanara.PInvoke.User32;
 
 namespace Sttify.Corelib.Ime;
 
@@ -19,6 +18,14 @@ public class ImeController : IDisposable
     public ImeController(ImeSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _disposed = true;
+        }
     }
 
     /// <summary>
@@ -199,24 +206,16 @@ public class ImeController : IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        if (!_disposed)
-        {
-            _disposed = true;
-        }
-    }
-
     /// <summary>
     /// Restores IME state when disposed
     /// </summary>
     private class ImeRestorer : IDisposable
     {
-        private readonly IntPtr _window;
-        private readonly bool _originalOpen;
         private readonly IME_CMODE _originalConversion;
+        private readonly bool _originalOpen;
         private readonly IME_SMODE _originalSentence;
         private readonly ImeSettings _settings;
+        private readonly IntPtr _window;
         private bool _disposed = false;
 
         public ImeRestorer(IntPtr window, bool originalOpen, IME_CMODE originalConversion, IME_SMODE originalSentence, ImeSettings settings)
@@ -335,17 +334,22 @@ public class ImeStatus
 {
     public bool HasImeContext { get; set; } = false;
     public bool IsOpen { get; set; } = false;
+
     [SupportedOSPlatform("windows")]
     public IME_CMODE ConversionMode { get; set; } = IME_CMODE.IME_CMODE_ALPHANUMERIC;
+
     [SupportedOSPlatform("windows")]
     public IME_SMODE SentenceMode { get; set; } = IME_SMODE.IME_SMODE_NONE;
+
     public bool IsComposing { get; set; } = false;
     public IntPtr WindowHandle { get; set; } = IntPtr.Zero;
 
     [SupportedOSPlatform("windows")]
     public bool IsNativeMode => (ConversionMode & IME_CMODE.IME_CMODE_NATIVE) != 0;
+
     [SupportedOSPlatform("windows")]
     public bool IsAlphanumericMode => ConversionMode == IME_CMODE.IME_CMODE_ALPHANUMERIC;
+
     [SupportedOSPlatform("windows")]
     public bool IsFullShape => (ConversionMode & IME_CMODE.IME_CMODE_FULLSHAPE) != 0;
 }

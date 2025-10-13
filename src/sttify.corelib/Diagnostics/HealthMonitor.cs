@@ -1,26 +1,35 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace Sttify.Corelib.Diagnostics;
 
 public class HealthMonitor : IDisposable
 {
-    private readonly Timer _healthCheckTimer;
     private readonly Dictionary<string, HealthCheck> _healthChecks = new();
+    private readonly Timer _healthCheckTimer;
     private readonly object _lockObject = new();
     private bool _disposed;
-
-    public event EventHandler<HealthStatusChangedEventArgs>? OnHealthStatusChanged;
-
-    public TimeSpan CheckInterval { get; set; } = TimeSpan.FromSeconds(30);
-    public bool IsHealthy { get; private set; } = true;
 
     public HealthMonitor()
     {
         _healthCheckTimer = new Timer(PerformHealthChecks, null, CheckInterval, CheckInterval);
-        
+
         // Add default health checks
         RegisterDefaultHealthChecks();
     }
+
+    public TimeSpan CheckInterval { get; set; } = TimeSpan.FromSeconds(30);
+    public bool IsHealthy { get; private set; } = true;
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _healthCheckTimer?.Dispose();
+            _disposed = true;
+        }
+    }
+
+    public event EventHandler<HealthStatusChangedEventArgs>? OnHealthStatusChanged;
 
     public void RegisterHealthCheck(string name, Func<Task<HealthCheckResult>> check, TimeSpan? timeout = null)
     {
@@ -41,7 +50,7 @@ public class HealthMonitor : IDisposable
     public async Task<Dictionary<string, HealthCheckResult>> GetHealthStatusAsync()
     {
         var results = new Dictionary<string, HealthCheckResult>();
-        
+
         List<HealthCheck> checksToRun;
         lock (_lockObject)
         {
@@ -58,7 +67,7 @@ public class HealthMonitor : IDisposable
             }
             catch (OperationCanceledException)
             {
-                return new KeyValuePair<string, HealthCheckResult>(check.Name, 
+                return new KeyValuePair<string, HealthCheckResult>(check.Name,
                     HealthCheckResult.Unhealthy($"Health check timed out after {check.Timeout.TotalSeconds} seconds"));
             }
             catch (Exception ex)
@@ -69,7 +78,7 @@ public class HealthMonitor : IDisposable
         });
 
         var completedTasks = await Task.WhenAll(tasks);
-        
+
         foreach (var task in completedTasks)
         {
             results[task.Key] = task.Value;
@@ -88,7 +97,7 @@ public class HealthMonitor : IDisposable
             var results = await GetHealthStatusAsync();
             var wasHealthy = IsHealthy;
             var unhealthyChecks = results.Where(r => r.Value.Status != HealthStatus.Healthy).ToList();
-            
+
             IsHealthy = unhealthyChecks.Count == 0;
 
             if (wasHealthy != IsHealthy)
@@ -106,7 +115,7 @@ public class HealthMonitor : IDisposable
             // Log unhealthy checks
             foreach (var unhealthyCheck in unhealthyChecks)
             {
-                Telemetry.LogWarning("HealthCheckFailed", 
+                Telemetry.LogWarning("HealthCheckFailed",
                     $"Health check '{unhealthyCheck.Key}' failed: {unhealthyCheck.Value.Description}");
             }
         }
@@ -123,7 +132,7 @@ public class HealthMonitor : IDisposable
         {
             var process = Process.GetCurrentProcess();
             var memoryMb = process.WorkingSet64 / (1024 * 1024);
-            
+
             if (memoryMb > 1024) // Over 1GB
             {
                 return Task.FromResult(HealthCheckResult.Degraded($"High memory usage: {memoryMb} MB"));
@@ -132,7 +141,7 @@ public class HealthMonitor : IDisposable
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy($"Very high memory usage: {memoryMb} MB"));
             }
-            
+
             return Task.FromResult(HealthCheckResult.Healthy($"Memory usage: {memoryMb} MB"));
         });
 
@@ -141,7 +150,7 @@ public class HealthMonitor : IDisposable
         {
             var process = Process.GetCurrentProcess();
             var cpuUsagePercent = 0.0; // Simplified to avoid async delay
-            
+
             if (cpuUsagePercent > 80.0)
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy($"High CPU usage: {cpuUsagePercent:F1}%"));
@@ -150,7 +159,7 @@ public class HealthMonitor : IDisposable
             {
                 return Task.FromResult(HealthCheckResult.Degraded($"Moderate CPU usage: {cpuUsagePercent:F1}%"));
             }
-            
+
             return Task.FromResult(HealthCheckResult.Healthy($"CPU usage: {cpuUsagePercent:F1}%"));
         });
 
@@ -161,43 +170,34 @@ public class HealthMonitor : IDisposable
             return Task.FromResult(HealthCheckResult.Healthy("Application is running normally"));
         });
     }
-
-    public void Dispose()
-    {
-        if (!_disposed)
-        {
-            _healthCheckTimer?.Dispose();
-            _disposed = true;
-        }
-    }
 }
 
 public class HealthCheck
 {
-    public string Name { get; }
-    public Func<Task<HealthCheckResult>> CheckFunction { get; }
-    public TimeSpan Timeout { get; }
-
     public HealthCheck(string name, Func<Task<HealthCheckResult>> checkFunction, TimeSpan timeout)
     {
         Name = name;
         CheckFunction = checkFunction;
         Timeout = timeout;
     }
+
+    public string Name { get; }
+    public Func<Task<HealthCheckResult>> CheckFunction { get; }
+    public TimeSpan Timeout { get; }
 }
 
 public class HealthCheckResult
 {
-    public HealthStatus Status { get; }
-    public string Description { get; }
-    public Dictionary<string, object> Data { get; }
-
     private HealthCheckResult(HealthStatus status, string description, Dictionary<string, object>? data = null)
     {
         Status = status;
         Description = description;
         Data = data ?? new Dictionary<string, object>();
     }
+
+    public HealthStatus Status { get; }
+    public string Description { get; }
+    public Dictionary<string, object> Data { get; }
 
     public static HealthCheckResult Healthy(string description = "", Dictionary<string, object>? data = null)
         => new(HealthStatus.Healthy, description, data);
@@ -218,14 +218,14 @@ public enum HealthStatus
 
 public class HealthStatusChangedEventArgs : EventArgs
 {
-    public bool WasHealthy { get; }
-    public bool IsHealthy { get; }
-    public Dictionary<string, HealthCheckResult> Results { get; }
-
     public HealthStatusChangedEventArgs(bool wasHealthy, bool isHealthy, Dictionary<string, HealthCheckResult> results)
     {
         WasHealthy = wasHealthy;
         IsHealthy = isHealthy;
         Results = results;
     }
+
+    public bool WasHealthy { get; }
+    public bool IsHealthy { get; }
+    public Dictionary<string, HealthCheckResult> Results { get; }
 }

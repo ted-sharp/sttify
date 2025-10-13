@@ -1,32 +1,18 @@
+﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
-using System.Collections.Concurrent;
 
 namespace Sttify.Corelib.Audio;
 
 public class EndpointDetector : IDisposable
 {
-    private readonly EndpointSettings _settings;
-    private readonly VoiceActivityDetector _vad;
     private readonly ConcurrentQueue<EndpointEvent> _eventHistory = new();
+    private readonly EndpointSettings _settings;
     private readonly Timer _timeoutTimer;
-    
-    private DateTime _sessionStartTime;
+    private readonly VoiceActivityDetector _vad;
     private DateTime _lastActivityTime;
-    private bool _isInUtterance;
-    private double _totalSpeechDuration;
-    private int _utteranceCount;
 
-    public event EventHandler<UtteranceStartedEventArgs>? OnUtteranceStarted;
-    public event EventHandler<UtteranceEndedEventArgs>? OnUtteranceEnded;
-    public event EventHandler<EndpointTriggeredEventArgs>? OnEndpointTriggered;
-    public event EventHandler<SessionTimeoutEventArgs>? OnSessionTimeout;
-
-    public bool IsInUtterance => _isInUtterance;
-    public TimeSpan SessionDuration => DateTime.UtcNow - _sessionStartTime;
-    public double TotalSpeechDuration => _totalSpeechDuration;
-    public int UtteranceCount => _utteranceCount;
-    public TimeSpan TimeSinceLastActivity => DateTime.UtcNow - _lastActivityTime;
+    private DateTime _sessionStartTime;
 
     public EndpointDetector(EndpointSettings? settings = null, VoiceActivityDetector? vad = null)
     {
@@ -41,19 +27,41 @@ public class EndpointDetector : IDisposable
         _vad.OnEndpointDetected += OnVadEndpointDetected;
 
         // Setup timeout timer
-        _timeoutTimer = new Timer(CheckTimeouts, null, 
+        _timeoutTimer = new Timer(CheckTimeouts, null,
             TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
+
+    public bool IsInUtterance { get; private set; }
+
+    public TimeSpan SessionDuration => DateTime.UtcNow - _sessionStartTime;
+    public double TotalSpeechDuration { get; private set; }
+
+    public int UtteranceCount { get; private set; }
+
+    public TimeSpan TimeSinceLastActivity => DateTime.UtcNow - _lastActivityTime;
+
+    public void Dispose()
+    {
+        _timeoutTimer?.Dispose();
+        _vad?.Dispose();
+        while (_eventHistory.TryDequeue(out _))
+        { }
+    }
+
+    public event EventHandler<UtteranceStartedEventArgs>? OnUtteranceStarted;
+    public event EventHandler<UtteranceEndedEventArgs>? OnUtteranceEnded;
+    public event EventHandler<EndpointTriggeredEventArgs>? OnEndpointTriggered;
+    public event EventHandler<SessionTimeoutEventArgs>? OnSessionTimeout;
 
     public EndpointResult ProcessAudioFrame(ReadOnlySpan<byte> audioData, int sampleRate, int channels)
     {
         try
         {
             var timestamp = DateTime.UtcNow;
-            
+
             // Process through VAD
             var vadResult = _vad.ProcessAudioFrame(audioData, sampleRate, channels);
-            
+
             // Update activity tracking
             if (vadResult.IsVoice)
             {
@@ -76,7 +84,8 @@ public class EndpointDetector : IDisposable
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("EndpointDetectionError", ex, new {
+            Telemetry.LogError("EndpointDetectionError", ex, new
+            {
                 DataLength = audioData.Length,
                 SampleRate = sampleRate,
                 Channels = channels
@@ -102,18 +111,19 @@ public class EndpointDetector : IDisposable
         };
 
         // 1. Silence-based endpoint detection
-        if (!vadResult.IsVoice && _isInUtterance)
+        if (!vadResult.IsVoice && IsInUtterance)
         {
             var silenceDuration = timestamp - _lastActivityTime;
-            
+
             if (silenceDuration.TotalMilliseconds >= _settings.SilenceTimeoutMs)
             {
                 result.HasEndpoint = true;
                 result.EndpointType = EndpointType.SilenceBased;
                 result.Confidence = CalculateSilenceConfidence(silenceDuration);
                 result.SilenceDuration = silenceDuration;
-                
-                Telemetry.LogEvent("SilenceEndpointDetected", new {
+
+                Telemetry.LogEvent("SilenceEndpointDetected", new
+                {
                     SilenceDuration = silenceDuration.TotalMilliseconds,
                     Confidence = result.Confidence
                 });
@@ -131,7 +141,7 @@ public class EndpointDetector : IDisposable
         }
 
         // 3. Maximum utterance length
-        if (_isInUtterance && _settings.MaxUtteranceDurationMs > 0)
+        if (IsInUtterance && _settings.MaxUtteranceDurationMs > 0)
         {
             var utteranceDuration = GetCurrentUtteranceDuration();
             if (utteranceDuration.TotalMilliseconds >= _settings.MaxUtteranceDurationMs)
@@ -140,8 +150,9 @@ public class EndpointDetector : IDisposable
                 result.EndpointType = EndpointType.Timeout;
                 result.Confidence = 1.0;
                 result.UtteranceDuration = utteranceDuration;
-                
-                Telemetry.LogEvent("TimeoutEndpointDetected", new {
+
+                Telemetry.LogEvent("TimeoutEndpointDetected", new
+                {
                     UtteranceDuration = utteranceDuration.TotalMilliseconds
                 });
             }
@@ -158,15 +169,16 @@ public class EndpointDetector : IDisposable
                 result.Confidence = 1.0;
                 result.SessionDuration = sessionDuration;
                 result.IsSessionTimeout = true;
-                
-                Telemetry.LogEvent("SessionTimeoutDetected", new {
+
+                Telemetry.LogEvent("SessionTimeoutDetected", new
+                {
                     SessionDuration = sessionDuration.TotalMilliseconds
                 });
             }
         }
 
         // 5. Adaptive endpoint based on speech patterns
-        if (_settings.EnableAdaptiveEndpoint && _utteranceCount > 0)
+        if (_settings.EnableAdaptiveEndpoint && UtteranceCount > 0)
         {
             var adaptiveEndpoint = DetectAdaptiveEndpoint(vadResult, timestamp);
             if (adaptiveEndpoint.HasEndpoint && adaptiveEndpoint.Confidence > result.Confidence)
@@ -182,7 +194,7 @@ public class EndpointDetector : IDisposable
     {
         var result = new EndpointResult { HasEndpoint = false };
 
-        if (_isInUtterance && vadResult.Energy < _settings.EnergyEndpointThreshold)
+        if (IsInUtterance && vadResult.Energy < _settings.EnergyEndpointThreshold)
         {
             // Check recent energy trend
             var recentEvents = GetRecentEvents(TimeSpan.FromMilliseconds(500));
@@ -213,12 +225,13 @@ public class EndpointDetector : IDisposable
 
         // Analyze speech patterns from previous utterances
         var recentUtterances = GetRecentUtteranceStats();
-        if (recentUtterances.Count < 2) return result;
+        if (recentUtterances.Count < 2)
+            return result;
 
         var avgUtteranceLength = recentUtterances.Average(u => u.Duration.TotalMilliseconds);
         var avgSilenceLength = recentUtterances.Average(u => u.EndSilence.TotalMilliseconds);
 
-        if (_isInUtterance)
+        if (IsInUtterance)
         {
             var currentUtteranceDuration = GetCurrentUtteranceDuration();
             var timeSinceLastVoice = timestamp - _lastActivityTime;
@@ -241,15 +254,15 @@ public class EndpointDetector : IDisposable
 
     private void OnVoiceActivityChanged(object? sender, VoiceActivityEventArgs e)
     {
-        if (e.IsActive && !_isInUtterance)
+        if (e.IsActive && !IsInUtterance)
         {
             // Utterance started
-            _isInUtterance = true;
-            _utteranceCount++;
-            
-            var startEvent = new UtteranceStartedEventArgs(_utteranceCount, e.Confidence, e.Timestamp);
+            IsInUtterance = true;
+            UtteranceCount++;
+
+            var startEvent = new UtteranceStartedEventArgs(UtteranceCount, e.Confidence, e.Timestamp);
             OnUtteranceStarted?.Invoke(this, startEvent);
-            
+
             RecordEvent(new EndpointEvent
             {
                 Timestamp = e.Timestamp,
@@ -257,13 +270,14 @@ public class EndpointDetector : IDisposable
                 Confidence = e.Confidence
             });
 
-            Telemetry.LogEvent("UtteranceStarted", new {
-                UtteranceNumber = _utteranceCount,
+            Telemetry.LogEvent("UtteranceStarted", new
+            {
+                UtteranceNumber = UtteranceCount,
                 Confidence = e.Confidence,
                 SessionDuration = (e.Timestamp - _sessionStartTime).TotalSeconds
             });
         }
-        else if (!e.IsActive && _isInUtterance)
+        else if (!e.IsActive && IsInUtterance)
         {
             // Potential utterance end - will be confirmed by endpoint detection
             _lastActivityTime = e.Timestamp;
@@ -272,15 +286,15 @@ public class EndpointDetector : IDisposable
 
     private void OnSilenceDetected(object? sender, SilenceDetectedEventArgs e)
     {
-        if (_isInUtterance)
+        if (IsInUtterance)
         {
-            _totalSpeechDuration += e.VoiceDuration.TotalSeconds;
+            TotalSpeechDuration += e.VoiceDuration.TotalSeconds;
         }
     }
 
     private void OnVadEndpointDetected(object? sender, EndpointDetectedEventArgs e)
     {
-        if (_isInUtterance)
+        if (IsInUtterance)
         {
             TriggerEndpoint(new EndpointResult
             {
@@ -308,16 +322,16 @@ public class EndpointDetector : IDisposable
 
     private void TriggerEndpoint(EndpointResult result)
     {
-        if (_isInUtterance)
+        if (IsInUtterance)
         {
-            _isInUtterance = false;
-            
+            IsInUtterance = false;
+
             var utteranceDuration = GetCurrentUtteranceDuration();
-            
+
             var endEvent = new UtteranceEndedEventArgs(
-                _utteranceCount, utteranceDuration, result.EndpointType, result.Confidence, result.Timestamp);
+                UtteranceCount, utteranceDuration, result.EndpointType, result.Confidence, result.Timestamp);
             OnUtteranceEnded?.Invoke(this, endEvent);
-            
+
             RecordEvent(new EndpointEvent
             {
                 Timestamp = result.Timestamp,
@@ -326,8 +340,9 @@ public class EndpointDetector : IDisposable
                 UtteranceDuration = utteranceDuration
             });
 
-            Telemetry.LogEvent("UtteranceEnded", new {
-                UtteranceNumber = _utteranceCount,
+            Telemetry.LogEvent("UtteranceEnded", new
+            {
+                UtteranceNumber = UtteranceCount,
                 Duration = utteranceDuration.TotalMilliseconds,
                 EndpointType = result.EndpointType.ToString(),
                 Confidence = result.Confidence
@@ -345,7 +360,7 @@ public class EndpointDetector : IDisposable
     private void CheckTimeouts(object? state)
     {
         var now = DateTime.UtcNow;
-        
+
         // Check for session timeout
         if (_settings.MaxSessionDurationMs > 0)
         {
@@ -370,7 +385,7 @@ public class EndpointDetector : IDisposable
             var inactivityDuration = now - _lastActivityTime;
             if (inactivityDuration.TotalMilliseconds >= _settings.InactivityTimeoutMs)
             {
-                if (_isInUtterance)
+                if (IsInUtterance)
                 {
                     TriggerEndpoint(new EndpointResult
                     {
@@ -426,12 +441,12 @@ public class EndpointDetector : IDisposable
     {
         var stats = new List<UtteranceStats>();
         var events = _eventHistory.OrderByDescending(e => e.Timestamp).ToArray();
-        
+
         EndpointEvent? endEvent = null;
         for (int i = 0; i < events.Length; i++)
         {
             var evt = events[i];
-            
+
             if (evt.Type == EndpointEventType.UtteranceEnded && endEvent == null)
             {
                 endEvent = evt;
@@ -443,19 +458,20 @@ public class EndpointDetector : IDisposable
                     Duration = endEvent.Timestamp - evt.Timestamp,
                     EndSilence = endEvent.EndpointResult?.SilenceDuration ?? TimeSpan.Zero
                 });
-                
+
                 endEvent = null;
-                if (stats.Count >= 5) break; // Limit to recent utterances
+                if (stats.Count >= 5)
+                    break; // Limit to recent utterances
             }
         }
-        
+
         return stats;
     }
 
     private void RecordEvent(EndpointEvent evt)
     {
         _eventHistory.Enqueue(evt);
-        
+
         // Keep history manageable
         while (_eventHistory.Count > _settings.MaxEventHistory)
         {
@@ -468,9 +484,9 @@ public class EndpointDetector : IDisposable
         return new EndpointStatistics
         {
             SessionDuration = SessionDuration,
-            TotalSpeechDuration = _totalSpeechDuration,
-            UtteranceCount = _utteranceCount,
-            IsInUtterance = _isInUtterance,
+            TotalSpeechDuration = TotalSpeechDuration,
+            UtteranceCount = UtteranceCount,
+            IsInUtterance = IsInUtterance,
             TimeSinceLastActivity = TimeSinceLastActivity,
             EventHistoryCount = _eventHistory.Count,
             VadStatistics = _vad.GetStatistics()
@@ -481,22 +497,16 @@ public class EndpointDetector : IDisposable
     {
         _sessionStartTime = DateTime.UtcNow;
         _lastActivityTime = DateTime.UtcNow;
-        _isInUtterance = false;
-        _totalSpeechDuration = 0;
-        _utteranceCount = 0;
-        
-        while (_eventHistory.TryDequeue(out _)) { }
-        
-        _vad.Reset();
-        
-        Telemetry.LogEvent("EndpointDetectorReset");
-    }
+        IsInUtterance = false;
+        TotalSpeechDuration = 0;
+        UtteranceCount = 0;
 
-    public void Dispose()
-    {
-        _timeoutTimer?.Dispose();
-        _vad?.Dispose();
-        while (_eventHistory.TryDequeue(out _)) { }
+        while (_eventHistory.TryDequeue(out _))
+        { }
+
+        _vad.Reset();
+
+        Telemetry.LogEvent("EndpointDetectorReset");
     }
 }
 
@@ -508,10 +518,10 @@ public class EndpointSettings
     public int MaxSessionDurationMs { get; set; } = 300000; // 5 minutes
     public int InactivityTimeoutMs { get; set; } = 10000;
     public int MaxEventHistory { get; set; } = 1000;
-    
+
     public bool EnableEnergyEndpoint { get; set; } = true;
     public double EnergyEndpointThreshold { get; set; } = -40.0; // dB
-    
+
     public bool EnableAdaptiveEndpoint { get; set; } = true;
 }
 
@@ -522,7 +532,7 @@ public class EndpointResult
     public EndpointType EndpointType { get; set; }
     public double Confidence { get; set; }
     public DateTime Timestamp { get; set; }
-    
+
     // Additional context
     public double VadConfidence { get; set; }
     public TimeSpan? SilenceDuration { get; set; }
@@ -572,27 +582,21 @@ public enum EndpointEventType
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class UtteranceStartedEventArgs : EventArgs
 {
-    public int UtteranceNumber { get; }
-    public double Confidence { get; }
-    public DateTime Timestamp { get; }
-
     public UtteranceStartedEventArgs(int utteranceNumber, double confidence, DateTime timestamp)
     {
         UtteranceNumber = utteranceNumber;
         Confidence = confidence;
         Timestamp = timestamp;
     }
+
+    public int UtteranceNumber { get; }
+    public double Confidence { get; }
+    public DateTime Timestamp { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class UtteranceEndedEventArgs : EventArgs
 {
-    public int UtteranceNumber { get; }
-    public TimeSpan Duration { get; }
-    public EndpointType EndpointType { get; }
-    public double Confidence { get; }
-    public DateTime Timestamp { get; }
-
     public UtteranceEndedEventArgs(int utteranceNumber, TimeSpan duration, EndpointType endpointType, double confidence, DateTime timestamp)
     {
         UtteranceNumber = utteranceNumber;
@@ -601,26 +605,32 @@ public class UtteranceEndedEventArgs : EventArgs
         Confidence = confidence;
         Timestamp = timestamp;
     }
+
+    public int UtteranceNumber { get; }
+    public TimeSpan Duration { get; }
+    public EndpointType EndpointType { get; }
+    public double Confidence { get; }
+    public DateTime Timestamp { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class EndpointTriggeredEventArgs : EventArgs
 {
-    public EndpointResult Result { get; }
-
     public EndpointTriggeredEventArgs(EndpointResult result)
     {
         Result = result;
     }
+
+    public EndpointResult Result { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class SessionTimeoutEventArgs : EventArgs
 {
-    public TimeSpan SessionDuration { get; }
-
     public SessionTimeoutEventArgs(TimeSpan sessionDuration)
     {
         SessionDuration = sessionDuration;
     }
+
+    public TimeSpan SessionDuration { get; }
 }

@@ -1,6 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
-
-namespace Sttify.Corelib.Diagnostics;
+﻿namespace Sttify.Corelib.Diagnostics;
 
 /// <summary>
 /// Utilities for safely running fire-and-forget tasks without surfacing unobserved exceptions.

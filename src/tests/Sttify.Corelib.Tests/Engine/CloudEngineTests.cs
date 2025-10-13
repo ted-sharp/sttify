@@ -1,4 +1,4 @@
-using Sttify.Corelib.Engine.Cloud;
+﻿using Sttify.Corelib.Engine.Cloud;
 using Xunit;
 
 namespace Sttify.Corelib.Tests.Engine;

@@ -1,33 +1,42 @@
+﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Config;
-using System.Collections.Concurrent;
 
 namespace Sttify.Corelib.Diagnostics;
 
 public class ErrorRecoveryManager : IDisposable
 {
     private readonly ConcurrentDictionary<string, ErrorState> _componentStates = new();
+    private readonly object _lockObject = new();
     private readonly ConcurrentQueue<ErrorRecoveryAction> _recoveryQueue = new();
     private readonly Timer _recoveryTimer;
     private readonly ErrorRecoverySettings _settings;
-    private readonly object _lockObject = new();
-
-    public event EventHandler<ErrorRecoveredEventArgs>? OnErrorRecovered;
-    public event EventHandler<RecoveryFailedEventArgs>? OnRecoveryFailed;
 
     public ErrorRecoveryManager(ErrorRecoverySettings? settings = null)
     {
         _settings = settings ?? new ErrorRecoverySettings();
-        _recoveryTimer = new Timer(ProcessRecoveryQueue, null, 
+        _recoveryTimer = new Timer(ProcessRecoveryQueue, null,
             TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(_settings.RecoveryIntervalSeconds));
     }
+
+    public void Dispose()
+    {
+        _recoveryTimer?.Dispose();
+        _componentStates.Clear();
+
+        // Clear remaining recovery queue
+        while (_recoveryQueue.TryDequeue(out _))
+        { }
+    }
+
+    public event EventHandler<ErrorRecoveredEventArgs>? OnErrorRecovered;
+    public event EventHandler<RecoveryFailedEventArgs>? OnRecoveryFailed;
 
     public void ReportError(string componentName, Exception exception, ErrorSeverity severity = ErrorSeverity.Medium)
     {
         lock (_lockObject)
         {
             var state = _componentStates.GetOrAdd(componentName, _ => new ErrorState(componentName));
-            
+
             state.LastError = exception;
             state.LastErrorTime = DateTime.UtcNow;
             state.ErrorCount++;
@@ -44,8 +53,9 @@ public class ErrorRecoveryManager : IDisposable
             {
                 state.IsDisabled = true;
                 state.DisabledUntil = DateTime.UtcNow.AddMinutes(_settings.DisableDurationMinutes);
-                
-                Telemetry.LogError("ComponentDisabledDueToErrors", exception, new {
+
+                Telemetry.LogError("ComponentDisabledDueToErrors", exception, new
+                {
                     ComponentName = componentName,
                     ErrorCount = state.ErrorCount,
                     ConsecutiveFailures = state.ConsecutiveFailures,
@@ -60,8 +70,9 @@ public class ErrorRecoveryManager : IDisposable
                 if (recoveryAction != null)
                 {
                     _recoveryQueue.Enqueue(recoveryAction);
-                    
-                    Telemetry.LogEvent("RecoveryActionQueued", new {
+
+                    Telemetry.LogEvent("RecoveryActionQueued", new
+                    {
                         ComponentName = componentName,
                         ActionType = recoveryAction.ActionType.ToString(),
                         Priority = recoveryAction.Priority.ToString()
@@ -69,7 +80,8 @@ public class ErrorRecoveryManager : IDisposable
                 }
             }
 
-            Telemetry.LogError("ErrorReported", exception, new {
+            Telemetry.LogError("ErrorReported", exception, new
+            {
                 ComponentName = componentName,
                 Severity = severity.ToString(),
                 ErrorCount = state.ErrorCount,
@@ -84,7 +96,7 @@ public class ErrorRecoveryManager : IDisposable
         if (!_componentStates.TryGetValue(componentName, out var state))
             return true; // No errors reported yet
 
-        return !state.IsDisabled && 
+        return !state.IsDisabled &&
                state.ConsecutiveFailures < _settings.MaxConsecutiveFailures &&
                (DateTime.UtcNow - state.LastErrorTime).TotalMinutes > _settings.HealthyThresholdMinutes;
     }
@@ -99,7 +111,7 @@ public class ErrorRecoveryManager : IDisposable
             // Re-enable component
             state.IsDisabled = false;
             state.ConsecutiveFailures = 0;
-            
+
             Telemetry.LogEvent("ComponentReEnabled", new { ComponentName = componentName });
         }
 
@@ -119,7 +131,7 @@ public class ErrorRecoveryManager : IDisposable
         }
 
         var status = DetermineComponentStatus(state);
-        
+
         return new ComponentHealthInfo
         {
             ComponentName = componentName,
@@ -156,7 +168,7 @@ public class ErrorRecoveryManager : IDisposable
             };
 
             var success = await ExecuteRecoveryActionAsync(recoveryAction);
-            
+
             if (success)
             {
                 ResetComponentState(componentName);
@@ -190,9 +202,10 @@ public class ErrorRecoveryManager : IDisposable
             }
             catch (Exception ex)
             {
-                Telemetry.LogError("RecoveryQueueProcessingError", ex, new { 
+                Telemetry.LogError("RecoveryQueueProcessingError", ex, new
+                {
                     ActionType = action.ActionType.ToString(),
-                    ComponentName = action.ComponentName 
+                    ComponentName = action.ComponentName
                 });
             }
         }
@@ -202,7 +215,8 @@ public class ErrorRecoveryManager : IDisposable
     {
         try
         {
-            Telemetry.LogEvent("RecoveryActionStarted", new {
+            Telemetry.LogEvent("RecoveryActionStarted", new
+            {
                 ComponentName = action.ComponentName,
                 ActionType = action.ActionType.ToString(),
                 QueueTime = (DateTime.UtcNow - action.QueuedTime).TotalSeconds
@@ -225,20 +239,21 @@ public class ErrorRecoveryManager : IDisposable
                     state.LastRecoveryTime = DateTime.UtcNow;
                     state.ConsecutiveFailures = 0;
                     state.SuccessfulRecoveries++;
-                    
+
                     OnErrorRecovered?.Invoke(this, new ErrorRecoveredEventArgs(
                         action.ComponentName, action.ActionType, state.LastError));
                 }
                 else
                 {
                     state.FailedRecoveries++;
-                    
+
                     OnRecoveryFailed?.Invoke(this, new RecoveryFailedEventArgs(
                         action.ComponentName, action.ActionType, state.LastError));
                 }
             }
 
-            Telemetry.LogEvent("RecoveryActionCompleted", new {
+            Telemetry.LogEvent("RecoveryActionCompleted", new
+            {
                 ComponentName = action.ComponentName,
                 ActionType = action.ActionType.ToString(),
                 Success = success,
@@ -249,7 +264,8 @@ public class ErrorRecoveryManager : IDisposable
         }
         catch (Exception ex)
         {
-            Telemetry.LogError("RecoveryActionExecutionError", ex, new {
+            Telemetry.LogError("RecoveryActionExecutionError", ex, new
+            {
                 ComponentName = action.ComponentName,
                 ActionType = action.ActionType.ToString()
             });
@@ -300,8 +316,9 @@ public class ErrorRecoveryManager : IDisposable
 
     private bool ShouldAttemptRecovery(ErrorState state)
     {
-        if (state.IsDisabled) return false;
-        
+        if (state.IsDisabled)
+            return false;
+
         var timeSinceLastRecovery = DateTime.UtcNow - state.LastRecoveryTime;
         return timeSinceLastRecovery.TotalMinutes >= _settings.MinRecoveryIntervalMinutes;
     }
@@ -335,17 +352,18 @@ public class ErrorRecoveryManager : IDisposable
 
     private ComponentStatus DetermineComponentStatus(ErrorState state)
     {
-        if (state.IsDisabled) return ComponentStatus.Disabled;
-        
+        if (state.IsDisabled)
+            return ComponentStatus.Disabled;
+
         if (state.ConsecutiveFailures >= _settings.MaxConsecutiveFailures)
             return ComponentStatus.Critical;
-            
+
         if (state.ConsecutiveFailures >= 2)
             return ComponentStatus.Degraded;
-            
+
         if ((DateTime.UtcNow - state.LastErrorTime).TotalMinutes < _settings.HealthyThresholdMinutes)
             return ComponentStatus.Warning;
-            
+
         return ComponentStatus.Healthy;
     }
 
@@ -359,19 +377,18 @@ public class ErrorRecoveryManager : IDisposable
             state.LastRecoveryTime = DateTime.UtcNow;
         }
     }
-
-    public void Dispose()
-    {
-        _recoveryTimer?.Dispose();
-        _componentStates.Clear();
-        
-        // Clear remaining recovery queue
-        while (_recoveryQueue.TryDequeue(out _)) { }
-    }
 }
 
 public class ErrorState
 {
+    public ErrorState(string componentName)
+    {
+        ComponentName = componentName;
+        LastErrorTime = DateTime.MinValue;
+        LastRecoveryTime = DateTime.MinValue;
+        DisabledUntil = DateTime.MinValue;
+    }
+
     public string ComponentName { get; }
     public int ErrorCount { get; set; }
     public int ConsecutiveFailures { get; set; }
@@ -383,14 +400,6 @@ public class ErrorState
     public DateTime DisabledUntil { get; set; }
     public int SuccessfulRecoveries { get; set; }
     public int FailedRecoveries { get; set; }
-
-    public ErrorState(string componentName)
-    {
-        ComponentName = componentName;
-        LastErrorTime = DateTime.MinValue;
-        LastRecoveryTime = DateTime.MinValue;
-        DisabledUntil = DateTime.MinValue;
-    }
 }
 
 public class ErrorRecoveryAction
@@ -461,28 +470,28 @@ public enum ComponentStatus
 
 public class ErrorRecoveredEventArgs : EventArgs
 {
-    public string ComponentName { get; }
-    public RecoveryActionType ActionType { get; }
-    public Exception? PreviousError { get; }
-
     public ErrorRecoveredEventArgs(string componentName, RecoveryActionType actionType, Exception? previousError)
     {
         ComponentName = componentName;
         ActionType = actionType;
         PreviousError = previousError;
     }
+
+    public string ComponentName { get; }
+    public RecoveryActionType ActionType { get; }
+    public Exception? PreviousError { get; }
 }
 
 public class RecoveryFailedEventArgs : EventArgs
 {
-    public string ComponentName { get; }
-    public RecoveryActionType ActionType { get; }
-    public Exception? Error { get; }
-
     public RecoveryFailedEventArgs(string componentName, RecoveryActionType actionType, Exception? error)
     {
         ComponentName = componentName;
         ActionType = actionType;
         Error = error;
     }
+
+    public string ComponentName { get; }
+    public RecoveryActionType ActionType { get; }
+    public Exception? Error { get; }
 }

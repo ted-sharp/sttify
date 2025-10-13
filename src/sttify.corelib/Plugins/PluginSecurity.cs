@@ -1,17 +1,16 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Diagnostics;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Security.Cryptography;
-using System.Text;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Plugins;
 
 public class PluginSecurity
 {
-    private readonly Dictionary<string, string> _trustedHashes = new();
-    private readonly HashSet<string> _blockedPlugins = new();
     private readonly HashSet<string> _allowedAuthors = new();
+    private readonly HashSet<string> _blockedPlugins = new();
     private readonly PluginSecuritySettings _settings;
+    private readonly Dictionary<string, string> _trustedHashes = new();
 
     public PluginSecurity(PluginSecuritySettings? settings = null)
     {
@@ -46,7 +45,7 @@ public class PluginSecurity
             }
 
             // Check author trust
-            if (_settings.RequireTrustedAuthors && 
+            if (_settings.RequireTrustedAuthors &&
                 !string.IsNullOrEmpty(pluginInfo.Metadata.Author) &&
                 !_allowedAuthors.Contains(pluginInfo.Metadata.Author))
             {
@@ -68,12 +67,13 @@ public class PluginSecurity
             result.SecurityIssues.AddRange(capabilityRisks);
 
             // Determine if plugin should be allowed
-            result.IsAllowed = result.ThreatLevel <= _settings.MaxAllowedThreatLevel && 
+            result.IsAllowed = result.ThreatLevel <= _settings.MaxAllowedThreatLevel &&
                               result.SecurityIssues.Count == 0;
 
             if (result.IsAllowed)
             {
-                Telemetry.LogEvent("PluginSecurityValidationPassed", new { 
+                Telemetry.LogEvent("PluginSecurityValidationPassed", new
+                {
                     PluginName = result.PluginName,
                     ThreatLevel = result.ThreatLevel.ToString(),
                     Author = pluginInfo.Metadata.Author
@@ -81,7 +81,8 @@ public class PluginSecurity
             }
             else
             {
-                Telemetry.LogWarning("PluginSecurityValidationFailed", $"Plugin {result.PluginName} validation failed", new { 
+                Telemetry.LogWarning("PluginSecurityValidationFailed", $"Plugin {result.PluginName} validation failed", new
+                {
                     PluginName = result.PluginName,
                     ThreatLevel = result.ThreatLevel.ToString(),
                     Issues = result.SecurityIssues.ToArray()
@@ -93,7 +94,7 @@ public class PluginSecurity
             result.SecurityIssues.Add($"Security validation failed: {ex.Message}");
             result.ThreatLevel = ThreatLevel.High;
             result.ValidationException = ex;
-            
+
             Telemetry.LogError("PluginSecurityValidationError", ex, new { PluginName = result.PluginName });
         }
 
@@ -148,7 +149,7 @@ public class PluginSecurity
         try
         {
             var assembly = Assembly.LoadFrom(assemblyPath);
-            
+
             // Check for dangerous API usage
             var types = assembly.GetTypes();
             foreach (var type in types)
@@ -190,11 +191,12 @@ public class PluginSecurity
         try
         {
             var methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
-            
+
             foreach (var method in methods)
             {
                 var methodBody = method.GetMethodBody();
-                if (methodBody == null) continue;
+                if (methodBody == null)
+                    continue;
 
                 // Simple heuristic: check if method calls potentially dangerous APIs
                 foreach (var dangerousNs in dangerousNamespaces)
@@ -216,7 +218,8 @@ public class PluginSecurity
 
     private bool IsSuspiciousReference(string? assemblyName)
     {
-        if (string.IsNullOrEmpty(assemblyName)) return false;
+        if (string.IsNullOrEmpty(assemblyName))
+            return false;
 
         var suspiciousNames = new[]
         {
@@ -225,7 +228,7 @@ public class PluginSecurity
             "System.DirectoryServices"
         };
 
-        return suspiciousNames.Any(suspicious => 
+        return suspiciousNames.Any(suspicious =>
             assemblyName.Contains(suspicious, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -253,7 +256,7 @@ public class PluginSecurity
     {
         _trustedHashes[pluginName] = assemblyHash.ToLowerInvariant();
         SaveSecurityConfiguration();
-        
+
         Telemetry.LogEvent("TrustedPluginAdded", new { PluginName = pluginName, Hash = assemblyHash });
     }
 
@@ -261,7 +264,7 @@ public class PluginSecurity
     {
         _blockedPlugins.Add(pluginName);
         SaveSecurityConfiguration();
-        
+
         Telemetry.LogEvent("PluginBlocked", new { PluginName = pluginName });
     }
 
@@ -269,7 +272,7 @@ public class PluginSecurity
     {
         _allowedAuthors.Add(author);
         SaveSecurityConfiguration();
-        
+
         Telemetry.LogEvent("TrustedAuthorAdded", new { Author = author });
     }
 

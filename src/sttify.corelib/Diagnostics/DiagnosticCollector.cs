@@ -1,23 +1,18 @@
-using System.Diagnostics.CodeAnalysis;
-using Sttify.Corelib.Config;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Runtime;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Sttify.Corelib.Diagnostics;
 
 public class DiagnosticCollector : IDisposable
 {
-    private readonly ConcurrentDictionary<string, DiagnosticData> _diagnostics = new();
     private readonly Timer _collectionTimer;
-    private readonly DiagnosticSettings _settings;
     private readonly Process _currentProcess;
+    private readonly ConcurrentDictionary<string, DiagnosticData> _diagnostics = new();
+    private readonly DiagnosticSettings _settings;
     private DateTime _lastCpuTime;
     private TimeSpan _lastTotalProcessorTime;
-
-    public event EventHandler<DiagnosticDataCollectedEventArgs>? OnDataCollected;
-    public event EventHandler<DiagnosticThresholdExceededEventArgs>? OnThresholdExceeded;
 
     public DiagnosticCollector(DiagnosticSettings? settings = null)
     {
@@ -25,33 +20,44 @@ public class DiagnosticCollector : IDisposable
         _currentProcess = Process.GetCurrentProcess();
         _lastCpuTime = DateTime.UtcNow;
         _lastTotalProcessorTime = _currentProcess.TotalProcessorTime;
-        
-        _collectionTimer = new Timer(CollectDiagnostics, null, 
+
+        _collectionTimer = new Timer(CollectDiagnostics, null,
             TimeSpan.Zero, TimeSpan.FromSeconds(_settings.CollectionIntervalSeconds));
     }
+
+    public void Dispose()
+    {
+        _collectionTimer?.Dispose();
+        _currentProcess?.Dispose();
+        _diagnostics.Clear();
+    }
+
+    public event EventHandler<DiagnosticDataCollectedEventArgs>? OnDataCollected;
+    public event EventHandler<DiagnosticThresholdExceededEventArgs>? OnThresholdExceeded;
 
     private void CollectDiagnostics(object? state)
     {
         try
         {
             var timestamp = DateTime.UtcNow;
-            
+
             // Collect system diagnostics
             CollectSystemDiagnostics(timestamp);
-            
+
             // Collect application diagnostics
             CollectApplicationDiagnostics(timestamp);
-            
+
             // Collect custom diagnostics
             CollectCustomDiagnostics(timestamp);
-            
+
             // Check thresholds
             CheckThresholds(timestamp);
-            
+
             // Trigger event
             OnDataCollected?.Invoke(this, new DiagnosticDataCollectedEventArgs(timestamp, GetCurrentSnapshot()));
-            
-            Telemetry.LogEvent("DiagnosticsCollected", new {
+
+            Telemetry.LogEvent("DiagnosticsCollected", new
+            {
                 Timestamp = timestamp,
                 DiagnosticCount = _diagnostics.Count
             });
@@ -69,39 +75,39 @@ public class DiagnosticCollector : IDisposable
             // CPU Usage (approximate calculation)
             var currentTime = DateTime.UtcNow;
             var currentTotalProcessorTime = _currentProcess.TotalProcessorTime;
-            
+
             var timeDiff = (currentTime - _lastCpuTime).TotalMilliseconds;
             var cpuTimeDiff = (currentTotalProcessorTime - _lastTotalProcessorTime).TotalMilliseconds;
-            
+
             var cpuUsage = timeDiff > 0 ? Math.Min(100.0, (cpuTimeDiff / timeDiff) * 100.0) : 0.0;
-            
+
             _lastCpuTime = currentTime;
             _lastTotalProcessorTime = currentTotalProcessorTime;
-            
+
             UpdateDiagnostic("System.CPU.UsagePercent", cpuUsage, timestamp);
-            
+
             // Memory Usage
             var totalMemory = GC.GetTotalMemory(false);
             var workingSet = _currentProcess.WorkingSet64;
             var privateMemory = _currentProcess.PrivateMemorySize64;
-            
+
             UpdateDiagnostic("System.Memory.TotalBytes", totalMemory, timestamp);
             UpdateDiagnostic("System.Memory.WorkingSetBytes", workingSet, timestamp);
             UpdateDiagnostic("System.Memory.PrivateBytes", privateMemory, timestamp);
-            
+
             // GC Information
             var gen0Collections = GC.CollectionCount(0);
             var gen1Collections = GC.CollectionCount(1);
             var gen2Collections = GC.CollectionCount(2);
-            
+
             UpdateDiagnostic("System.GC.Gen0Collections", gen0Collections, timestamp);
             UpdateDiagnostic("System.GC.Gen1Collections", gen1Collections, timestamp);
             UpdateDiagnostic("System.GC.Gen2Collections", gen2Collections, timestamp);
-            
+
             // Thread Count
             var threadCount = _currentProcess.Threads.Count;
             UpdateDiagnostic("System.Threads.Count", threadCount, timestamp);
-            
+
             // Handle Count
             var handleCount = _currentProcess.HandleCount;
             UpdateDiagnostic("System.Handles.Count", handleCount, timestamp);
@@ -119,18 +125,18 @@ public class DiagnosticCollector : IDisposable
             // Application uptime
             var uptime = DateTime.UtcNow - _currentProcess.StartTime.ToUniversalTime();
             UpdateDiagnostic("App.UptimeSeconds", uptime.TotalSeconds, timestamp);
-            
+
             // JIT compilation
             var jitTime = _currentProcess.TotalProcessorTime.TotalMilliseconds;
             UpdateDiagnostic("App.JIT.TotalMs", jitTime, timestamp);
-            
+
             // Assembly count
             var assemblyCount = AppDomain.CurrentDomain.GetAssemblies().Length;
             UpdateDiagnostic("App.Assemblies.Count", assemblyCount, timestamp);
-            
+
             // Exception count (from global handler if available)
             // This would need to be tracked separately in the application
-            
+
         }
         catch (Exception ex)
         {
@@ -160,13 +166,13 @@ public class DiagnosticCollector : IDisposable
     {
         var key = $"Latency.{operationName}";
         UpdateDiagnostic($"{key}.LastMs", latency.TotalMilliseconds, DateTime.UtcNow);
-        
+
         // Also track average
         var avgKey = $"{key}.AvgMs";
         var currentAvg = GetCurrentValue(avgKey);
         var count = GetCurrentValue($"{key}.Count") + 1;
         var newAvg = (currentAvg * (count - 1) + latency.TotalMilliseconds) / count;
-        
+
         UpdateDiagnostic(avgKey, newAvg, DateTime.UtcNow);
         UpdateDiagnostic($"{key}.Count", count, DateTime.UtcNow);
     }
@@ -175,10 +181,10 @@ public class DiagnosticCollector : IDisposable
     {
         var key = $"Throughput.{operationName}";
         var timestamp = DateTime.UtcNow;
-        
+
         UpdateDiagnostic($"{key}.TotalItems", GetCurrentValue($"{key}.TotalItems") + itemsProcessed, timestamp);
         UpdateDiagnostic($"{key}.LastBatch", itemsProcessed, timestamp);
-        
+
         // Calculate items per second over last minute
         var windowKey = $"{key}.PerSecond";
         if (_diagnostics.TryGetValue(windowKey, out var existing))
@@ -198,21 +204,24 @@ public class DiagnosticCollector : IDisposable
 
     private void UpdateDiagnostic(string key, double value, DateTime timestamp)
     {
-        _diagnostics.AddOrUpdate(key, 
+        _diagnostics.AddOrUpdate(key,
             new DiagnosticData(key, value, timestamp),
-            (k, existing) => {
+            (k, existing) =>
+            {
                 existing.PreviousValue = existing.CurrentValue;
                 existing.CurrentValue = value;
                 existing.LastUpdated = timestamp;
                 existing.UpdateCount++;
-                
+
                 // Update min/max
-                if (value < existing.MinValue) existing.MinValue = value;
-                if (value > existing.MaxValue) existing.MaxValue = value;
-                
+                if (value < existing.MinValue)
+                    existing.MinValue = value;
+                if (value > existing.MaxValue)
+                    existing.MaxValue = value;
+
                 // Update moving average (simple exponential)
                 existing.MovingAverage = existing.MovingAverage * 0.9 + value * 0.1;
-                
+
                 return existing;
             });
     }
@@ -239,11 +248,12 @@ public class DiagnosticCollector : IDisposable
                 if (exceeded && (timestamp - data.LastThresholdAlert).TotalMinutes >= threshold.AlertCooldownMinutes)
                 {
                     data.LastThresholdAlert = timestamp;
-                    
+
                     OnThresholdExceeded?.Invoke(this, new DiagnosticThresholdExceededEventArgs(
                         threshold.Key, data.CurrentValue, threshold.Value, threshold.ComparisonType));
-                    
-                    Telemetry.LogWarning("DiagnosticThresholdExceeded", $"Threshold exceeded for {threshold.Key}", new {
+
+                    Telemetry.LogWarning("DiagnosticThresholdExceeded", $"Threshold exceeded for {threshold.Key}", new
+                    {
                         Key = threshold.Key,
                         CurrentValue = data.CurrentValue,
                         ThresholdValue = threshold.Value,
@@ -294,27 +304,10 @@ public class DiagnosticCollector : IDisposable
             Telemetry.LogEvent("DiagnosticRemoved", new { Key = key });
         }
     }
-
-    public void Dispose()
-    {
-        _collectionTimer?.Dispose();
-        _currentProcess?.Dispose();
-        _diagnostics.Clear();
-    }
 }
 
 public class DiagnosticData
 {
-    public string Key { get; }
-    public double CurrentValue { get; set; }
-    public double PreviousValue { get; set; }
-    public double MinValue { get; set; }
-    public double MaxValue { get; set; }
-    public double MovingAverage { get; set; }
-    public DateTime LastUpdated { get; set; }
-    public DateTime LastThresholdAlert { get; set; }
-    public int UpdateCount { get; set; }
-
     public DiagnosticData(string key, double value, DateTime timestamp)
     {
         Key = key;
@@ -327,6 +320,16 @@ public class DiagnosticData
         LastThresholdAlert = DateTime.MinValue;
         UpdateCount = 1;
     }
+
+    public string Key { get; }
+    public double CurrentValue { get; set; }
+    public double PreviousValue { get; set; }
+    public double MinValue { get; set; }
+    public double MaxValue { get; set; }
+    public double MovingAverage { get; set; }
+    public DateTime LastUpdated { get; set; }
+    public DateTime LastThresholdAlert { get; set; }
+    public int UpdateCount { get; set; }
 
     public DiagnosticData Clone()
     {
@@ -375,23 +378,18 @@ public enum ThresholdComparison
 
 public class DiagnosticDataCollectedEventArgs : EventArgs
 {
-    public DateTime Timestamp { get; }
-    public DiagnosticSnapshot Snapshot { get; }
-
     public DiagnosticDataCollectedEventArgs(DateTime timestamp, DiagnosticSnapshot snapshot)
     {
         Timestamp = timestamp;
         Snapshot = snapshot;
     }
+
+    public DateTime Timestamp { get; }
+    public DiagnosticSnapshot Snapshot { get; }
 }
 
 public class DiagnosticThresholdExceededEventArgs : EventArgs
 {
-    public string Key { get; }
-    public double CurrentValue { get; }
-    public double ThresholdValue { get; }
-    public ThresholdComparison ComparisonType { get; }
-
     public DiagnosticThresholdExceededEventArgs(string key, double currentValue, double thresholdValue, ThresholdComparison comparisonType)
     {
         Key = key;
@@ -399,4 +397,9 @@ public class DiagnosticThresholdExceededEventArgs : EventArgs
         ThresholdValue = thresholdValue;
         ComparisonType = comparisonType;
     }
+
+    public string Key { get; }
+    public double CurrentValue { get; }
+    public double ThresholdValue { get; }
+    public ThresholdComparison ComparisonType { get; }
 }

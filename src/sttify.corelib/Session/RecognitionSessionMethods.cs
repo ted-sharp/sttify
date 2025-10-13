@@ -1,4 +1,4 @@
-using Sttify.Corelib.Diagnostics;
+﻿using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Session;
 
@@ -7,10 +7,10 @@ public static class RecognitionSessionExtensions
 {
     public static void OnModeChanged(this RecognitionSession session, RecognitionMode oldMode, RecognitionMode newMode)
     {
-        Telemetry.LogEvent("RecognitionModeChanged", new 
-        { 
-            OldMode = oldMode.ToString(), 
-            NewMode = newMode.ToString() 
+        Telemetry.LogEvent("RecognitionModeChanged", new
+        {
+            OldMode = oldMode.ToString(),
+            NewMode = newMode.ToString()
         });
     }
 
@@ -42,7 +42,7 @@ public static class RecognitionSessionExtensions
             return false;
 
         var lowerText = text.ToLowerInvariant();
-        
+
         foreach (var wakeWord in wakeWords)
         {
             if (lowerText.Contains(wakeWord.ToLowerInvariant()))
@@ -51,7 +51,7 @@ public static class RecognitionSessionExtensions
                 return true;
             }
         }
-        
+
         return false;
     }
 

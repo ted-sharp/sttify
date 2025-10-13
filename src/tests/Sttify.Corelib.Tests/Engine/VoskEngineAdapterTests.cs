@@ -1,4 +1,4 @@
-using Sttify.Corelib.Config;
+﻿using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine.Vosk;
 using Xunit;
 

@@ -1,13 +1,13 @@
-using System.Windows;
-using System.Windows.Media;
+﻿using System.Windows;
 using System.Windows.Documents;
-using MediaSystemFonts = System.Windows.SystemFonts;
-using MediaPoint = System.Windows.Point;
-using MediaPen = System.Windows.Media.Pen;
+using System.Windows.Media;
 using MediaBrush = System.Windows.Media.Brush;
 using MediaBrushes = System.Windows.Media.Brushes;
 using MediaFontFamily = System.Windows.Media.FontFamily;
+using MediaPen = System.Windows.Media.Pen;
+using MediaPoint = System.Windows.Point;
 using MediaSize = System.Windows.Size;
+using MediaSystemFonts = System.Windows.SystemFonts;
 
 namespace Sttify.Controls;
 

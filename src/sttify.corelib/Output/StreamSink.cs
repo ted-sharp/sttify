@@ -1,25 +1,20 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Text;
 using Sttify.Corelib.Diagnostics;
-using System.IO;
 
 namespace Sttify.Corelib.Output;
 
 public class StreamSink : ITextOutputSink, IDisposable
 {
+    private readonly bool _disposed = false;
+    private readonly object _lock = new();
     private readonly StreamSinkSettings _settings;
     private StreamWriter? _fileWriter;
-    private MemoryMappedFile? _memoryMappedFile;
     private MemoryMappedViewAccessor? _memoryMappedAccessor;
-    private readonly object _lock = new();
-    private bool _disposed = false;
-    private long _totalWrites;
+    private MemoryMappedFile? _memoryMappedFile;
     private long _totalBytesWritten;
-
-    public string Id => "stream";
-    public string Name => "Stream";
-    public bool IsAvailable => GetAvailability();
+    private long _totalWrites;
 
     public StreamSink(StreamSinkSettings settings)
     {
@@ -27,45 +22,16 @@ public class StreamSink : ITextOutputSink, IDisposable
         Initialize();
     }
 
-    private bool GetAvailability()
+    public void Dispose()
     {
-        if (_disposed) return false;
-
-        return _settings.OutputType switch
-        {
-            StreamOutputType.Console or StreamOutputType.StandardOutput => true,
-            StreamOutputType.File => !string.IsNullOrEmpty(_settings.FilePath) &&
-                                   (File.Exists(_settings.FilePath) || CanCreateFile(_settings.FilePath)),
-            StreamOutputType.SharedMemory => !string.IsNullOrEmpty(_settings.SharedMemoryName),
-            _ => false
-        };
+        _fileWriter?.Dispose();
+        _memoryMappedAccessor?.Dispose();
+        _memoryMappedFile?.Dispose();
     }
 
-    private bool CanCreateFile(string filePath)
-    {
-        try
-        {
-            var directory = Path.GetDirectoryName(Path.GetFullPath(filePath));
-            return !string.IsNullOrEmpty(directory) && (Directory.Exists(directory) || CanCreateDirectory(directory));
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private bool CanCreateDirectory(string directoryPath)
-    {
-        try
-        {
-            Directory.CreateDirectory(directoryPath);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+    public string Id => "stream";
+    public string Name => "Stream";
+    public bool IsAvailable => GetAvailability();
 
     public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
     {
@@ -104,7 +70,8 @@ public class StreamSink : ITextOutputSink, IDisposable
         {
             lock (_lock)
             {
-                if (_disposed) return;
+                if (_disposed)
+                    return;
 
                 switch (_settings.OutputType)
                 {
@@ -163,6 +130,47 @@ public class StreamSink : ITextOutputSink, IDisposable
         }
 
         return;
+    }
+
+    private bool GetAvailability()
+    {
+        if (_disposed)
+            return false;
+
+        return _settings.OutputType switch
+        {
+            StreamOutputType.Console or StreamOutputType.StandardOutput => true,
+            StreamOutputType.File => !string.IsNullOrEmpty(_settings.FilePath) &&
+                                   (File.Exists(_settings.FilePath) || CanCreateFile(_settings.FilePath)),
+            StreamOutputType.SharedMemory => !string.IsNullOrEmpty(_settings.SharedMemoryName),
+            _ => false
+        };
+    }
+
+    private bool CanCreateFile(string filePath)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(Path.GetFullPath(filePath));
+            return !string.IsNullOrEmpty(directory) && (Directory.Exists(directory) || CanCreateDirectory(directory));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private bool CanCreateDirectory(string directoryPath)
+    {
+        try
+        {
+            Directory.CreateDirectory(directoryPath);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task WriteToFileAsync(string line, CancellationToken cancellationToken)
@@ -323,13 +331,6 @@ public class StreamSink : ITextOutputSink, IDisposable
         {
             System.Diagnostics.Debug.WriteLine($"Failed to write to shared memory: {ex.Message}");
         }
-    }
-
-    public void Dispose()
-    {
-        _fileWriter?.Dispose();
-        _memoryMappedAccessor?.Dispose();
-        _memoryMappedFile?.Dispose();
     }
 }
 

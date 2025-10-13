@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Audio;
@@ -6,15 +6,13 @@ namespace Sttify.Corelib.Audio;
 [ExcludeFromCodeCoverage] // WASAPI hardware dependent wrapper, difficult to mock effectively
 public class AudioCapture : IDisposable
 {
-    public event EventHandler<AudioFrameEventArgs>? OnFrame;
-    public event EventHandler<AudioErrorEventArgs>? OnError;
+    private const int MaxRestartAttempts = 1; // simple lightweight recovery
+    private readonly object _lockObject = new();
+    private bool _isCapturing;
+    private AudioCaptureSettings? _lastSettings;
+    private int _restartAttempts;
 
     private WasapiAudioCapture? _wasapiCapture;
-    private bool _isCapturing;
-    private readonly object _lockObject = new();
-    private int _restartAttempts;
-    private const int MaxRestartAttempts = 1; // simple lightweight recovery
-    private AudioCaptureSettings? _lastSettings;
 
     public bool IsCapturing
     {
@@ -26,6 +24,15 @@ public class AudioCapture : IDisposable
             }
         }
     }
+
+    public void Dispose()
+    {
+        // Avoid blocking the calling thread (UI) on dispose
+        AsyncHelper.FireAndForget(() => StopAsync(), nameof(AudioCapture) + ".Dispose");
+    }
+
+    public event EventHandler<AudioFrameEventArgs>? OnFrame;
+    public event EventHandler<AudioErrorEventArgs>? OnError;
 
     public async Task StartAsync(AudioCaptureSettings settings, CancellationToken cancellationToken = default)
     {
@@ -109,7 +116,8 @@ public class AudioCapture : IDisposable
     private bool IsTransientAudioError(Exception exception)
     {
         // Check for known transient error patterns
-        if (exception == null) return false;
+        if (exception == null)
+            return false;
 
         var message = exception.Message?.ToLowerInvariant() ?? "";
         return message.Contains("device in use") ||
@@ -194,12 +202,6 @@ public class AudioCapture : IDisposable
     {
         return WasapiAudioCapture.GetAvailableDevices();
     }
-
-    public void Dispose()
-    {
-        // Avoid blocking the calling thread (UI) on dispose
-        AsyncHelper.FireAndForget(() => StopAsync(), nameof(AudioCapture) + ".Dispose");
-    }
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic
@@ -216,23 +218,23 @@ public class AudioCaptureSettings
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class AudioFrameEventArgs : EventArgs
 {
-    public ReadOnlyMemory<byte> AudioData { get; }
-
     public AudioFrameEventArgs(ReadOnlyMemory<byte> audioData)
     {
         AudioData = audioData;
     }
+
+    public ReadOnlyMemory<byte> AudioData { get; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class
 public class AudioErrorEventArgs : EventArgs
 {
-    public Exception Exception { get; }
-    public string Message { get; }
-
     public AudioErrorEventArgs(Exception exception, string message)
     {
         Exception = exception;
         Message = message;
     }
+
+    public Exception Exception { get; }
+    public string Message { get; }
 }

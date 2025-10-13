@@ -1,19 +1,19 @@
-using Sttify.Corelib.Diagnostics;
-using Sttify.Corelib.Ime;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
+using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Ime;
 using Vanara.PInvoke;
-using Windows.Win32; // Reserved for future CsWin32 migrations
-using Win32PInvoke = Windows.Win32.PInvoke;
-using CsINPUT = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT;
-using CsINPUT_TYPE = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE;
-using CsKEYBDINPUT = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBDINPUT;
-using CsKEYBD_EVENT_FLAGS = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS;
-using CsVIRTUAL_KEY = Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY;
 using static Vanara.PInvoke.Kernel32;
 using static Vanara.PInvoke.User32;
+using CsINPUT = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT;
+using CsINPUT_TYPE = Windows.Win32.UI.Input.KeyboardAndMouse.INPUT_TYPE;
+using CsKEYBD_EVENT_FLAGS = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBD_EVENT_FLAGS;
+using CsKEYBDINPUT = Windows.Win32.UI.Input.KeyboardAndMouse.KEYBDINPUT;
+using CsVIRTUAL_KEY = Windows.Win32.UI.Input.KeyboardAndMouse.VIRTUAL_KEY;
+// Reserved for future CsWin32 migrations
+using Win32PInvoke = Windows.Win32.PInvoke;
 
 namespace Sttify.Corelib.Output;
 
@@ -21,13 +21,9 @@ namespace Sttify.Corelib.Output;
 public class SendInputSink : ITextOutputSink
 {
     private const uint CF_UNICODETEXT = 13;
-
-    public string Id => "sendinput";
-    public string Name => "SendInput";
-    public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+    private readonly ImeController _imeController;
 
     private readonly SendInputSettings _settings;
-    private readonly ImeController _imeController;
 
     public SendInputSink(SendInputSettings? settings = null)
     {
@@ -35,49 +31,9 @@ public class SendInputSink : ITextOutputSink
         _imeController = new ImeController(_settings.Ime);
     }
 
-    /// <summary>
-    /// Check if the current Windows version supports SendInput API (Windows 5.0+)
-    /// </summary>
-    [SupportedOSPlatform("windows")]
-    private static bool IsSendInputSupported()
-    {
-        if (!OperatingSystem.IsWindows())
-            return false;
-
-        try
-        {
-            // Check Windows version - SendInput is supported on Windows 5.0+
-            var version = Environment.OSVersion;
-            return version.Version.Major >= 10; // Windows 10+ (which is Windows 5.0+ internally)
-        }
-        catch
-        {
-            // Fallback: assume supported if we can't determine version
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Safely call SendInput with Windows 5.0+ compatibility check
-    /// </summary>
-    [SupportedOSPlatform("windows")]
-    private static unsafe uint SafeSendInput(uint nInputs, CsINPUT* pInputs, int cbSize)
-    {
-        if (!IsSendInputSupported())
-        {
-            System.Diagnostics.Debug.WriteLine("*** SendInput not supported on this Windows version ***");
-            return 0;
-        }
-
-        // Windows 5.0+ compatibility check for SendInput API
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0))
-        {
-            System.Diagnostics.Debug.WriteLine("*** SendInput requires Windows 10+ (Windows 5.0+) ***");
-            return 0;
-        }
-
-        return Win32PInvoke.SendInput(nInputs, pInputs, cbSize);
-    }
+    public string Id => "sendinput";
+    public string Name => "SendInput";
+    public bool IsAvailable => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     [SupportedOSPlatform("windows")]
     public Task<bool> CanSendAsync(CancellationToken cancellationToken = default)
@@ -127,8 +83,8 @@ public class SendInputSink : ITextOutputSink
         {
             var windowTitle = new StringBuilder(256);
             var className = new StringBuilder(256);
-            GetWindowText(new Vanara.PInvoke.HWND(targetWindow), windowTitle, windowTitle.Capacity);
-            GetClassName(new Vanara.PInvoke.HWND(targetWindow), className, className.Capacity);
+            GetWindowText(new HWND(targetWindow), windowTitle, windowTitle.Capacity);
+            GetClassName(new HWND(targetWindow), className, className.Capacity);
             System.Diagnostics.Debug.WriteLine($"*** Target window: '{windowTitle}' (class: '{className}', handle: {targetWindow}) ***");
         }
 
@@ -165,8 +121,8 @@ public class SendInputSink : ITextOutputSink
                 }
             }
 
-        // Try direct SendInput first (handles surrogate pairs)
-        bool success = await SendTextViaInputAsync(text, cancellationToken);
+            // Try direct SendInput first (handles surrogate pairs)
+            bool success = await SendTextViaInputAsync(text, cancellationToken);
 
             // If SendInput fails, try alternative methods
             if (!success)
@@ -207,6 +163,50 @@ public class SendInputSink : ITextOutputSink
         }
 
         System.Diagnostics.Debug.WriteLine($"*** SendInputSink.SendAsync - Completed sending '{text}' ***");
+    }
+
+    /// <summary>
+    /// Check if the current Windows version supports SendInput API (Windows 5.0+)
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static bool IsSendInputSupported()
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+
+        try
+        {
+            // Check Windows version - SendInput is supported on Windows 5.0+
+            var version = Environment.OSVersion;
+            return version.Version.Major >= 10; // Windows 10+ (which is Windows 5.0+ internally)
+        }
+        catch
+        {
+            // Fallback: assume supported if we can't determine version
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Safely call SendInput with Windows 5.0+ compatibility check
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static unsafe uint SafeSendInput(uint nInputs, CsINPUT* pInputs, int cbSize)
+    {
+        if (!IsSendInputSupported())
+        {
+            System.Diagnostics.Debug.WriteLine("*** SendInput not supported on this Windows version ***");
+            return 0;
+        }
+
+        // Windows 5.0+ compatibility check for SendInput API
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0))
+        {
+            System.Diagnostics.Debug.WriteLine("*** SendInput requires Windows 10+ (Windows 5.0+) ***");
+            return 0;
+        }
+
+        return Win32PInvoke.SendInput(nInputs, pInputs, cbSize);
     }
 
     [SupportedOSPlatform("windows")]
@@ -333,7 +333,8 @@ public class SendInputSink : ITextOutputSink
                     result = SafeSendInput(2, inputs, Marshal.SizeOf<CsINPUT>());
                 }
             }
-            if (result > 0) anySuccess = true;
+            if (result > 0)
+                anySuccess = true;
         }
 
         return anySuccess;
@@ -374,32 +375,40 @@ public class SendInputSink : ITextOutputSink
                 var shiftUp = CreateKeyInput(0x10, true);     // Shift up
 
                 uint sr1;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = shiftDown;
                         sr1 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint sr2;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = insertDown;
                         sr2 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint sr3;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = insertUp;
                         sr3 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint sr4;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = shiftUp;
                         sr4 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
@@ -417,32 +426,40 @@ public class SendInputSink : ITextOutputSink
                 var ctrlUp = CreateKeyInput(0x11, true);     // Ctrl up
 
                 uint result1;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = ctrlDown;
                         result1 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint result2;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = vDown;
                         result2 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint result3;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = vUp;
                         result3 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
                 }
                 await Task.Delay(10, cancellationToken);
                 uint result4;
-                unsafe {
-                    fixed (CsINPUT* inputs = singleInput) {
+                unsafe
+                {
+                    fixed (CsINPUT* inputs = singleInput)
+                    {
                         singleInput[0] = ctrlUp;
                         result4 = SafeSendInput(1, inputs, Marshal.SizeOf<CsINPUT>());
                     }
@@ -459,7 +476,7 @@ public class SendInputSink : ITextOutputSink
                 {
                     const uint WM_PASTE = 0x0302;
                     var lres = SendMessage(
-                        new Vanara.PInvoke.HWND(currentWindow),
+                        new HWND(currentWindow),
                         WM_PASTE,
                         new IntPtr(0),
                         new IntPtr(0));
@@ -493,7 +510,7 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OpenClipboard(Vanara.PInvoke.HWND.NULL))
+            if (!OpenClipboard(HWND.NULL))
                 return null;
 
             IntPtr handle = (IntPtr)GetClipboardData(CF_UNICODETEXT);
@@ -532,7 +549,7 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OpenClipboard(Vanara.PInvoke.HWND.NULL))
+            if (!OpenClipboard(HWND.NULL))
                 return false;
 
             EmptyClipboard();
@@ -580,7 +597,7 @@ public class SendInputSink : ITextOutputSink
                     break;
 
                 const int WM_CHAR = 0x0102;
-                IntPtr result = SendMessage(new Vanara.PInvoke.HWND(targetWindow), WM_CHAR, new IntPtr(c), IntPtr.Zero);
+                IntPtr result = SendMessage(new HWND(targetWindow), WM_CHAR, new IntPtr(c), IntPtr.Zero);
 
                 if (result != IntPtr.Zero)
                 {
@@ -605,14 +622,15 @@ public class SendInputSink : ITextOutputSink
         }
     }
 
-        private static bool IsProcessElevated()
+    private static bool IsProcessElevated()
     {
         try
         {
-                if (!OperatingSystem.IsWindows()) return false;
-                using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
-                var principal = new System.Security.Principal.WindowsPrincipal(identity);
-                return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            if (!OperatingSystem.IsWindows())
+                return false;
+            using var identity = System.Security.Principal.WindowsIdentity.GetCurrent();
+            var principal = new System.Security.Principal.WindowsPrincipal(identity);
+            return principal.IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
         }
         catch
         {
@@ -624,8 +642,9 @@ public class SendInputSink : ITextOutputSink
     {
         try
         {
-            if (!OperatingSystem.IsWindows()) return false;
-            GetWindowThreadProcessId(new Vanara.PInvoke.HWND(windowHandle), out uint processId);
+            if (!OperatingSystem.IsWindows())
+                return false;
+            GetWindowThreadProcessId(new HWND(windowHandle), out uint processId);
             using var processHandle = OpenProcess(0x1000, false, processId); // PROCESS_QUERY_LIMITED_INFORMATION
             if (processHandle == IntPtr.Zero)
                 return false;
@@ -703,7 +722,6 @@ public class SendInputSink : ITextOutputSink
     {
         public int TokenIsElevated;
     }
-
 }
 
 [ExcludeFromCodeCoverage] // Simple configuration class with no business logic

@@ -1,12 +1,10 @@
-using System;
-using System.Runtime.InteropServices;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using MediaColor = System.Windows.Media.Color;
 using System.Windows.Media.Animation;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.User32;
+using MediaColor = System.Windows.Media.Color;
 
 namespace Sttify.Views;
 
@@ -41,7 +39,7 @@ public partial class TransparentOverlayWindow : Window
         }
 
         OverlayContainer.HorizontalAlignment = Enum.TryParse<System.Windows.HorizontalAlignment>(hAlign, out var h) ? h : System.Windows.HorizontalAlignment.Center;
-        OverlayContainer.VerticalAlignment = Enum.TryParse<System.Windows.VerticalAlignment>(vAlign, out var v) ? v : System.Windows.VerticalAlignment.Bottom;
+        OverlayContainer.VerticalAlignment = Enum.TryParse<VerticalAlignment>(vAlign, out var v) ? v : VerticalAlignment.Bottom;
         OverlayContainer.Margin = new Thickness(marginX, marginY, marginX, marginY);
         Opacity = opacity;
     }
@@ -118,7 +116,7 @@ public partial class TransparentOverlayWindow : Window
             Opacity = 1.0;
             return;
         }
-        BeginAnimation(Window.OpacityProperty, _fadeIn);
+        BeginAnimation(OpacityProperty, _fadeIn);
     }
 
     public void FadeOutIfConfigured()
@@ -128,13 +126,14 @@ public partial class TransparentOverlayWindow : Window
             Opacity = 0.0;
             return;
         }
-        BeginAnimation(Window.OpacityProperty, _fadeOut);
+        BeginAnimation(OpacityProperty, _fadeOut);
     }
 
     public void SetClickThrough(bool isClickThrough)
     {
         var hwnd = new WindowInteropHelper(this).Handle;
-        if (hwnd == IntPtr.Zero) return;
+        if (hwnd == IntPtr.Zero)
+            return;
         var exStyle = (int)GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
         if (isClickThrough)
         {

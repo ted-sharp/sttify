@@ -1,4 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
 using Sttify.Corelib.Diagnostics;
 
@@ -46,24 +46,24 @@ public static class ImeTestHelper
                 {
                     result.SuppressionSucceeded = true;
                     result.Steps.Add("IME suppression activated successfully");
-                    
+
                     await Task.Delay(200); // Allow time for suppression to take effect
-                    
+
                     // Get suppressed status
                     result.SuppressedStatus = controller.GetCurrentImeStatus();
                     result.Steps.Add($"Suppressed IME Status: IsOpen={result.SuppressedStatus?.IsOpen}, Alpha={result.SuppressedStatus?.IsAlphanumericMode}");
-                    
+
                     // Verify suppression worked as expected
                     if (settings.CloseImeWhenSending && result.SuppressedStatus?.IsOpen == false)
                     {
                         result.Steps.Add("✓ IME was successfully closed");
                     }
-                    
+
                     if (settings.SetAlphanumericMode && result.SuppressedStatus?.IsAlphanumericMode == true)
                     {
                         result.Steps.Add("✓ IME was successfully set to alphanumeric mode");
                     }
-                    
+
                     // Test composition clearing (can't directly verify, but log the attempt)
                     if (settings.ClearCompositionString)
                     {
@@ -83,7 +83,7 @@ public static class ImeTestHelper
                 await Task.Delay(Math.Max(settings.RestoreDelayMs, 100));
                 result.FinalStatus = controller.GetCurrentImeStatus();
                 result.Steps.Add($"Final IME Status: IsOpen={result.FinalStatus.IsOpen}, Alpha={result.FinalStatus.IsAlphanumericMode}");
-                
+
                 // Verify restoration
                 if (result.InitialStatus.IsOpen == result.FinalStatus.IsOpen)
                 {
@@ -119,7 +119,7 @@ public static class ImeTestHelper
         {
             var settings = new ImeSettings();
             using var controller = new ImeController(settings);
-            
+
             var status = controller.GetCurrentImeStatus();
             return status.HasImeContext; // Basic test: can we get IME context?
         }
@@ -139,10 +139,10 @@ public static class ImeTestHelper
         {
             var settings = new ImeSettings();
             using var controller = new ImeController(settings);
-            
+
             var status = controller.GetCurrentImeStatus();
             var isComposing = controller.IsImeComposing();
-            
+
             return $"IME Status Report:\n" +
                    $"  Has IME Context: {status.HasImeContext}\n" +
                    $"  Is Open: {status.IsOpen}\n" +
@@ -170,35 +170,35 @@ public class ImeTestResult
     public string? ErrorMessage { get; set; }
     public string TestText { get; set; } = "";
     public ImeSettings? Settings { get; set; }
-    
+
     public ImeStatus InitialStatus { get; set; } = new();
     public ImeStatus? SuppressedStatus { get; set; }
     public ImeStatus FinalStatus { get; set; } = new();
-    
+
     public bool WasComposingInitially { get; set; }
     public bool SuppressionSucceeded { get; set; }
-    
+
     public List<string> Steps { get; set; } = new();
-    
+
     public string GetReport()
     {
         var report = $"IME Control Test Report\n";
         report += $"Success: {Success}\n";
-        
+
         if (!Success && !string.IsNullOrEmpty(ErrorMessage))
         {
             report += $"Error: {ErrorMessage}\n";
         }
-        
+
         report += $"Test Text: {TestText}\n";
         report += $"Settings: EnableControl={Settings?.EnableImeControl}, CloseWhenSending={Settings?.CloseImeWhenSending}, SetAlpha={Settings?.SetAlphanumericMode}\n";
         report += $"\nTest Steps:\n";
-        
+
         foreach (var step in Steps)
         {
             report += $"  {step}\n";
         }
-        
+
         return report;
     }
 }

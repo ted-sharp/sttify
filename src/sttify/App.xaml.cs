@@ -1,3 +1,7 @@
+﻿using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Sttify.Corelib.Audio;
@@ -5,19 +9,13 @@ using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Hotkey;
-using Sttify.Corelib.Ime;
 using Sttify.Corelib.Output;
+using Sttify.Corelib.Services;
 using Sttify.Corelib.Session;
-using static Sttify.Corelib.Config.SettingsProvider;
 using Sttify.Services;
 using Sttify.Tray;
 using Sttify.ViewModels;
 using Sttify.Views;
-using System.Diagnostics;
-using System.IO;
-using System.Windows;
-using Sttify.Corelib.Services;
-using System.Text.Json;
 
 namespace Sttify;
 
@@ -55,10 +53,10 @@ public partial class App : System.Windows.Application
 
             BuildHost();
             Console.WriteLine("*** Starting InitializeServices ***");
-            System.Diagnostics.Debug.WriteLine("*** Starting InitializeServices ***");
+            Debug.WriteLine("*** Starting InitializeServices ***");
             InitializeServices();
             Console.WriteLine("*** InitializeServices completed ***");
-            System.Diagnostics.Debug.WriteLine("*** InitializeServices completed ***");
+            Debug.WriteLine("*** InitializeServices completed ***");
 
             Telemetry.LogEvent("ApplicationStarted");
 
@@ -69,18 +67,18 @@ public partial class App : System.Windows.Application
             Telemetry.LogError("ApplicationStartupFailed", ex);
 
             // Output detailed error information to console
-            System.Diagnostics.Debug.WriteLine("=== APPLICATION STARTUP ERROR ===");
-            System.Diagnostics.Debug.WriteLine($"Exception Type: {ex.GetType().Name}");
-            System.Diagnostics.Debug.WriteLine($"Message: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+            Debug.WriteLine("=== APPLICATION STARTUP ERROR ===");
+            Debug.WriteLine($"Exception Type: {ex.GetType().Name}");
+            Debug.WriteLine($"Message: {ex.Message}");
+            Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
 
             if (ex.InnerException != null)
             {
-                System.Diagnostics.Debug.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
-                System.Diagnostics.Debug.WriteLine($"Inner Message: {ex.InnerException.Message}");
-                System.Diagnostics.Debug.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
+                Debug.WriteLine($"Inner Exception: {ex.InnerException.GetType().Name}");
+                Debug.WriteLine($"Inner Message: {ex.InnerException.Message}");
+                Debug.WriteLine($"Inner Stack Trace: {ex.InnerException.StackTrace}");
             }
-            System.Diagnostics.Debug.WriteLine("==================================");
+            Debug.WriteLine("==================================");
 
             System.Windows.MessageBox.Show($"Failed to start application: {ex.Message}", "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
@@ -191,18 +189,18 @@ public partial class App : System.Windows.Application
                             // Try to get settings synchronously first
                             var settings = settingsProvider.GetSettingsSync();
                             engineSettings = settings.Engine;
-                            System.Diagnostics.Debug.WriteLine($"*** STT Engine Settings LOADED - Profile: {engineSettings.Profile}, ModelPath: '{engineSettings.Vosk.ModelPath}' ***");
+                            Debug.WriteLine($"*** STT Engine Settings LOADED - Profile: {engineSettings.Profile}, ModelPath: '{engineSettings.Vosk.ModelPath}' ***");
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"*** Failed to load settings, using defaults: {ex.Message} ***");
+                            Debug.WriteLine($"*** Failed to load settings, using defaults: {ex.Message} ***");
                             // Fallback to safe defaults if settings loading fails
                             engineSettings = CreateDefaultEngineSettings();
                         }
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("*** SettingsProvider not available, using defaults ***");
+                        Debug.WriteLine("*** SettingsProvider not available, using defaults ***");
                         engineSettings = CreateDefaultEngineSettings();
                     }
 
@@ -293,15 +291,15 @@ public partial class App : System.Windows.Application
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to show ControlWindow via DI: {ex.Message}");
+                Debug.WriteLine($"Failed to show ControlWindow via DI: {ex.Message}");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"InitializeServices failed: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            System.Diagnostics.Debug.WriteLine($"InitializeServices failed: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+            Debug.WriteLine($"InitializeServices failed: {ex.Message}");
+            Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             throw;
         }
     }
@@ -317,9 +315,9 @@ public partial class App : System.Windows.Application
 
             if (isElevated)
             {
-                System.Diagnostics.Debug.WriteLine("*** WARNING: Sttify is running with administrator privileges ***");
-                System.Diagnostics.Debug.WriteLine("*** This will prevent input to non-elevated applications due to UIPI ***");
-                System.Diagnostics.Debug.WriteLine("*** Consider running Sttify without administrator privileges for better compatibility ***");
+                Debug.WriteLine("*** WARNING: Sttify is running with administrator privileges ***");
+                Debug.WriteLine("*** This will prevent input to non-elevated applications due to UIPI ***");
+                Debug.WriteLine("*** Consider running Sttify without administrator privileges for better compatibility ***");
 
                 // Show warning to user (force to foreground)
                 var result = System.Windows.MessageBox.Show(
@@ -340,15 +338,15 @@ public partial class App : System.Windows.Application
 
                 if (result == MessageBoxResult.No)
                 {
-                    System.Diagnostics.Debug.WriteLine("*** User chose to exit due to elevation warning ***");
+                    Debug.WriteLine("*** User chose to exit due to elevation warning ***");
                     return false;
                 }
 
-                System.Diagnostics.Debug.WriteLine("*** User chose to continue with elevation despite warnings ***");
+                Debug.WriteLine("*** User chose to continue with elevation despite warnings ***");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("*** Sttify running with normal user privileges - optimal for text input ***");
+                Debug.WriteLine("*** Sttify running with normal user privileges - optimal for text input ***");
                 IsElevated = false;
             }
 
@@ -356,7 +354,7 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"*** Failed to check elevation: {ex.Message} ***");
+            Debug.WriteLine($"*** Failed to check elevation: {ex.Message} ***");
             // If we can't check elevation, assume it's safe to continue
             return true;
         }

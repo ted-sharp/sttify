@@ -1,25 +1,22 @@
+﻿using System.Text.Json;
 using Sttify.Corelib.Config;
-using System.Text.Json;
 using Vosk;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
 public class VoskEngineAdapter : ISttEngine
 {
-    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
-    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
-    public event EventHandler<SttErrorEventArgs>? OnError;
+    private readonly Queue<byte[]> _audioQueue = new();
+    private readonly object _lockObject = new();
 
     private readonly VoskEngineSettings _settings;
     private bool _isRunning;
-    private readonly Queue<byte[]> _audioQueue = new();
-    private readonly object _lockObject = new();
+    private Model? _model;
     private CancellationTokenSource? _processingCancellation;
     private Task? _processingTask;
-    
+
     // Vosk objects
     private VoskRecognizer? _recognizer;
-    private Model? _model;
 
     public VoskEngineAdapter(VoskEngineSettings settings)
     {
@@ -27,13 +24,17 @@ public class VoskEngineAdapter : ISttEngine
         System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter Constructor - Instance ID: {GetHashCode()} ***");
     }
 
+    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
+    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
+    public event EventHandler<SttErrorEventArgs>? OnError;
+
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_isRunning)
             throw new InvalidOperationException("Engine is already running");
 
         System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter - Starting with ModelPath: '{_settings.ModelPath}' ***");
-        
+
         // Validate model path
         if (string.IsNullOrEmpty(_settings.ModelPath) || !Directory.Exists(_settings.ModelPath))
         {
@@ -48,18 +49,18 @@ public class VoskEngineAdapter : ISttEngine
             // Initialize Vosk model
             System.Diagnostics.Debug.WriteLine("*** Loading Vosk model... ***");
             _model = new Model(_settings.ModelPath);
-            
+
             // Create recognizer with sample rate from settings
             System.Diagnostics.Debug.WriteLine($"*** Creating Vosk recognizer with sample rate: {_settings.SampleRate} ***");
             _recognizer = new VoskRecognizer(_model, _settings.SampleRate);
-            
+
             // Enable phrase list if configured
             if (!string.IsNullOrEmpty(_settings.Grammar))
             {
                 _recognizer.SetWords(true);
                 System.Diagnostics.Debug.WriteLine("*** Vosk word recognition enabled ***");
             }
-            
+
             lock (_lockObject)
             {
                 _isRunning = true;
@@ -67,7 +68,7 @@ public class VoskEngineAdapter : ISttEngine
             }
 
             _processingTask = Task.Run(() => ProcessAudioLoop(_processingCancellation.Token), cancellationToken);
-            
+
             System.Diagnostics.Debug.WriteLine("*** VoskEngineAdapter - Started successfully ***");
             await Task.Delay(100, cancellationToken);
         }
@@ -110,7 +111,7 @@ public class VoskEngineAdapter : ISttEngine
         _processingCancellation?.Dispose();
         _processingCancellation = null;
         _processingTask = null;
-        
+
         System.Diagnostics.Debug.WriteLine("*** VoskEngineAdapter - Stopped successfully ***");
     }
 
@@ -130,6 +131,23 @@ public class VoskEngineAdapter : ISttEngine
         }
     }
 
+    public void Dispose()
+    {
+        try
+        {
+            StopAsync().GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter Dispose error: {ex.Message} ***");
+        }
+        finally
+        {
+            _recognizer?.Dispose();
+            _model?.Dispose();
+        }
+    }
+
     private async Task ProcessAudioLoop(CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
@@ -139,7 +157,7 @@ public class VoskEngineAdapter : ISttEngine
             while (!cancellationToken.IsCancellationRequested && _recognizer != null)
             {
                 byte[]? audioChunk = null;
-                
+
                 lock (_audioQueue)
                 {
                     if (_audioQueue.Count > 0)
@@ -154,13 +172,13 @@ public class VoskEngineAdapter : ISttEngine
                     {
                         // Process audio through Vosk
                         bool hasMoreData = _recognizer.AcceptWaveform(audioChunk, audioChunk.Length);
-                        
+
                         if (hasMoreData)
                         {
                             // Final result available
                             var result = _recognizer.Result();
                             var parsedResult = ParseVoskResult(result);
-                            
+
                             if (!string.IsNullOrWhiteSpace(parsedResult.Text))
                             {
                                 System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter - FINAL recognition: '{parsedResult.Text}' ***");
@@ -174,7 +192,7 @@ public class VoskEngineAdapter : ISttEngine
                             // Partial result available
                             var partialResult = _recognizer.PartialResult();
                             var parsedPartial = ParseVoskPartialResult(partialResult);
-                            
+
                             if (!string.IsNullOrWhiteSpace(parsedPartial.Text))
                             {
                                 System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter - PARTIAL recognition: '{parsedPartial.Text}' ***");
@@ -209,17 +227,17 @@ public class VoskEngineAdapter : ISttEngine
         {
             var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            
+
             var text = root.TryGetProperty("text", out var textElement) ? textElement.GetString() ?? "" : "";
             var confidence = root.TryGetProperty("confidence", out var confElement) ? confElement.GetDouble() : 0.0;
-            
+
             // Add punctuation if enabled and text doesn't end with punctuation
-            if (_settings.Punctuation && !string.IsNullOrEmpty(text) && 
+            if (_settings.Punctuation && !string.IsNullOrEmpty(text) &&
                 !text.EndsWith('。') && !text.EndsWith('.') && !text.EndsWith('!') && !text.EndsWith('?'))
             {
                 text += "。";
             }
-            
+
             return new VoskResult
             {
                 Text = text,
@@ -234,16 +252,16 @@ public class VoskEngineAdapter : ISttEngine
             return new VoskResult { Text = "", IsPartial = false, IsFinal = false, Confidence = 0.0 };
         }
     }
-    
+
     private VoskResult ParseVoskPartialResult(string json)
     {
         try
         {
             var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            
+
             var text = root.TryGetProperty("partial", out var partialElement) ? partialElement.GetString() ?? "" : "";
-            
+
             return new VoskResult
             {
                 Text = text,
@@ -256,23 +274,6 @@ public class VoskEngineAdapter : ISttEngine
         {
             System.Diagnostics.Debug.WriteLine($"*** Error parsing Vosk partial result JSON: {ex.Message} ***");
             return new VoskResult { Text = "", IsPartial = true, IsFinal = false, Confidence = 0.0 };
-        }
-    }
-
-    public void Dispose()
-    {
-        try
-        {
-            StopAsync().GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter Dispose error: {ex.Message} ***");
-        }
-        finally
-        {
-            _recognizer?.Dispose();
-            _model?.Dispose();
         }
     }
 

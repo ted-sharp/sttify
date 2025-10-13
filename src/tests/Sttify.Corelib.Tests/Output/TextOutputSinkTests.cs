@@ -1,5 +1,4 @@
-using Moq;
-using Sttify.Corelib.Output;
+﻿using Sttify.Corelib.Output;
 using Xunit;
 
 namespace Sttify.Corelib.Tests.Output;
@@ -11,6 +10,21 @@ public class StreamSinkTests : IDisposable
     public StreamSinkTests()
     {
         _testFilePath = Path.Combine(Path.GetTempPath(), $"sttify_test_{Guid.NewGuid()}.txt");
+    }
+
+    public void Dispose()
+    {
+        if (File.Exists(_testFilePath))
+        {
+            try
+            {
+                File.Delete(_testFilePath);
+            }
+            catch
+            {
+                // Ignore cleanup errors
+            }
+        }
     }
 
     [Fact]
@@ -117,21 +131,6 @@ public class StreamSinkTests : IDisposable
                 File.Delete(testFile);
         }
     }
-
-    public void Dispose()
-    {
-        if (File.Exists(_testFilePath))
-        {
-            try
-            {
-                File.Delete(_testFilePath);
-            }
-            catch
-            {
-                // Ignore cleanup errors
-            }
-        }
-    }
 }
 
 public class ExternalProcessSinkTests
@@ -143,7 +142,7 @@ public class ExternalProcessSinkTests
         var cmdPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
         var settings = new ExternalProcessSettings
         {
-            ExecutablePath = cmdPath, 
+            ExecutablePath = cmdPath,
             ArgumentTemplate = "/c echo test",
             ThrottleMs = 0
         };

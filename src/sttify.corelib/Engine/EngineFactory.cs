@@ -1,7 +1,4 @@
-using Sttify.Corelib.Config;
-using Sttify.Corelib.Engine.Cloud;
-using Sttify.Corelib.Engine.Vosk;
-using Sttify.Corelib.Engine.Vibe;
+﻿using Sttify.Corelib.Config;
 
 namespace Sttify.Corelib.Engine;
 
@@ -61,7 +58,7 @@ public static class EngineFactory
                !string.IsNullOrEmpty(settings.ApiKey);
     }
 
-    private static bool ValidateVibeSettings(Config.VibeEngineSettings settings)
+    private static bool ValidateVibeSettings(VibeEngineSettings settings)
     {
         return !string.IsNullOrEmpty(settings.Endpoint) &&
                Uri.TryCreate(settings.Endpoint, UriKind.Absolute, out _);

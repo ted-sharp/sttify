@@ -1,4 +1,4 @@
-using Sttify.Corelib.Diagnostics;
+﻿using Sttify.Corelib.Diagnostics;
 using Xunit;
 
 namespace Sttify.Corelib.Tests.Diagnostics;

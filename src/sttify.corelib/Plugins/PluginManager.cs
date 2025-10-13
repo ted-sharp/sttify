@@ -1,23 +1,18 @@
-using Sttify.Corelib.Diagnostics;
-using System.Reflection;
-using System.Runtime.Loader;
+﻿using System.Runtime.Loader;
 using System.Text.Json;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Plugins;
 
 public class PluginManager : IDisposable
 {
-    private readonly Dictionary<string, IPlugin> _loadedPlugins = new();
-    private readonly Dictionary<string, PluginMetadata> _pluginMetadata = new();
     private readonly Dictionary<string, AssemblyLoadContext> _loadContexts = new();
-    private readonly string _pluginsDirectory;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly Dictionary<string, IPlugin> _loadedPlugins = new();
     private readonly object _lockObject = new();
+    private readonly Dictionary<string, PluginMetadata> _pluginMetadata = new();
+    private readonly string _pluginsDirectory;
     private readonly PluginSecurity _pluginSecurity = new();
-
-    public event EventHandler<PluginEventArgs>? OnPluginLoaded;
-    public event EventHandler<PluginEventArgs>? OnPluginUnloaded;
-    public event EventHandler<PluginErrorEventArgs>? OnPluginError;
+    private readonly IServiceProvider _serviceProvider;
 
     public PluginManager(IServiceProvider serviceProvider, string? pluginsDirectory = null)
     {
@@ -26,6 +21,43 @@ public class PluginManager : IDisposable
 
         Directory.CreateDirectory(_pluginsDirectory);
     }
+
+    public void Dispose()
+    {
+        StopAllPluginsAsync().Wait();
+
+        foreach (var plugin in _loadedPlugins.Values)
+        {
+            try
+            {
+                plugin.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("PluginDisposeFailed", ex, new { PluginName = plugin.Name });
+            }
+        }
+
+        foreach (var loadContext in _loadContexts.Values)
+        {
+            try
+            {
+                loadContext.Unload();
+            }
+            catch (Exception ex)
+            {
+                Telemetry.LogError("PluginLoadContextUnloadFailed", ex);
+            }
+        }
+
+        _loadedPlugins.Clear();
+        _pluginMetadata.Clear();
+        _loadContexts.Clear();
+    }
+
+    public event EventHandler<PluginEventArgs>? OnPluginLoaded;
+    public event EventHandler<PluginEventArgs>? OnPluginUnloaded;
+    public event EventHandler<PluginErrorEventArgs>? OnPluginError;
 
     public async Task LoadAllPluginsAsync()
     {
@@ -38,7 +70,8 @@ public class PluginManager : IDisposable
                 await LoadPluginFromDirectoryAsync(pluginDir);
             }
 
-            Telemetry.LogEvent("AllPluginsLoaded", new {
+            Telemetry.LogEvent("AllPluginsLoaded", new
+            {
                 PluginsDirectory = _pluginsDirectory,
                 LoadedCount = _loadedPlugins.Count
             });
@@ -150,7 +183,8 @@ public class PluginManager : IDisposable
 
             OnPluginLoaded?.Invoke(this, new PluginEventArgs(metadata.Name, plugin));
 
-            Telemetry.LogEvent("PluginLoaded", new {
+            Telemetry.LogEvent("PluginLoaded", new
+            {
                 Name = metadata.Name,
                 Version = metadata.Version,
                 Capabilities = metadata.Capabilities.ToString()
@@ -278,49 +312,13 @@ public class PluginManager : IDisposable
         var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         return Path.Combine(appDataPath, "sttify", "plugins");
     }
-
-    public void Dispose()
-    {
-        StopAllPluginsAsync().Wait();
-
-        foreach (var plugin in _loadedPlugins.Values)
-        {
-            try
-            {
-                plugin.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Telemetry.LogError("PluginDisposeFailed", ex, new { PluginName = plugin.Name });
-            }
-        }
-
-        foreach (var loadContext in _loadContexts.Values)
-        {
-            try
-            {
-                loadContext.Unload();
-            }
-            catch (Exception ex)
-            {
-                Telemetry.LogError("PluginLoadContextUnloadFailed", ex);
-            }
-        }
-
-        _loadedPlugins.Clear();
-        _pluginMetadata.Clear();
-        _loadContexts.Clear();
-    }
 }
 
 public class PluginContext : IPluginContext
 {
-    private readonly Dictionary<Type, object> _services = new();
     private readonly Dictionary<string, string> _configuration = new();
     private readonly string _pluginName;
-
-    public IServiceProvider ServiceProvider { get; }
-    public string PluginDataDirectory { get; }
+    private readonly Dictionary<Type, object> _services = new();
 
     public PluginContext(IServiceProvider serviceProvider, string pluginDataDirectory, string pluginName)
     {
@@ -330,6 +328,9 @@ public class PluginContext : IPluginContext
 
         LoadConfiguration();
     }
+
+    public IServiceProvider ServiceProvider { get; }
+    public string PluginDataDirectory { get; }
 
     public void RegisterService<T>(T service) where T : class
     {
@@ -414,24 +415,24 @@ public class PluginContext : IPluginContext
 
 public class PluginEventArgs : EventArgs
 {
-    public string PluginName { get; }
-    public IPlugin Plugin { get; }
-
     public PluginEventArgs(string pluginName, IPlugin plugin)
     {
         PluginName = pluginName;
         Plugin = plugin;
     }
+
+    public string PluginName { get; }
+    public IPlugin Plugin { get; }
 }
 
 public class PluginErrorEventArgs : EventArgs
 {
-    public string PluginName { get; }
-    public Exception Exception { get; }
-
     public PluginErrorEventArgs(string pluginName, Exception exception)
     {
         PluginName = pluginName;
         Exception = exception;
     }
+
+    public string PluginName { get; }
+    public Exception Exception { get; }
 }

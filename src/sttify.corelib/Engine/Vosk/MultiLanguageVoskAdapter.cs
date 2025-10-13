@@ -1,33 +1,34 @@
+﻿using System.Text.Json;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
-using System.Text.Json;
 using Vosk;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
 public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
 {
-    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
-    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
-    public event EventHandler<SttErrorEventArgs>? OnError;
+    private readonly Queue<byte[]> _audioQueue = new();
+    private readonly Dictionary<string, Model> _loadedModels = new();
+    private readonly object _lockObject = new();
+    private readonly Dictionary<string, VoskRecognizer> _recognizers = new();
 
     private readonly VoskEngineSettings _settings;
-    private readonly Dictionary<string, global::Vosk.Model> _loadedModels = new();
-    private readonly Dictionary<string, global::Vosk.VoskRecognizer> _recognizers = new();
     private string _currentLanguage = "ja";
+    private string _currentPartialText = "";
     private bool _isRunning;
-    private readonly Queue<byte[]> _audioQueue = new();
-    private readonly object _lockObject = new();
     private CancellationTokenSource? _processingCancellation;
     private Task? _processingTask;
     private DateTime _recognitionStartTime;
-    private string _currentPartialText = "";
 
     public MultiLanguageVoskAdapter(VoskEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _currentLanguage = _settings.Language ?? "ja";
     }
+
+    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
+    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
+    public event EventHandler<SttErrorEventArgs>? OnError;
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -46,7 +47,7 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
             }
 
             _processingTask = Task.Run(() => ProcessAudioLoop(_processingCancellation.Token), cancellationToken);
-            
+
             Telemetry.LogEvent("MultiLanguageVoskEngineStarted", new
             {
                 Languages = _loadedModels.Keys.ToArray(),
@@ -115,13 +116,30 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
         lock (_audioQueue)
         {
             _audioQueue.Enqueue(buffer);
-            
+
             // Prevent queue from growing too large
             while (_audioQueue.Count > 100)
             {
                 _audioQueue.Dequeue();
             }
         }
+    }
+
+    public void Dispose()
+    {
+        StopAsync().Wait();
+
+        foreach (var recognizer in _recognizers.Values)
+        {
+            recognizer?.Dispose();
+        }
+        _recognizers.Clear();
+
+        foreach (var model in _loadedModels.Values)
+        {
+            model?.Dispose();
+        }
+        _loadedModels.Clear();
     }
 
     public async Task SwitchLanguageAsync(string languageCode)
@@ -159,7 +177,7 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
     private void InitializeModels()
     {
         var availableModels = GetAvailableModelPaths();
-        
+
         if (availableModels.Count == 0)
         {
             throw new DirectoryNotFoundException($"No Vosk models found in: {_settings.ModelPath}");
@@ -173,12 +191,12 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
             {
                 try
                 {
-                    var model = new global::Vosk.Model(modelInfo.Value);
-                    var recognizer = new global::Vosk.VoskRecognizer(model, 16000);
-                    
+                    var model = new Model(modelInfo.Value);
+                    var recognizer = new VoskRecognizer(model, 16000);
+
                     _loadedModels[modelInfo.Key] = model;
                     _recognizers[modelInfo.Key] = recognizer;
-                    
+
                     Telemetry.LogEvent("VoskModelLoaded", new
                     {
                         Language = modelInfo.Key,
@@ -188,7 +206,7 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Telemetry.LogWarning("VoskModelLoadFailed", 
+                    Telemetry.LogWarning("VoskModelLoadFailed",
                         $"Failed to load model for language {modelInfo.Key}: {ex.Message}");
                 }
             }
@@ -260,7 +278,7 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
     private string DetectModelLanguage(string modelPath)
     {
         var modelName = Path.GetFileName(modelPath).ToLowerInvariant();
-        
+
         // Try to detect language from model directory name
         if (modelName.Contains("-ja-") || modelName.Contains("japanese"))
             return "ja";
@@ -290,7 +308,7 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
             while (!cancellationToken.IsCancellationRequested && _isRunning)
             {
                 byte[]? audioChunk = null;
-                
+
                 lock (_audioQueue)
                 {
                     if (_audioQueue.Count > 0)
@@ -304,7 +322,7 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
                     try
                     {
                         bool hasResult = recognizer.AcceptWaveform(audioChunk, audioChunk.Length);
-                        
+
                         if (hasResult)
                         {
                             var result = recognizer.Result();
@@ -443,23 +461,6 @@ public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
         {
             return 0;
         }
-    }
-
-    public void Dispose()
-    {
-        StopAsync().Wait();
-        
-        foreach (var recognizer in _recognizers.Values)
-        {
-            recognizer?.Dispose();
-        }
-        _recognizers.Clear();
-
-        foreach (var model in _loadedModels.Values)
-        {
-            model?.Dispose();
-        }
-        _loadedModels.Clear();
     }
 
     private class VoskResult

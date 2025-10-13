@@ -1,7 +1,7 @@
-using Sttify.Corelib.Engine.Vosk;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Navigation;
+using Sttify.Corelib.Engine.Vosk;
 
 namespace Sttify.Views;
 
@@ -29,7 +29,7 @@ public partial class VoskModelInfoDialog : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to open URL: {ex.Message}", 
+            System.Windows.MessageBox.Show($"Failed to open URL: {ex.Message}",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         e.Handled = true;
@@ -46,7 +46,7 @@ public partial class VoskModelInfoDialog : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to open models page: {ex.Message}", 
+            System.Windows.MessageBox.Show($"Failed to open models page: {ex.Message}",
                 "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

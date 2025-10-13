@@ -1,5 +1,4 @@
-using System.Globalization;
-using System.Resources;
+﻿using System.Globalization;
 using System.Text.Json;
 
 namespace Sttify.Corelib.Localization;
@@ -422,10 +421,10 @@ public static class LocalizationManager
 
 public class LanguageChangedEventArgs : EventArgs
 {
-    public string NewLanguage { get; }
-
     public LanguageChangedEventArgs(string newLanguage)
     {
         NewLanguage = newLanguage;
     }
+
+    public string NewLanguage { get; }
 }

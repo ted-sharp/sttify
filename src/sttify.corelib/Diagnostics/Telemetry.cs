@@ -1,14 +1,16 @@
+﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
-using System.Collections.Concurrent;
-using System.Buffers;
 
 namespace Sttify.Corelib.Diagnostics;
 
 public static class Telemetry
 {
+    private const int BatchSize = 50;
+    private const int BatchIntervalMs = 100;
+    private const int MaxQueueSize = 5000; // backpressure upper bound
     private static ILogger? _logger;
     private static bool _isInitialized;
 
@@ -17,9 +19,6 @@ public static class Telemetry
     private static readonly Timer _batchTimer;
     private static readonly object _batchLock = new();
     private static volatile bool _isShuttingDown;
-    private const int BatchSize = 50;
-    private const int BatchIntervalMs = 100;
-    private const int MaxQueueSize = 5000; // backpressure upper bound
 
     static Telemetry()
     {
@@ -62,7 +61,8 @@ public static class Telemetry
         _logger = logConfig.CreateLogger();
         _isInitialized = true;
 
-        LogEvent("TelemetryInitialized", new {
+        LogEvent("TelemetryInitialized", new
+        {
             Settings = settings,
             LogLevel = settings.MinimumLevel.ToString(),
             IsDebugMode = Config.AppConfiguration.IsDebugMode()
@@ -235,7 +235,8 @@ public static class Telemetry
         for (int i = 0; i < 20; i++) // up to ~2s
         {
             FlushBatch(null);
-            if (_logQueue.IsEmpty) break;
+            if (_logQueue.IsEmpty)
+                break;
             Thread.Sleep(BatchIntervalMs);
         }
 

@@ -1,23 +1,20 @@
+﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using Sttify.Corelib.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Buffers;
 
 namespace Sttify.Corelib.Audio;
 
 [ExcludeFromCodeCoverage] // WASAPI hardware dependent, system integration, difficult to mock effectively
 public class WasapiAudioCapture : IDisposable
 {
-    public event EventHandler<AudioFrameEventArgs>? OnFrame;
-    public event EventHandler<AudioErrorEventArgs>? OnError;
+    private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
+    private readonly object _lockObject = new();
+    private bool _isCapturing;
+    private AudioCaptureSettings _settings = new();
 
     private WasapiCapture? _wasapiCapture;
-    private WaveFormat? _waveFormat;
-    private bool _isCapturing;
-    private readonly object _lockObject = new();
-    private AudioCaptureSettings _settings = new();
-    private readonly ArrayPool<byte> _bufferPool = ArrayPool<byte>.Shared;
 
     public bool IsCapturing
     {
@@ -30,7 +27,35 @@ public class WasapiAudioCapture : IDisposable
         }
     }
 
-    public WaveFormat? CurrentWaveFormat => _waveFormat;
+    public WaveFormat? CurrentWaveFormat { get; private set; }
+
+    public void Dispose()
+    {
+        // Avoid sync wait on UI thread; best-effort async stop
+        try
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                { await StopAsync(); }
+                catch { }
+                try
+                { _wasapiCapture?.Dispose(); }
+                catch { }
+                _wasapiCapture = null;
+            });
+        }
+        catch
+        {
+            try
+            { _wasapiCapture?.Dispose(); }
+            catch { }
+            _wasapiCapture = null;
+        }
+    }
+
+    public event EventHandler<AudioFrameEventArgs>? OnFrame;
+    public event EventHandler<AudioErrorEventArgs>? OnError;
 
     public async Task StartAsync(AudioCaptureSettings settings, CancellationToken cancellationToken = default)
     {
@@ -60,9 +85,9 @@ public class WasapiAudioCapture : IDisposable
 
                 Telemetry.LogEvent("WasapiCaptureStarted", new
                 {
-                    SampleRate = _waveFormat?.SampleRate,
-                    Channels = _waveFormat?.Channels,
-                    BitsPerSample = _waveFormat?.BitsPerSample,
+                    SampleRate = CurrentWaveFormat?.SampleRate,
+                    Channels = CurrentWaveFormat?.Channels,
+                    BitsPerSample = CurrentWaveFormat?.BitsPerSample,
                     DeviceId = _settings.DeviceId
                 });
             }
@@ -141,7 +166,7 @@ public class WasapiAudioCapture : IDisposable
             throw new InvalidOperationException("No audio capture device available");
         }
 
-        _waveFormat = new WaveFormat(_settings.SampleRate, _settings.BitsPerSample, _settings.Channels);
+        CurrentWaveFormat = new WaveFormat(_settings.SampleRate, _settings.BitsPerSample, _settings.Channels);
 
         _wasapiCapture = new WasapiCapture(captureDevice, true, 100);
 
@@ -161,14 +186,14 @@ public class WasapiAudioCapture : IDisposable
             });
         }
 
-        _waveFormat = _wasapiCapture.WaveFormat;
+        CurrentWaveFormat = _wasapiCapture.WaveFormat;
     }
 
     private void OnDataAvailable(object? sender, WaveInEventArgs e)
     {
         try
         {
-            if (e.BytesRecorded > 0 && IsCapturing && _waveFormat != null)
+            if (e.BytesRecorded > 0 && IsCapturing && CurrentWaveFormat != null)
             {
                 // Use buffer pool to avoid allocations
                 var rentedBuffer = _bufferPool.Rent(e.BytesRecorded);
@@ -181,9 +206,9 @@ public class WasapiAudioCapture : IDisposable
                     try
                     {
                         // Convert to Vosk-compatible format if necessary
-                        if (!AudioConverter.IsVoskCompatible(_waveFormat))
+                        if (!AudioConverter.IsVoskCompatible(CurrentWaveFormat))
                         {
-                            processedData = AudioConverter.ConvertToVoskFormat(audioSpan, _waveFormat);
+                            processedData = AudioConverter.ConvertToVoskFormat(audioSpan, CurrentWaveFormat);
                         }
                         else
                         {
@@ -265,25 +290,6 @@ public class WasapiAudioCapture : IDisposable
         }
 
         return devices;
-    }
-
-    public void Dispose()
-    {
-        // Avoid sync wait on UI thread; best-effort async stop
-        try
-        {
-            _ = Task.Run(async () =>
-            {
-                try { await StopAsync(); } catch { }
-                try { _wasapiCapture?.Dispose(); } catch { }
-                _wasapiCapture = null;
-            });
-        }
-        catch
-        {
-            try { _wasapiCapture?.Dispose(); } catch { }
-            _wasapiCapture = null;
-        }
     }
 }
 

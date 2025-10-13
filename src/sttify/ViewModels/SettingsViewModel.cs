@@ -1,26 +1,49 @@
+﻿using System.Collections.ObjectModel;
+using System.IO;
+using System.Net.Http;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
 using Sttify.Corelib.Engine.Vosk;
 using Sttify.Corelib.Ime;
 using Sttify.Corelib.Output;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Net.Http;
-using System.Windows;
 using Sttify.Services;
 
 namespace Sttify.ViewModels;
 
 public partial class SettingsViewModel : ObservableObject
 {
+    private readonly ApplicationService? _applicationService;
     private readonly SettingsProvider _settingsProvider;
     private readonly IOutputSinkProvider? _sinkProvider;
-    private readonly ApplicationService? _applicationService;
+
+    [ObservableProperty]
+    private ObservableCollection<AudioDeviceInfo> _audioDevices = new();
+
+    [ObservableProperty]
+    private string[] _availableEngines = Array.Empty<string>();
+
+    [ObservableProperty]
+    private ObservableCollection<VoskModelInfo> _availableModels = new();
+
+    [ObservableProperty]
+    private double _downloadProgress;
+
+    [ObservableProperty]
+    private string _downloadStatus = "";
+
+    [ObservableProperty]
+    private ObservableCollection<string> _installedModels = new();
+
+    [ObservableProperty]
+    private bool _isDownloadingModel;
+
+    [ObservableProperty]
+    private bool _isLoading;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsVibeEngine))]
@@ -29,32 +52,18 @@ public partial class SettingsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSendInputSelected))]
     private SttifySettings _settings = new();
 
-    [ObservableProperty]
-    private bool _isLoading;
+    public SettingsViewModel(SettingsProvider settingsProvider, IOutputSinkProvider? sinkProvider = null, ApplicationService? applicationService = null)
+    {
+        _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
+        _sinkProvider = sinkProvider;
+        _applicationService = applicationService;
 
-    [ObservableProperty]
-    private ObservableCollection<AudioDeviceInfo> _audioDevices = new();
-
-    [ObservableProperty]
-    private ObservableCollection<VoskModelInfo> _availableModels = new();
-
-    [ObservableProperty]
-    private ObservableCollection<string> _installedModels = new();
-
-    [ObservableProperty]
-    private string[] _availableEngines = Array.Empty<string>();
-
-    [ObservableProperty]
-    private bool _isDownloadingModel;
-
-    [ObservableProperty]
-    private double _downloadProgress;
-
-    [ObservableProperty]
-    private string _downloadStatus = "";
+        _ = InitializeAsync();
+    }
 
     public bool IsVibeEngine => Settings?.Engine?.Profile?.ToLowerInvariant() == "vibe";
     public bool IsVoskSelected => Settings?.Engine?.Profile?.ToLowerInvariant() == "vosk";
+
     public bool IsCloudEngine => Settings?.Engine?.Profile?.ToLowerInvariant()?.Contains("cloud") == true ||
                                  Settings?.Engine?.Profile?.ToLowerInvariant() == "azure" ||
                                  Settings?.Engine?.Profile?.ToLowerInvariant() == "google" ||
@@ -92,15 +101,6 @@ public partial class SettingsViewModel : ObservableObject
                 _ = SaveSettingsAsync();
             }
         }
-    }
-
-    public SettingsViewModel(SettingsProvider settingsProvider, IOutputSinkProvider? sinkProvider = null, ApplicationService? applicationService = null)
-    {
-        _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
-        _sinkProvider = sinkProvider;
-        _applicationService = applicationService;
-
-        _ = InitializeAsync();
     }
 
     private async Task InitializeAsync()
@@ -148,10 +148,11 @@ public partial class SettingsViewModel : ObservableObject
             IsLoading = true;
             await _settingsProvider.SaveSettingsAsync(Settings);
 
-             // Apply settings immediately: refresh output sinks and hotkeys
+            // Apply settings immediately: refresh output sinks and hotkeys
             try
             {
-                if (_sinkProvider != null) await _sinkProvider.RefreshAsync();
+                if (_sinkProvider != null)
+                    await _sinkProvider.RefreshAsync();
                 if (_applicationService != null)
                 {
                     await _applicationService.ReinitializeHotkeysAsync();
@@ -308,7 +309,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var dialog = new Sttify.Views.VoskModelInfoDialog
+            var dialog = new Views.VoskModelInfoDialog
             {
                 Owner = System.Windows.Application.Current.MainWindow
             };
@@ -324,12 +325,12 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    private static Sttify.Corelib.Config.VoskConfiguration? GetVoskConfiguration()
+    private static VoskConfiguration? GetVoskConfiguration()
     {
         try
         {
-            var config = Sttify.Corelib.Config.AppConfiguration.Configuration;
-            var voskConfig = new Sttify.Corelib.Config.VoskConfiguration();
+            var config = AppConfiguration.Configuration;
+            var voskConfig = new VoskConfiguration();
             config.GetSection("Engines:Vosk").Bind(voskConfig);
             return voskConfig;
         }
@@ -628,7 +629,9 @@ public partial class SettingsViewModel : ObservableObject
                 // If this was from a ZIP extraction and it failed, clean up
                 if (isZipFile && Directory.Exists(finalModelPath) && finalModelPath != selectedPath)
                 {
-                    try { Directory.Delete(finalModelPath, true); } catch { }
+                    try
+                    { Directory.Delete(finalModelPath, true); }
+                    catch { }
                 }
             }
         }

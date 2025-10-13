@@ -1,25 +1,33 @@
+﻿using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Sttify.Corelib.Diagnostics;
 using Sttify.Services;
 using Sttify.Views;
-using System.Drawing;
-using System.Windows;
-using System.Windows.Forms;
 using Application = System.Windows.Application;
-using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Tray;
 
 public class NotifyIconHost : IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
-    private NotifyIcon? _notifyIcon;
     private ApplicationService? _applicationService;
     private ToolStripMenuItem? _menuItemControlWindow;
     private ToolStripMenuItem? _menuItemStartStop;
+    private NotifyIcon? _notifyIcon;
 
     public NotifyIconHost(IServiceProvider serviceProvider)
     {
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+    }
+
+    public void Dispose()
+    {
+        if (_notifyIcon != null)
+        {
+            _notifyIcon.Visible = false;
+            _notifyIcon.Dispose();
+            _notifyIcon = null;
+        }
     }
 
     public void Initialize()
@@ -78,7 +86,8 @@ public class NotifyIconHost : IDisposable
 
     private void SetupContextMenu()
     {
-        if (_notifyIcon == null) return;
+        if (_notifyIcon == null)
+            return;
 
         var contextMenu = new ContextMenuStrip();
 
@@ -130,13 +139,13 @@ public class NotifyIconHost : IDisposable
 
         if (_menuItemStartStop != null)
         {
-            var isListening = _applicationService.GetCurrentState() == Sttify.Corelib.Session.SessionState.Listening;
+            var isListening = _applicationService.GetCurrentState() == Corelib.Session.SessionState.Listening;
             _menuItemStartStop.Text = isListening ? "Stop Recognition" : "Start Recognition";
         }
 
         if (_menuItemControlWindow != null)
         {
-            var cw = System.Windows.Application.Current?.Windows.OfType<ControlWindow>().FirstOrDefault();
+            var cw = Application.Current?.Windows.OfType<ControlWindow>().FirstOrDefault();
             var isVisible = cw != null && cw.Visibility == Visibility.Visible;
             _menuItemControlWindow.Text = isVisible ? "Hide Control Window" : "Show Control Window";
         }
@@ -147,7 +156,7 @@ public class NotifyIconHost : IDisposable
         _notifyIcon.Text = $"{prefix}Sttify - {GetStateDisplayName(currentState)}";
     }
 
-    private Icon CreateMicrophoneIcon(Sttify.Corelib.Session.SessionState state = Sttify.Corelib.Session.SessionState.Idle)
+    private Icon CreateMicrophoneIcon(Corelib.Session.SessionState state = Corelib.Session.SessionState.Idle)
     {
         try
         {
@@ -156,9 +165,9 @@ public class NotifyIconHost : IDisposable
 
             var color = state switch
             {
-                Sttify.Corelib.Session.SessionState.Listening => Color.Green,
-                Sttify.Corelib.Session.SessionState.Processing => Color.Orange,
-                Sttify.Corelib.Session.SessionState.Error => Color.Red,
+                Corelib.Session.SessionState.Listening => Color.Green,
+                Corelib.Session.SessionState.Processing => Color.Orange,
+                Corelib.Session.SessionState.Error => Color.Red,
                 _ => Color.Gray
             };
 
@@ -190,16 +199,16 @@ public class NotifyIconHost : IDisposable
 
     // Vanara.PInvoke.User32.DestroyIcon is used for icon cleanup
 
-    private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state)
+    private string GetStateDisplayName(Corelib.Session.SessionState state)
     {
         return state switch
         {
-            Sttify.Corelib.Session.SessionState.Idle => "Ready",
-            Sttify.Corelib.Session.SessionState.Listening => "Listening",
-            Sttify.Corelib.Session.SessionState.Processing => "Processing",
-            Sttify.Corelib.Session.SessionState.Starting => "Starting",
-            Sttify.Corelib.Session.SessionState.Stopping => "Stopping",
-            Sttify.Corelib.Session.SessionState.Error => "Error",
+            Corelib.Session.SessionState.Idle => "Ready",
+            Corelib.Session.SessionState.Listening => "Listening",
+            Corelib.Session.SessionState.Processing => "Processing",
+            Corelib.Session.SessionState.Starting => "Starting",
+            Corelib.Session.SessionState.Stopping => "Stopping",
+            Corelib.Session.SessionState.Error => "Error",
             _ => "Unknown"
         };
     }
@@ -216,9 +225,9 @@ public class NotifyIconHost : IDisposable
 
     private void ToggleControlWindow()
     {
-        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.Invoke(() =>
         {
-            var controlWindow = System.Windows.Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
+            var controlWindow = Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
             if (controlWindow == null)
             {
                 controlWindow = _serviceProvider.GetRequiredService<ControlWindow>();
@@ -245,10 +254,10 @@ public class NotifyIconHost : IDisposable
 
     private void OnShowControlWindow(object? sender, EventArgs e)
     {
-        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.Invoke(() =>
         {
             Console.WriteLine("NotifyIconHost: OnShowControlWindow called");
-            var controlWindow = System.Windows.Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
+            var controlWindow = Application.Current.Windows.OfType<ControlWindow>().FirstOrDefault();
             if (controlWindow == null)
             {
                 Console.WriteLine("NotifyIconHost: Creating new ControlWindow");
@@ -268,25 +277,26 @@ public class NotifyIconHost : IDisposable
 
     private void OnToggleRecognition(object? sender, EventArgs e)
     {
-        if (_applicationService == null) return;
+        if (_applicationService == null)
+            return;
 
         AsyncHelper.FireAndForget(async () =>
         {
             try
             {
                 var currentState = _applicationService.GetCurrentState();
-                if (currentState == Sttify.Corelib.Session.SessionState.Listening)
+                if (currentState == Corelib.Session.SessionState.Listening)
                 {
                     await _applicationService.StopRecognitionAsync().ConfigureAwait(false);
                 }
-                else if (currentState == Sttify.Corelib.Session.SessionState.Idle)
+                else if (currentState == Corelib.Session.SessionState.Idle)
                 {
                     await _applicationService.StartRecognitionAsync().ConfigureAwait(false);
                 }
             }
             catch (Exception ex)
             {
-                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
                     System.Windows.MessageBox.Show($"Failed to toggle recognition: {ex.Message}",
                         "Sttify", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -297,9 +307,9 @@ public class NotifyIconHost : IDisposable
 
     private void OnShowSettings(object? sender, EventArgs e)
     {
-        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.Invoke(() =>
         {
-            var settingsWindow = System.Windows.Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
+            var settingsWindow = Application.Current.Windows.OfType<SettingsWindow>().FirstOrDefault();
             if (settingsWindow == null)
             {
                 settingsWindow = _serviceProvider.GetRequiredService<SettingsWindow>();
@@ -315,16 +325,6 @@ public class NotifyIconHost : IDisposable
 
     private void OnExit(object? sender, EventArgs e)
     {
-        System.Windows.Application.Current.Shutdown();
-    }
-
-    public void Dispose()
-    {
-        if (_notifyIcon != null)
-        {
-            _notifyIcon.Visible = false;
-            _notifyIcon.Dispose();
-            _notifyIcon = null;
-        }
+        Application.Current.Shutdown();
     }
 }

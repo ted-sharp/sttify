@@ -1,38 +1,36 @@
-using Sttify.Services;
-using Sttify.ViewModels;
+﻿using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
-using System.Windows.Controls;
-using System.Diagnostics;
-using System.Windows.Forms;
-using Sttify.Corelib.Config;
-using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
-using Sttify.Corelib.Localization;
+using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
+using Sttify.Corelib.Localization;
+using Sttify.Services;
+using Sttify.ViewModels;
 
 namespace Sttify.Views;
 
 public partial class ControlWindow : Window
 {
-    private ApplicationService? _applicationService;
-    private readonly MainViewModel? _viewModel;
+    private const double DragThreshold = 5.0;
     private readonly IServiceProvider? _serviceProvider;
-    private Storyboard? _currentPulseAnimation;
+    private readonly MainViewModel? _viewModel;
+    private ApplicationService? _applicationService;
+    private System.Threading.Timer? _audioLevelTimer;
     private Storyboard? _currentAudioLevelAnimation;
     private Storyboard? _currentProcessingAnimation;
-    private Sttify.Corelib.Session.SessionState _lastState = Sttify.Corelib.Session.SessionState.Idle;
-    private bool _isHovering = false;
-    private System.Threading.Timer? _audioLevelTimer;
-    private bool _isEventRegistered = false;
+    private Storyboard? _currentPulseAnimation;
 
     // Drag functionality fields
     private bool _isDragging;
+    private bool _isEventRegistered = false;
+    private bool _isHovering = false;
+    private Corelib.Session.SessionState _lastState = Corelib.Session.SessionState.Idle;
     private System.Windows.Point _startPoint;
-    private const double DragThreshold = 5.0;
 
     // Parameterless constructor for XAML
     public ControlWindow()
@@ -43,7 +41,8 @@ public partial class ControlWindow : Window
 
         // Add drag functionality after window is loaded (for XAML instantiation)
         Debug.WriteLine("ControlWindow: Adding Loaded event handler in parameterless constructor");
-        Loaded += (s, e) => {
+        Loaded += (s, e) =>
+        {
             Debug.WriteLine("ControlWindow: Loaded event fired from parameterless constructor");
             SetupDragFunctionality();
             RestoreWindowPosition();
@@ -228,12 +227,12 @@ public partial class ControlWindow : Window
                 var currentState = applicationService.GetCurrentState();
                 Debug.WriteLine($"OnMicrophoneClick: Current state is {currentState}");
 
-                if (currentState == Sttify.Corelib.Session.SessionState.Listening)
+                if (currentState == Corelib.Session.SessionState.Listening)
                 {
                     Debug.WriteLine("OnMicrophoneClick: Calling StopRecognitionAsync");
                     await applicationService.StopRecognitionAsync().ConfigureAwait(false);
                 }
-                else if (currentState == Sttify.Corelib.Session.SessionState.Idle)
+                else if (currentState == Corelib.Session.SessionState.Idle)
                 {
                     Debug.WriteLine("OnMicrophoneClick: Calling StartRecognitionAsync");
                     await applicationService.StartRecognitionAsync().ConfigureAwait(false);
@@ -255,7 +254,7 @@ public partial class ControlWindow : Window
     private void OnMicrophoneRightClick(object sender, MouseButtonEventArgs e)
     {
         Debug.WriteLine("OnMicrophoneRightClick: Right-click detected");
-        var contextMenu = new System.Windows.Controls.ContextMenu();
+        var contextMenu = new ContextMenu();
 
         // Add microphone control options
         var applicationService = _applicationService;
@@ -263,15 +262,15 @@ public partial class ControlWindow : Window
         if (applicationService == null)
         {
             Debug.WriteLine("OnMicrophoneRightClick: ApplicationService is not available");
-            var noServiceItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.service_unavailable"), IsEnabled = false };
+            var noServiceItem = new MenuItem { Header = LocalizationManager.GetString("menu.service_unavailable"), IsEnabled = false };
             contextMenu.Items.Add(noServiceItem);
         }
         else
         {
             var currentState = applicationService.GetCurrentState();
-            var micItem = new System.Windows.Controls.MenuItem();
+            var micItem = new MenuItem();
 
-            if (currentState == Sttify.Corelib.Session.SessionState.Listening)
+            if (currentState == Corelib.Session.SessionState.Listening)
             {
                 micItem.Header = LocalizationManager.GetString("menu.stop_recognition");
                 micItem.Click += (s, args) => AsyncHelper.FireAndForget(() => applicationService.StopRecognitionAsync(), "MenuStopRecognition");
@@ -283,20 +282,20 @@ public partial class ControlWindow : Window
             }
 
             contextMenu.Items.Add(micItem);
-            contextMenu.Items.Add(new System.Windows.Controls.Separator());
+            contextMenu.Items.Add(new Separator());
         }
 
-        var settingsItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.settings") };
+        var settingsItem = new MenuItem { Header = LocalizationManager.GetString("menu.settings") };
         settingsItem.Click += (s, args) => ShowSettingsWindow();
         contextMenu.Items.Add(settingsItem);
 
-        contextMenu.Items.Add(new System.Windows.Controls.Separator());
+        contextMenu.Items.Add(new Separator());
 
-        var hideItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.hide") };
+        var hideItem = new MenuItem { Header = LocalizationManager.GetString("menu.hide") };
         hideItem.Click += (s, args) => Hide();
         contextMenu.Items.Add(hideItem);
 
-        var exitItem = new System.Windows.Controls.MenuItem { Header = LocalizationManager.GetString("menu.exit") };
+        var exitItem = new MenuItem { Header = LocalizationManager.GetString("menu.exit") };
         exitItem.Click += (s, args) => System.Windows.Application.Current.Shutdown();
         contextMenu.Items.Add(exitItem);
 
@@ -333,7 +332,7 @@ public partial class ControlWindow : Window
         }
     }
 
-    private void OnSessionStateChanged(object? sender, Sttify.Corelib.Session.SessionStateChangedEventArgs e)
+    private void OnSessionStateChanged(object? sender, Corelib.Session.SessionStateChangedEventArgs e)
     {
         Dispatcher.Invoke(() => UpdateUI());
     }
@@ -366,7 +365,7 @@ public partial class ControlWindow : Window
         try
         {
             var isElevated = App.IsElevated;
-            var badge = FindName("ElevationBadge") as System.Windows.Controls.Border;
+            var badge = FindName("ElevationBadge") as Border;
             if (badge != null)
             {
                 badge.Visibility = isElevated ? Visibility.Visible : Visibility.Collapsed;
@@ -375,7 +374,7 @@ public partial class ControlWindow : Window
         catch { }
     }
 
-    private void AnimateStateChange(Sttify.Corelib.Session.SessionState newState)
+    private void AnimateStateChange(Corelib.Session.SessionState newState)
     {
         var (fillColor, iconText) = GetStateVisuals(newState);
 
@@ -463,7 +462,7 @@ public partial class ControlWindow : Window
                 // Start state-specific animations
                 switch (newState)
                 {
-                    case Sttify.Corelib.Session.SessionState.Listening:
+                    case Corelib.Session.SessionState.Listening:
                         try
                         {
                             _currentPulseAnimation = (Storyboard)FindResource("PulseAnimation");
@@ -485,7 +484,7 @@ public partial class ControlWindow : Window
                         }
                         break;
 
-                    case Sttify.Corelib.Session.SessionState.Processing:
+                    case Corelib.Session.SessionState.Processing:
                         try
                         {
                             _currentProcessingAnimation = (Storyboard)FindResource("ProcessingAnimation");
@@ -520,27 +519,27 @@ public partial class ControlWindow : Window
         }
     }
 
-    private string GetStateDisplayName(Sttify.Corelib.Session.SessionState state) =>
+    private string GetStateDisplayName(Corelib.Session.SessionState state) =>
         state switch
         {
-            Sttify.Corelib.Session.SessionState.Idle => "Ready",
-            Sttify.Corelib.Session.SessionState.Listening => "Listening",
-            Sttify.Corelib.Session.SessionState.Processing => "Processing",
-            Sttify.Corelib.Session.SessionState.Starting => "Starting",
-            Sttify.Corelib.Session.SessionState.Stopping => "Stopping",
-            Sttify.Corelib.Session.SessionState.Error => "Error",
+            Corelib.Session.SessionState.Idle => "Ready",
+            Corelib.Session.SessionState.Listening => "Listening",
+            Corelib.Session.SessionState.Processing => "Processing",
+            Corelib.Session.SessionState.Starting => "Starting",
+            Corelib.Session.SessionState.Stopping => "Stopping",
+            Corelib.Session.SessionState.Error => "Error",
             _ => "Unknown"
         };
 
-    private (System.Windows.Media.Color fillColor, string iconText) GetStateVisuals(Sttify.Corelib.Session.SessionState state) =>
+    private (System.Windows.Media.Color fillColor, string iconText) GetStateVisuals(Corelib.Session.SessionState state) =>
         state switch
         {
-            Sttify.Corelib.Session.SessionState.Idle => (Colors.Gray, "🎤"),
-            Sttify.Corelib.Session.SessionState.Listening => (Colors.Green, "🎙️"),
-            Sttify.Corelib.Session.SessionState.Processing => (Colors.Orange, "🔄"),
-            Sttify.Corelib.Session.SessionState.Starting => (Colors.Yellow, "⏳"),
-            Sttify.Corelib.Session.SessionState.Stopping => (Colors.Yellow, "⏹️"),
-            Sttify.Corelib.Session.SessionState.Error => (Colors.Red, "❌"),
+            Corelib.Session.SessionState.Idle => (Colors.Gray, "🎤"),
+            Corelib.Session.SessionState.Listening => (Colors.Green, "🎙️"),
+            Corelib.Session.SessionState.Processing => (Colors.Orange, "🔄"),
+            Corelib.Session.SessionState.Starting => (Colors.Yellow, "⏳"),
+            Corelib.Session.SessionState.Stopping => (Colors.Yellow, "⏹️"),
+            Corelib.Session.SessionState.Error => (Colors.Red, "❌"),
             _ => (Colors.Gray, "❓")
         };
 
@@ -597,7 +596,7 @@ public partial class ControlWindow : Window
             // If always on primary monitor is enabled, place on primary monitor
             if (settings.Application.AlwaysOnPrimaryMonitor)
             {
-                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                var primaryScreen = Screen.PrimaryScreen;
                 if (primaryScreen != null)
                 {
                     Left = primaryScreen.WorkingArea.Left + 100;
@@ -750,7 +749,7 @@ public partial class ControlWindow : Window
             var audioLevel = random.NextDouble();
 
             var audioRing = FindName("AudioRing") as Ellipse;
-            if (audioRing != null && _applicationService?.GetCurrentState() == Sttify.Corelib.Session.SessionState.Listening)
+            if (audioRing != null && _applicationService?.GetCurrentState() == Corelib.Session.SessionState.Listening)
             {
                 var scale = 1.0 + (audioLevel * 0.3);
                 var opacity = 0.3 + (audioLevel * 0.5);

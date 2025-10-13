@@ -1,20 +1,21 @@
-using Sttify.ViewModels;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
-using Sttify.Services;
 using Sttify.Corelib.Diagnostics;
-using System.Diagnostics;
+using Sttify.Services;
+using Sttify.ViewModels;
 
 namespace Sttify.Views;
 
 public partial class SettingsWindow : Window
 {
-    private readonly SettingsViewModel _viewModel;
     private readonly ApplicationService _applicationService;
-    private readonly Sttify.Corelib.Config.SettingsProvider _settingsProvider;
+    private readonly Corelib.Config.SettingsProvider _settingsProvider;
+
+    private readonly SettingsViewModel _viewModel;
     // Debug hotkey manager removed
 
-    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService, Sttify.Corelib.Config.SettingsProvider settingsProvider)
+    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService, Corelib.Config.SettingsProvider settingsProvider)
     {
         InitializeComponent();
 
@@ -31,7 +32,7 @@ public partial class SettingsWindow : Window
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("*** SettingsWindow Closed ***");
+        Debug.WriteLine("*** SettingsWindow Closed ***");
     }
 
     // WndProc and debug hotkey handlers removed
@@ -46,10 +47,10 @@ public partial class SettingsWindow : Window
             {
                 await _viewModel.SaveSettingsCommand.ExecuteAsync(null).ConfigureAwait(false);
 
-            try
-            {
-                await _applicationService.ReinitializeHotkeysAsync().ConfigureAwait(false);
-            }
+                try
+                {
+                    await _applicationService.ReinitializeHotkeysAsync().ConfigureAwait(false);
+                }
                 catch { }
 
                 Dispatcher.Invoke(Close);
@@ -70,21 +71,20 @@ public partial class SettingsWindow : Window
     // RTSS integration has been removed
 
 
-
     private void OnVoskModelsUrlClick(object sender, MouseButtonEventArgs e)
     {
         try
         {
             var url = "https://alphacephei.com/vosk/models";
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url)
+            Process.Start(new ProcessStartInfo(url)
             {
                 UseShellExecute = true
             });
-            System.Diagnostics.Debug.WriteLine($"*** Opened Vosk models URL: {url} ***");
+            Debug.WriteLine($"*** Opened Vosk models URL: {url} ***");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"*** Failed to open Vosk models URL: {ex.Message} ***");
+            Debug.WriteLine($"*** Failed to open Vosk models URL: {ex.Message} ***");
             System.Windows.MessageBox.Show(
                 $"Failed to open URL: {ex.Message}",
                 "Open URL Failed",

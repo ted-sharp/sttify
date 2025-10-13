@@ -1,32 +1,37 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
+﻿using System.Windows;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Diagnostics;
 using Sttify.Views;
-using System.Windows.Media;
-using System.Windows.Media.Media3D;
 
 namespace Sttify.Services;
 
 public class OverlayService : IDisposable
 {
     private readonly SettingsProvider _settingsProvider;
-    private TransparentOverlayWindow? _window;
-    private DateTime _lastUpdate = DateTime.MinValue;
-    private string _lastText = string.Empty;
-    private bool _initialized;
     private System.Timers.Timer? _autoHideTimer;
+    private bool _initialized;
+    private string _lastText = string.Empty;
+    private DateTime _lastUpdate = DateTime.MinValue;
+    private TransparentOverlayWindow? _window;
 
     public OverlayService(SettingsProvider settingsProvider)
     {
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
     }
 
+    public void Dispose()
+    {
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+        {
+            _window?.Close();
+            _window = null;
+        });
+    }
+
     public void Initialize()
     {
-        if (_initialized) return;
+        if (_initialized)
+            return;
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
             _window = new TransparentOverlayWindow();
@@ -68,7 +73,8 @@ public class OverlayService : IDisposable
 
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
-            if (_window == null) return;
+            if (_window == null)
+                return;
 
             _window.ApplyAppearance(
                 overlay.FontFamily,
@@ -89,7 +95,7 @@ public class OverlayService : IDisposable
 
             if (!string.IsNullOrEmpty(displayText))
             {
-                if (_window.Visibility != System.Windows.Visibility.Visible)
+                if (_window.Visibility != Visibility.Visible)
                 {
                     _window.Show();
                     _window.FadeInIfConfigured();
@@ -100,7 +106,7 @@ public class OverlayService : IDisposable
             }
             else
             {
-                if (_window.Visibility == System.Windows.Visibility.Visible)
+                if (_window.Visibility == Visibility.Visible)
                 {
                     _window.FadeOutIfConfigured();
                     _window.Hide();
@@ -121,7 +127,8 @@ public class OverlayService : IDisposable
         }
         System.Windows.Application.Current.Dispatcher.Invoke(() =>
         {
-            if (_window == null) return;
+            if (_window == null)
+                return;
             _window.ApplyAppearance(
                 overlay.FontFamily,
                 overlay.FontSize,
@@ -139,7 +146,7 @@ public class OverlayService : IDisposable
             if (!string.IsNullOrEmpty(_lastText))
             {
                 _window.SetText(_lastText);
-                if (_window.Visibility != System.Windows.Visibility.Visible)
+                if (_window.Visibility != Visibility.Visible)
                 {
                     _window.Show();
                     _window.FadeInIfConfigured();
@@ -160,22 +167,22 @@ public class OverlayService : IDisposable
     {
         // Determine target screen working area (in pixels)
         var settings = _settingsProvider.GetSettingsSync();
-        System.Drawing.Rectangle workingPx;
+        Rectangle workingPx;
         if (overlay.TargetMonitorIndex >= 0)
         {
-            var screens = System.Windows.Forms.Screen.AllScreens;
+            var screens = Screen.AllScreens;
             var idx = Math.Min(overlay.TargetMonitorIndex, screens.Length - 1);
             idx = Math.Max(0, idx);
             workingPx = screens[idx].WorkingArea;
         }
         else if (overlay.TargetMonitorIndex == -2 || settings.Application.AlwaysOnPrimaryMonitor)
         {
-            workingPx = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea ?? Rectangle.Empty;
+            workingPx = Screen.PrimaryScreen?.WorkingArea ?? Rectangle.Empty;
         }
         else
         {
-            var cursorPos = System.Windows.Forms.Cursor.Position;
-            var screen = System.Windows.Forms.Screen.FromPoint(cursorPos);
+            var cursorPos = Cursor.Position;
+            var screen = Screen.FromPoint(cursorPos);
             workingPx = screen.WorkingArea;
         }
 
@@ -285,15 +292,6 @@ public class OverlayService : IDisposable
             _window?.Hide();
         });
         return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-        {
-            _window?.Close();
-            _window = null;
-        });
     }
 }
 

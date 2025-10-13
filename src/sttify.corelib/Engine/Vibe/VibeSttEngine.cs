@@ -1,31 +1,26 @@
-using Sttify.Corelib.Config;
-using Sttify.Corelib.Diagnostics;
-using System.Net.Http;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
+using Sttify.Corelib.Config;
+using Sttify.Corelib.Diagnostics;
 
 namespace Sttify.Corelib.Engine.Vibe;
 
 [ExcludeFromCodeCoverage] // External Vibe API integration, network dependent, difficult to mock effectively
 public class VibeSttEngine : ISttEngine, IDisposable
 {
-    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
-    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
-    public event EventHandler<SttErrorEventArgs>? OnError;
-
-    private readonly Config.VibeEngineSettings _settings;
-    private readonly HttpClient _httpClient;
-    private bool _isRunning;
+    private readonly MemoryStream _audioBuffer = new();
     private readonly Queue<byte[]> _audioQueue = new();
+    private readonly HttpClient _httpClient;
     private readonly object _lockObject = new();
+
+    private readonly VibeEngineSettings _settings;
+    private bool _isRunning;
     private CancellationTokenSource? _processingCancellation;
     private Task? _processingTask;
     private DateTime _recognitionStartTime;
-    private readonly MemoryStream _audioBuffer = new();
 
-    public VibeSttEngine(Config.VibeEngineSettings settings)
+    public VibeSttEngine(VibeEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _httpClient = new HttpClient();
@@ -36,6 +31,10 @@ public class VibeSttEngine : ISttEngine, IDisposable
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.ApiKey}");
         }
     }
+
+    public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
+    public event EventHandler<FinalRecognitionEventArgs>? OnFinal;
+    public event EventHandler<SttErrorEventArgs>? OnError;
 
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
@@ -133,6 +132,13 @@ public class VibeSttEngine : ISttEngine, IDisposable
                 _audioQueue.Dequeue();
             }
         }
+    }
+
+    public void Dispose()
+    {
+        StopAsync().GetAwaiter().GetResult();
+        _httpClient?.Dispose();
+        _audioBuffer?.Dispose();
     }
 
     private async Task ProcessAudioLoop(CancellationToken cancellationToken)
@@ -397,13 +403,6 @@ public class VibeSttEngine : ISttEngine, IDisposable
         writer.Write(pcmData);
 
         return wavStream.ToArray();
-    }
-
-    public void Dispose()
-    {
-        StopAsync().GetAwaiter().GetResult();
-        _httpClient?.Dispose();
-        _audioBuffer?.Dispose();
     }
 }
 

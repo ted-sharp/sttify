@@ -1,4 +1,4 @@
-namespace Sttify.Corelib.Diagnostics;
+﻿namespace Sttify.Corelib.Diagnostics;
 
 public static class TaskExtensions
 {
