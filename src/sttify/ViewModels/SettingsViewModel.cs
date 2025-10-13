@@ -60,22 +60,22 @@ public partial class SettingsViewModel : ObservableObject
         _ = InitializeAsync();
     }
 
-    public bool IsVibeEngine => Settings?.Engine?.Profile?.ToLowerInvariant() == "vibe";
-    public bool IsVoskSelected => Settings?.Engine?.Profile?.ToLowerInvariant() == "vosk";
+    public bool IsVibeEngine => Settings.Engine.Profile.ToLowerInvariant() == "vibe";
+    public bool IsVoskSelected => Settings.Engine.Profile.ToLowerInvariant() == "vosk";
 
-    public bool IsCloudEngine => Settings?.Engine?.Profile?.ToLowerInvariant()?.Contains("cloud") == true ||
-                                 Settings?.Engine?.Profile?.ToLowerInvariant() == "azure" ||
-                                 Settings?.Engine?.Profile?.ToLowerInvariant() == "google" ||
-                                 Settings?.Engine?.Profile?.ToLowerInvariant() == "aws";
+    public bool IsCloudEngine => Settings.Engine.Profile.ToLowerInvariant().Contains("cloud") ||
+                                 Settings.Engine.Profile.ToLowerInvariant() == "azure" ||
+                                 Settings.Engine.Profile.ToLowerInvariant() == "google" ||
+                                 Settings.Engine.Profile.ToLowerInvariant() == "aws";
 
-    public bool IsSendInputSelected => Settings?.Output?.PrimaryOutputIndex == 0;
+    public bool IsSendInputSelected => Settings.Output.PrimaryOutputIndex == 0;
 
     public string EngineProfile
     {
-        get => Settings?.Engine?.Profile ?? "vosk";
+        get => Settings.Engine.Profile;
         set
         {
-            if (Settings?.Engine != null && Settings.Engine.Profile != value)
+            if (Settings.Engine.Profile != value)
             {
                 Settings.Engine.Profile = value;
                 OnPropertyChanged();
@@ -89,10 +89,10 @@ public partial class SettingsViewModel : ObservableObject
 
     public int PrimaryOutputIndex
     {
-        get => Settings?.Output?.PrimaryOutputIndex ?? 0;
+        get => Settings.Output.PrimaryOutputIndex;
         set
         {
-            if (Settings?.Output != null && Settings.Output.PrimaryOutputIndex != value)
+            if (Settings.Output.PrimaryOutputIndex != value)
             {
                 Settings.Output.PrimaryOutputIndex = value;
                 OnPropertyChanged();
@@ -273,7 +273,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         try
         {
-            var selectedEngine = Settings?.Engine?.Profile?.ToLowerInvariant();
+            var selectedEngine = Settings.Engine.Profile.ToLowerInvariant();
             var url = GetEngineDocumentationUrl(selectedEngine);
 
             if (!string.IsNullOrEmpty(url))

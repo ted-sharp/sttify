@@ -11,7 +11,8 @@
         ShowInTaskbar="False">
 
     <Window.Resources>
-            <!-- Animation Resources -->
+            <!-- Animation Resources - Used in code-behind via FindResource() -->
+            <!-- ReSharper disable Xaml.RedundantResource -->
             <Storyboard x:Key="FlipInAnimation">
                 <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CircleScaleTransform" Storyboard.TargetProperty="ScaleX">
                     <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1"/>
@@ -212,6 +213,7 @@
                     </DoubleAnimation.EasingFunction>
                 </DoubleAnimation>
             </Storyboard>
+            <!-- ReSharper restore Xaml.RedundantResource -->
     </Window.Resources>
 
     <Grid>

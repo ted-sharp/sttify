@@ -56,7 +56,7 @@ public class BasicIntegrationTests
     }
 
     [Fact]
-    public async Task RecognitionSession_ShouldInitializeWithDefaultSettings()
+    public void RecognitionSession_ShouldInitializeWithDefaultSettings()
     {
         // Arrange
         var settingsProvider = new SettingsProvider();

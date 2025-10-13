@@ -71,8 +71,8 @@ public partial class ControlWindow
         _applicationService.SessionStateChanged += OnSessionStateChanged;
         _isEventRegistered = true;
 
-        Debug.WriteLine("ControlWindow: Calling UpdateUI");
-        UpdateUI();
+        Debug.WriteLine("ControlWindow: Calling UpdateUi");
+        UpdateUi();
 
         Debug.WriteLine("ControlWindow: DI constructor completed (drag setup already done in parameterless constructor)");
 
@@ -334,10 +334,10 @@ public partial class ControlWindow
 
     private void OnSessionStateChanged(object? sender, Corelib.Session.SessionStateChangedEventArgs e)
     {
-        Dispatcher.Invoke(() => UpdateUI());
+        Dispatcher.Invoke(UpdateUi);
     }
 
-    private void UpdateUI()
+    private void UpdateUi()
     {
         if (_applicationService == null)
         {
@@ -678,7 +678,7 @@ public partial class ControlWindow
                 Debug.WriteLine("TryRegisterApplicationService: Event registration completed");
 
                 // Update UI to reflect current state
-                UpdateUI();
+                UpdateUi();
                 Debug.WriteLine("TryRegisterApplicationService: Initial UI update completed");
             }
             catch (Exception ex)

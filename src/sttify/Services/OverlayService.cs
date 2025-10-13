@@ -218,7 +218,7 @@ public class OverlayService : IDisposable
 
         // Horizontal
         double left;
-        switch (overlay.HorizontalAlignment?.ToLowerInvariant())
+        switch (overlay.HorizontalAlignment.ToLowerInvariant())
         {
             case "left":
                 left = areaLeft + overlay.MarginX;
@@ -226,15 +226,14 @@ public class OverlayService : IDisposable
             case "right":
                 left = areaLeft + Math.Max(0, areaWidth - width - overlay.MarginX);
                 break;
-            case "center":
-            default:
+            default: // center or other
                 left = areaLeft + Math.Max(0, (areaWidth - width) / 2.0);
                 break;
         }
 
         // Vertical
         double top;
-        switch (overlay.VerticalAlignment?.ToLowerInvariant())
+        switch (overlay.VerticalAlignment.ToLowerInvariant())
         {
             case "top":
                 top = areaTop + overlay.MarginY;
@@ -242,8 +241,7 @@ public class OverlayService : IDisposable
             case "center":
                 top = areaTop + Math.Max(0, (areaHeight - height) / 2.0);
                 break;
-            case "bottom":
-            default:
+            default: // bottom or other
                 top = areaTop + Math.Max(0, areaHeight - height - overlay.MarginY);
                 break;
         }

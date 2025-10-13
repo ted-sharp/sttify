@@ -37,7 +37,7 @@ public class StreamSinkTests : IDisposable
             FilePath = _testFilePath,
             ForceFlush = true
         };
-        using var sink = new StreamSink(settings);
+        var sink = new StreamSink(settings);
         var testText = "Hello, World!";
 
         // Act
@@ -79,7 +79,7 @@ public class StreamSinkTests : IDisposable
             CustomPrefix = "[TEST]",
             ForceFlush = true
         };
-        using var sink = new StreamSink(settings);
+        var sink = new StreamSink(settings);
         var testText = "Hello, World!";
 
         try
@@ -112,7 +112,7 @@ public class StreamSinkTests : IDisposable
             FilePath = testFile,
             ForceFlush = true
         };
-        using var sink = new StreamSink(settings);
+        var sink = new StreamSink(settings);
 
         try
         {
@@ -138,7 +138,7 @@ public class ExternalProcessSinkTests
     [Fact]
     public async Task CanSendAsync_WithValidProcess_ShouldReturnTrue()
     {
-        // Arrange - Use full path to cmd.exe 
+        // Arrange - Use full path to cmd.exe
         var cmdPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
         var settings = new ExternalProcessSettings
         {

@@ -122,7 +122,7 @@ public class OutlinedText : FrameworkElement
         drawingContext.DrawGeometry(Fill, null, geometry);
     }
 
-    private FormattedText CreateFormattedText(string text, double constraintWidth)
+    private FormattedText CreateFormattedText(string? text, double constraintWidth)
     {
         var typeface = new Typeface(FontFamily, FontStyles.Normal, FontWeight, FontStretches.Normal);
         var formatted = new FormattedText(

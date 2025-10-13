@@ -5,8 +5,7 @@
         Title="Sttify Settings"
         Width="800" Height="650"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="CanResize"
-        Icon="pack://application:,,,/Resources/microphone.ico">
+        ResizeMode="CanResize">
 
     <Window.Resources>
         <local:StringToBooleanConverter x:Key="StringToBooleanConverter"/>

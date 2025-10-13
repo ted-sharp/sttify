@@ -49,7 +49,7 @@ public class ApplicationService : IDisposable
 
     public void Dispose()
     {
-        _healthMonitor?.Dispose();
+        _healthMonitor.Dispose();
         if (_hotkeyThreadHandler is not null)
         {
             ComponentDispatcher.ThreadPreprocessMessage -= _hotkeyThreadHandler;
@@ -61,8 +61,8 @@ public class ApplicationService : IDisposable
             _hotkeyService.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
             _hotkeyService.Dispose();
         }
-        _recognitionSession?.Dispose();
-        _overlayService?.Dispose();
+        _recognitionSession.Dispose();
+        _overlayService.Dispose();
     }
 
     public event EventHandler<SessionStateChangedEventArgs>? SessionStateChanged;
