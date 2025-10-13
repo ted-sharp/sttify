@@ -74,12 +74,6 @@ public static class SttEngineFactory
             "ivector/final.ie"       // ivector extractor (optional but common)
         };
 
-        var optionalFiles = new[]
-        {
-            "conf/model.conf",       // Model configuration
-            "graph/phones.txt"       // Phone list
-        };
-
         // Check if at least the core files exist
         int foundRequiredFiles = 0;
         foreach (var file in requiredFiles)

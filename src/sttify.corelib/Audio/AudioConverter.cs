@@ -50,8 +50,7 @@ public static class AudioConverter
                     sampleProvider = new WdlResamplingSampleProvider(sampleProvider, TargetSampleRate);
                 }
 
-                // Convert back to wave format
-                var targetFormat = new WaveFormat(TargetSampleRate, TargetBitsPerSample, TargetChannels);
+                // Convert back to wave format (16-bit PCM)
                 var waveProvider = new SampleToWaveProvider16(sampleProvider);
 
                 using var outputStream = new MemoryStream();

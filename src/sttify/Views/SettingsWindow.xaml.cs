@@ -7,7 +7,7 @@ using Sttify.ViewModels;
 
 namespace Sttify.Views;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow
 {
     private readonly ApplicationService _applicationService;
     private readonly Corelib.Config.SettingsProvider _settingsProvider;

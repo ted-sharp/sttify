@@ -4,7 +4,7 @@ using Sttify.ViewModels;
 
 namespace Sttify.Views;
 
-public partial class EnhancedSettingsWindow : Window
+public partial class EnhancedSettingsWindow
 {
     private readonly SettingsViewModel _viewModel;
 

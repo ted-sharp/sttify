@@ -7,7 +7,7 @@ using Sttify.Corelib.Diagnostics;
 namespace Sttify.Corelib.Engine.Vibe;
 
 [ExcludeFromCodeCoverage] // External Vibe API integration, network dependent, difficult to mock effectively
-public class VibeSttEngine : ISttEngine, IDisposable
+public class VibeSttEngine : ISttEngine
 {
     private readonly MemoryStream _audioBuffer = new();
     private readonly Queue<byte[]> _audioQueue = new();

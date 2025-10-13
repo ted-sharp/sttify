@@ -5,7 +5,7 @@ using Sttify.Corelib.Engine.Vosk;
 
 namespace Sttify.Views;
 
-public partial class VoskModelInfoDialog : Window
+public partial class VoskModelInfoDialog
 {
     public VoskModelInfoDialog()
     {

@@ -5,7 +5,7 @@ using Vosk;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
-public class MultiLanguageVoskAdapter : ISttEngine, IDisposable
+public class MultiLanguageVoskAdapter : ISttEngine
 {
     private readonly Queue<byte[]> _audioQueue = new();
     private readonly Dictionary<string, Model> _loadedModels = new();

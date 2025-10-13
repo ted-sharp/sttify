@@ -541,7 +541,6 @@ public partial class SettingsViewModel : ObservableObject
 
                     // Find the actual model directory within the extracted content
                     var extractedItems = Directory.GetDirectories(tempExtractionPath);
-                    var extractedFiles = Directory.GetFiles(tempExtractionPath);
 
                     string actualModelPath;
 

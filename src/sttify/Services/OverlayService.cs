@@ -211,8 +211,7 @@ public class OverlayService : IDisposable
                 width = maxAllowed;
                 window.Width = width;
                 window.UpdateLayout();
-                var newHeight = window.ActualHeight;
-                // Assign back to local height variable after declaration below
+                // Height will be recalculated after UpdateLayout()
             }
         }
         double height = window.ActualHeight;

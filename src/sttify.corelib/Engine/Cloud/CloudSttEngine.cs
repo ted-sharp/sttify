@@ -317,7 +317,7 @@ public class AzureSpeechEngine : CloudSttEngine
             var uri = $"{endpoint}?language={_settings.Language}&format=detailed";
 
             // Ensure we send a proper WAV container (16kHz, mono, 16-bit PCM by default)
-            var wavBytes = WrapAsWav(audioData, 16000, 1, 16);
+            var wavBytes = WrapAsWav(audioData);
             using var content = new ByteArrayContent(wavBytes);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
 
@@ -355,7 +355,7 @@ public class AzureSpeechEngine : CloudSttEngine
 
         // 100ms of silence @16kHz mono 16-bit
         var silentPcm = new byte[1600 * 2]; // 1600 samples * 2 bytes
-        var probe = WrapAsWav(silentPcm, 16000, 1, 16);
+        var probe = WrapAsWav(silentPcm);
         using var content = new ByteArrayContent(probe);
         content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
 

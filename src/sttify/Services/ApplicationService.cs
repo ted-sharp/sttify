@@ -105,7 +105,7 @@ public class ApplicationService : IDisposable
                 // WM_HOTKEY = 0x0312
                 if (msg.message == 0x0312)
                 {
-                    _hotkeyService.ProcessWindowMessage(msg.hwnd, (int)msg.message, msg.wParam, msg.lParam);
+                    _hotkeyService.ProcessWindowMessage(msg.hwnd, msg.message, msg.wParam, msg.lParam);
                 }
             };
             ComponentDispatcher.ThreadPreprocessMessage += _hotkeyThreadHandler;

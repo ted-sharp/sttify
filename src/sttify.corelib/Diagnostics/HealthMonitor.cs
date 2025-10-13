@@ -148,8 +148,8 @@ public class HealthMonitor : IDisposable
         // CPU usage check
         RegisterHealthCheck("CPU", () =>
         {
-            var process = Process.GetCurrentProcess();
-            var cpuUsagePercent = 0.0; // Simplified to avoid async delay
+            // Simplified to avoid async delay - CPU monitoring disabled for now
+            var cpuUsagePercent = 0.0;
 
             if (cpuUsagePercent > 80.0)
             {

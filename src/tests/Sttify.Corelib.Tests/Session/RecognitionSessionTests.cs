@@ -36,7 +36,6 @@ public class RecognitionSessionTests
     public void Constructor_WithNullAudioCapture_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var mockSttEngine = new Mock<ISttEngine>();
         var mockSinkProvider = new Mock<IOutputSinkProvider>();
         mockSinkProvider.Setup(p => p.GetSinks()).Returns(new List<ITextOutputSink>());
         var settings = new RecognitionSessionSettings();

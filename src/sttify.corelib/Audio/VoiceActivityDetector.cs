@@ -501,8 +501,6 @@ public class VoiceActivityDetector : IDisposable
 
     private void UpdateVoiceActivityState(VadResult result)
     {
-        var wasVoiceActive = IsVoiceActive;
-
         if (result.IsVoice)
         {
             _lastVoiceTime = result.Timestamp;

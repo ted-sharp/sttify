@@ -59,7 +59,6 @@ public class BasicIntegrationTests
     {
         // Arrange
         var settingsProvider = new SettingsProvider();
-        var settings = await settingsProvider.GetSettingsAsync();
 
         var audioCapture = new AudioCapture();
         // var sttEngine = new RealVoskEngineAdapter(settings.Engine.Vosk); // not used by session ctor anymore

@@ -200,7 +200,7 @@ public class SendInputSink : ITextOutputSink
         }
 
         // Windows 5.0+ compatibility check for SendInput API
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0))
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10))
         {
             System.Diagnostics.Debug.WriteLine("*** SendInput requires Windows 10+ (Windows 5.0+) ***");
             return 0;
@@ -238,7 +238,7 @@ public class SendInputSink : ITextOutputSink
                         ki = new CsKEYBDINPUT
                         {
                             wVk = default,
-                            wScan = (ushort)ch,
+                            wScan = ch,
                             dwFlags = CsKEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE,
                             time = 0,
                             dwExtraInfo = UIntPtr.Zero
@@ -281,7 +281,7 @@ public class SendInputSink : ITextOutputSink
                         ki = new CsKEYBDINPUT
                         {
                             wVk = default,
-                            wScan = (ushort)ch,
+                            wScan = ch,
                             dwFlags = CsKEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE | CsKEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP,
                             time = 0,
                             dwExtraInfo = UIntPtr.Zero
@@ -513,7 +513,7 @@ public class SendInputSink : ITextOutputSink
             if (!OpenClipboard(HWND.NULL))
                 return null;
 
-            IntPtr handle = (IntPtr)GetClipboardData(CF_UNICODETEXT);
+            IntPtr handle = GetClipboardData(CF_UNICODETEXT);
             if (handle == IntPtr.Zero)
             {
                 CloseClipboard();
@@ -561,7 +561,7 @@ public class SendInputSink : ITextOutputSink
                 return false;
             }
 
-            if ((IntPtr)SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+            if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(hGlobal);
                 CloseClipboard();
@@ -690,7 +690,7 @@ public class SendInputSink : ITextOutputSink
                 {
                     wVk = (CsVIRTUAL_KEY)virtualKey,
                     wScan = 0,
-                    dwFlags = keyUp ? CsKEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP : (CsKEYBD_EVENT_FLAGS)0,
+                    dwFlags = keyUp ? CsKEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP : 0,
                     time = 0,
                     dwExtraInfo = UIntPtr.Zero
                 }

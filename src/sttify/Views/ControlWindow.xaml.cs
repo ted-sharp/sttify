@@ -14,7 +14,7 @@ using Sttify.ViewModels;
 
 namespace Sttify.Views;
 
-public partial class ControlWindow : Window
+public partial class ControlWindow
 {
     private const double DragThreshold = 5.0;
     private readonly IServiceProvider? _serviceProvider;
@@ -27,8 +27,8 @@ public partial class ControlWindow : Window
 
     // Drag functionality fields
     private bool _isDragging;
-    private bool _isEventRegistered = false;
-    private bool _isHovering = false;
+    private bool _isEventRegistered;
+    private bool _isHovering;
     private Corelib.Session.SessionState _lastState = Corelib.Session.SessionState.Idle;
     private System.Windows.Point _startPoint;
 

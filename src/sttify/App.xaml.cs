@@ -19,14 +19,14 @@ using Sttify.Views;
 
 namespace Sttify;
 
-public partial class App : System.Windows.Application
+public partial class App
 {
     private IHost? _host;
     private NotifyIconHost? _notifyIconHost;
     private Mutex? _singleInstanceMutex;
 
     public static IServiceProvider? ServiceProvider { get; private set; }
-    public static bool IsElevated { get; private set; } = false;
+    public static bool IsElevated { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
     {

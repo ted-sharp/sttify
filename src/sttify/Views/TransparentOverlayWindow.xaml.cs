@@ -8,7 +8,7 @@ using MediaColor = System.Windows.Media.Color;
 
 namespace Sttify.Views;
 
-public partial class TransparentOverlayWindow : Window
+public partial class TransparentOverlayWindow
 {
     private DoubleAnimation? _fadeIn;
     private DoubleAnimation? _fadeOut;
@@ -50,7 +50,6 @@ public partial class TransparentOverlayWindow : Window
         {
             // Name scope lookup for the element
         }
-        var effect = OverlayText.Effect as System.Windows.Media.Effects.DropShadowEffect;
         // For OutlinedText, map outline to Stroke/Thickness
         if (!enabled)
         {
@@ -137,7 +136,7 @@ public partial class TransparentOverlayWindow : Window
         var exStyle = (int)GetWindowLong(new HWND(hwnd), WindowLongFlags.GWL_EXSTYLE);
         if (isClickThrough)
         {
-            exStyle |= (int)(WindowStylesEx.WS_EX_TRANSPARENT | WindowStylesEx.WS_EX_LAYERED);
+            exStyle |= (int)WindowStylesEx.WS_EX_TRANSPARENT | (int)WindowStylesEx.WS_EX_LAYERED;
         }
         else
         {

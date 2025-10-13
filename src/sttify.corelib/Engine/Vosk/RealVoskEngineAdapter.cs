@@ -6,7 +6,7 @@ using Vosk;
 
 namespace Sttify.Corelib.Engine.Vosk;
 
-public class RealVoskEngineAdapter : ISttEngine, IDisposable
+public class RealVoskEngineAdapter : ISttEngine
 {
     private const int SilenceThresholdMs = 800; // 800ms of silence to trigger processing
     private const double VoiceThreshold = 0.005; // Minimum voice level threshold (raised to allow silence detection)
