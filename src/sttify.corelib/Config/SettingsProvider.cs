@@ -17,7 +17,6 @@ public class SettingsProvider
     private volatile bool _configChanged;
     private Timer? _debounceTimer;
     private FileSystemWatcher? _fileWatcher;
-    private DateTime _lastModified;
 
     public SettingsProvider()
     {
@@ -54,7 +53,6 @@ public class SettingsProvider
         {
             _cachedSettings = settings;
             _configChanged = false;
-            _lastModified = File.Exists(_configPath) ? File.GetLastWriteTime(_configPath) : DateTime.MinValue;
         }
 
         return settings;
@@ -86,7 +84,6 @@ public class SettingsProvider
             {
                 _cachedSettings = settings;
                 _configChanged = false;
-                _lastModified = File.GetLastWriteTime(_configPath);
             }
         }
         finally
@@ -212,7 +209,10 @@ public class SettingsProvider
         {
             _debounceTimer?.Change(DebounceMs, Timeout.Infinite);
         }
-        catch { }
+        catch (ObjectDisposedException)
+        {
+            // Timer disposed during shutdown - expected
+        }
 
         Telemetry.LogEvent("ConfigFileChanged", new { Path = e.FullPath, ChangeType = e.ChangeType.ToString() });
     }

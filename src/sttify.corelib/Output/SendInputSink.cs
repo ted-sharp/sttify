@@ -351,7 +351,10 @@ public class SendInputSink : ITextOutputSink
             {
                 original = GetClipboardText();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"*** Failed to backup clipboard: {ex.Message} ***");
+            }
 
             // Use Win32 clipboard APIs directly
             bool clipboardSet = SetClipboardText(text);
@@ -497,7 +500,10 @@ public class SendInputSink : ITextOutputSink
                     SetClipboardText(original);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"*** Failed to restore clipboard: {ex.Message} ***");
+            }
         }
         catch (Exception ex)
         {

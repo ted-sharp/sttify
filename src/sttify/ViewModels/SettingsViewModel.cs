@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Configuration;
 using Sttify.Corelib.Audio;
 using Sttify.Corelib.Config;
 using Sttify.Corelib.Engine;
@@ -325,21 +324,6 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    private static VoskConfiguration? GetVoskConfiguration()
-    {
-        try
-        {
-            var config = AppConfiguration.Configuration;
-            var voskConfig = new VoskConfiguration();
-            config.GetSection("Engines:Vosk").Bind(voskConfig);
-            return voskConfig;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     private static string? GetEngineDocumentationUrl(string? engineProfile) =>
         engineProfile switch
         {
@@ -630,7 +614,10 @@ public partial class SettingsViewModel : ObservableObject
                 {
                     try
                     { Directory.Delete(finalModelPath, true); }
-                    catch { }
+                    catch (Exception cleanupEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"*** Failed to cleanup invalid model directory: {cleanupEx.Message} ***");
+                    }
                 }
             }
         }

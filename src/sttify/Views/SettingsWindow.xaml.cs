@@ -10,18 +10,16 @@ namespace Sttify.Views;
 public partial class SettingsWindow
 {
     private readonly ApplicationService _applicationService;
-    private readonly Corelib.Config.SettingsProvider _settingsProvider;
 
     private readonly SettingsViewModel _viewModel;
     // Debug hotkey manager removed
 
-    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService, Corelib.Config.SettingsProvider settingsProvider)
+    public SettingsWindow(SettingsViewModel viewModel, ApplicationService applicationService)
     {
         InitializeComponent();
 
         _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
         _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
-        _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         DataContext = _viewModel;
 
         // Debug hotkey feature removed
@@ -51,7 +49,10 @@ public partial class SettingsWindow
                 {
                     await _applicationService.ReinitializeHotkeysAsync().ConfigureAwait(false);
                 }
-                catch { }
+                catch (Exception hotkeyEx)
+                {
+                    Debug.WriteLine($"*** Failed to reinitialize hotkeys: {hotkeyEx.Message} ***");
+                }
 
                 Dispatcher.Invoke(Close);
             }

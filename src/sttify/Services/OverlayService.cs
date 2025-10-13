@@ -281,7 +281,10 @@ public class OverlayService : IDisposable
                 _window?.Hide();
             }));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"*** Auto-hide timer failed: {ex.Message} ***");
+        }
     }
 
     public Task HideAsync()

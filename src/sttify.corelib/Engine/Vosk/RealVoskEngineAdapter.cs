@@ -22,7 +22,6 @@ public class RealVoskEngineAdapter : ISttEngine
 
     // Voice Activity Detection (VAD) - for forced finalization on silence
     private bool _isSpeaking = false;
-    private DateTime _lastVoiceActivity = DateTime.MinValue;
     private Model? _model;
     private DateTime _recognitionStartTime;
     private VoskRecognizer? _recognizer;
@@ -121,7 +120,6 @@ public class RealVoskEngineAdapter : ISttEngine
 
             if (hasVoice)
             {
-                _lastVoiceActivity = DateTime.UtcNow;
                 if (!_isSpeaking)
                 {
                     _isSpeaking = true;

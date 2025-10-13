@@ -156,12 +156,10 @@ public partial class App
         Telemetry.Initialize(telemetrySettings);
     }
 
-    private static bool AllocConsole() => Vanara.PInvoke.Kernel32.AllocConsole();
-
     private void BuildHost()
     {
         _host = Host.CreateDefaultBuilder()
-            .ConfigureServices((context, services) =>
+            .ConfigureServices((_, services) =>
             {
                 services.AddSingleton<SettingsProvider>();
                 services.AddSingleton<AudioCapture>();
@@ -250,8 +248,7 @@ public partial class App
                 {
                     return new SettingsWindow(
                         provider.GetRequiredService<SettingsViewModel>(),
-                        provider.GetRequiredService<ApplicationService>(),
-                        provider.GetRequiredService<SettingsProvider>()
+                        provider.GetRequiredService<ApplicationService>()
                     );
                 });
             })

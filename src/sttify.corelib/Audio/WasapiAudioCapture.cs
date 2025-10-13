@@ -38,10 +38,16 @@ public class WasapiAudioCapture : IDisposable
             {
                 try
                 { await StopAsync(); }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture StopAsync in Dispose failed: {ex.Message} ***");
+                }
                 try
                 { _wasapiCapture?.Dispose(); }
-                catch { }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture inner Dispose failed: {ex.Message} ***");
+                }
                 _wasapiCapture = null;
             });
         }
@@ -49,7 +55,10 @@ public class WasapiAudioCapture : IDisposable
         {
             try
             { _wasapiCapture?.Dispose(); }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture outer Dispose failed: {ex.Message} ***");
+            }
             _wasapiCapture = null;
         }
     }

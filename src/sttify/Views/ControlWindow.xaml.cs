@@ -371,7 +371,10 @@ public partial class ControlWindow
                 badge.Visibility = isElevated ? Visibility.Visible : Visibility.Collapsed;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"*** Failed to update elevation badge: {ex.Message} ***");
+        }
     }
 
     private void AnimateStateChange(Corelib.Session.SessionState newState)

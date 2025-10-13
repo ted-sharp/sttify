@@ -446,29 +446,6 @@ public class RecognitionSession : IDisposable
         return false;
     }
 
-    // Voice activity detection
-    private bool DetectVoiceActivity(ReadOnlySpan<byte> audioData)
-    {
-        if (audioData.Length == 0)
-            return false;
-
-        // Simple RMS calculation for voice activity detection
-        double sum = 0;
-        for (int i = 0; i < audioData.Length; i += 2) // Assuming 16-bit samples
-        {
-            if (i + 1 < audioData.Length)
-            {
-                short sample = (short)(audioData[i] | (audioData[i + 1] << 8));
-                sum += sample * sample;
-            }
-        }
-
-        var rms = Math.Sqrt(sum / (audioData.Length / 2));
-        var normalizedRms = rms / 32768.0; // Normalize to 0-1 range
-
-        return normalizedRms > _settings.VoiceActivityThreshold;
-    }
-
     // Wake word detection
     private bool DetectWakeWord(string text)
     {

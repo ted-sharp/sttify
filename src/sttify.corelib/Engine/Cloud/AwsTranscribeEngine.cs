@@ -10,14 +10,19 @@ public class AwsTranscribeEngine : CloudSttEngine
 {
     private readonly string _accessKeyId;
     private readonly string _region;
-    private readonly string _secretAccessKey;
 
     public AwsTranscribeEngine(CloudEngineSettings settings) : base(settings)
     {
         // Parse AWS-specific settings from the endpoint or separate config
         _region = ExtractRegionFromEndpoint(settings.Endpoint) ?? "us-east-1";
         _accessKeyId = settings.ApiKey ?? throw new ArgumentException("Access Key ID is required for AWS Transcribe");
-        _secretAccessKey = settings.SecretKey ?? throw new ArgumentException("Secret Access Key is required for AWS Transcribe");
+
+        // Note: SecretAccessKey validation removed as it's not yet used in simplified implementation
+        // When implementing full AWS Signature V4, restore: _secretAccessKey = settings.SecretKey ?? throw...
+        if (string.IsNullOrEmpty(settings.SecretKey))
+        {
+            throw new ArgumentException("Secret Access Key is required for AWS Transcribe");
+        }
     }
 
     protected override void ConfigureHttpClient()

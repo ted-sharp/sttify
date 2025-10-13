@@ -352,28 +352,6 @@ public class VibeSttEngine : ISttEngine
         return text;
     }
 
-    private async Task ValidateConnectionAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var endpoint = $"{_settings.Endpoint.TrimEnd('/')}/health";
-            var response = await _httpClient.GetAsync(endpoint, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException($"Vibe service is not available. Status: {response.StatusCode}");
-            }
-        }
-        catch (HttpRequestException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to connect to Vibe service: {ex.Message}", ex);
-        }
-    }
-
     /// <summary>
     /// Creates a simple WAV file from raw PCM audio data
     /// </summary>

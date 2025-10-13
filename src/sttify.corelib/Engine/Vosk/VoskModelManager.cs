@@ -137,7 +137,10 @@ public class VoskModelManager
                 if (Directory.Exists(extractPath))
                     Directory.Delete(extractPath, true);
             }
-            catch { }
+            catch (Exception cleanupEx)
+            {
+                Telemetry.LogWarning("VoskModelCleanupFailed", $"Failed to cleanup model files: {cleanupEx.Message}", new { zipPath, extractPath });
+            }
 
             throw new VoskModelDownloadException($"Failed to download model {modelInfo.Name}: {ex.Message}", ex);
         }
