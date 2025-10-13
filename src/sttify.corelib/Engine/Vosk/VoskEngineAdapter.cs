@@ -21,7 +21,7 @@ public class VoskEngineAdapter : ISttEngine
     public VoskEngineAdapter(VoskEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter Constructor - Instance ID: {GetHashCode()} ***");
+        System.Diagnostics.Debug.WriteLine($"*** VoskEngineAdapter Constructor - Instance ID: {System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this)} ***");
     }
 
     public event EventHandler<PartialRecognitionEventArgs>? OnPartial;

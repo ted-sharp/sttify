@@ -345,11 +345,11 @@ public class ImeStatus
     public IntPtr WindowHandle { get; set; } = IntPtr.Zero;
 
     [SupportedOSPlatform("windows")]
-    public bool IsNativeMode => (ConversionMode & IME_CMODE.IME_CMODE_NATIVE) != 0;
+    public bool IsNativeMode => ((int)ConversionMode & (int)IME_CMODE.IME_CMODE_NATIVE) != 0;
 
     [SupportedOSPlatform("windows")]
     public bool IsAlphanumericMode => ConversionMode == IME_CMODE.IME_CMODE_ALPHANUMERIC;
 
     [SupportedOSPlatform("windows")]
-    public bool IsFullShape => (ConversionMode & IME_CMODE.IME_CMODE_FULLSHAPE) != 0;
+    public bool IsFullShape => ((int)ConversionMode & (int)IME_CMODE.IME_CMODE_FULLSHAPE) != 0;
 }

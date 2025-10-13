@@ -182,7 +182,7 @@ public static class AudioConverter
 
     public static byte[] ApplyVolumeGain(byte[] audioData, WaveFormat format, float gainFactor)
     {
-        if (gainFactor == 1.0f || audioData.Length == 0)
+        if (Math.Abs(gainFactor - 1.0f) < 0.0001f || audioData.Length == 0)
             return audioData;
 
         var result = new byte[audioData.Length];

@@ -43,7 +43,7 @@ public class RecognitionSession : IDisposable
         RecognitionSessionSettings settings,
         PluginManager? pluginManager = null)
     {
-        System.Diagnostics.Debug.WriteLine($"*** RecognitionSession Constructor - Instance ID: {GetHashCode()} ***");
+        System.Diagnostics.Debug.WriteLine($"*** RecognitionSession Constructor - Instance ID: {System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this)} ***");
         _audioCapture = audioCapture ?? throw new ArgumentNullException(nameof(audioCapture));
         _settingsProvider = settingsProvider ?? throw new ArgumentNullException(nameof(settingsProvider));
         _outputSinkProvider = outputSinkProvider ?? throw new ArgumentNullException(nameof(outputSinkProvider));

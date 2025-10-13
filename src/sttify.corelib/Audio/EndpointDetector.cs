@@ -413,7 +413,7 @@ public class EndpointDetector : IDisposable
         return Math.Max(0.0, Math.Min(1.0, ratio));
     }
 
-    private double CalculateAdaptiveConfidence(TimeSpan currentDuration, double avgDuration,
+    private static double CalculateAdaptiveConfidence(TimeSpan currentDuration, double avgDuration,
                                              TimeSpan currentSilence, double avgSilence)
     {
         var durationFactor = Math.Min(1.0, currentDuration.TotalMilliseconds / avgDuration);

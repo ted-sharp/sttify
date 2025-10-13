@@ -56,7 +56,10 @@ public class VoskEngineAdapterTests
         var adapter = new RealVoskEngineAdapter(settings);
         var audioData = new byte[1024];
 
-        // Act & Assert (should not throw)
-        adapter.PushAudio(audioData);
+        // Act
+        var exception = Record.Exception(() => adapter.PushAudio(audioData));
+
+        // Assert
+        Assert.Null(exception);
     }
 }

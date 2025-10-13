@@ -655,7 +655,7 @@ public class SendInputSink : ITextOutputSink
             if (processHandle == IntPtr.Zero)
                 return false;
 
-            bool result = OpenProcessToken(processHandle.DangerousGetHandle(), 0x0008, out IntPtr tokenHandle); // TOKEN_QUERY
+            bool result = OpenProcessToken(processHandle, 0x0008, out IntPtr tokenHandle); // TOKEN_QUERY
             if (!result)
             {
                 return false; // processHandle will be disposed automatically
@@ -717,8 +717,8 @@ public class SendInputSink : ITextOutputSink
     // OpenProcess now provided by Vanara.PInvoke.Kernel32
     // OpenProcessToken and GetTokenInformation require AdvApi32 which is not available in Vanara
 
-    [DllImport("advapi32.dll")]
-    private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool OpenProcessToken(SafeHandle ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
 
     [DllImport("advapi32.dll")]
     private static extern bool GetTokenInformation(IntPtr TokenHandle, int TokenInformationClass, IntPtr TokenInformation, uint TokenInformationLength, out uint ReturnLength);

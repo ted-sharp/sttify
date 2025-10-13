@@ -21,6 +21,7 @@ public class VoiceActivityDetector : IDisposable
     private double[]? _cachedSpectrum;
     private int _cachedSpectrumHash;
     private int _historyIndex;
+    private bool _isFirstNoiseFloorMeasurement = true;
     private DateTime _lastSilenceTime;
     private DateTime _lastSpectrumUpdate = DateTime.MinValue;
     private DateTime _lastVoiceTime;
@@ -168,7 +169,7 @@ public class VoiceActivityDetector : IDisposable
         }
     }
 
-    private double CalculateEnergy(short[] samples)
+    private static double CalculateEnergy(short[] samples)
     {
         if (samples.Length == 0)
             return -100.0;
@@ -183,7 +184,7 @@ public class VoiceActivityDetector : IDisposable
         return rms > 0 ? 20.0 * Math.Log10(rms / 32768.0) : -100.0; // Convert to dB
     }
 
-    private double CalculateZeroCrossingRate(short[] samples)
+    private static double CalculateZeroCrossingRate(short[] samples)
     {
         if (samples.Length < 2)
             return 0.0;
@@ -259,7 +260,7 @@ public class VoiceActivityDetector : IDisposable
         return _cachedSpectrum;
     }
 
-    private int GetSampleHash(short[] samples)
+    private static int GetSampleHash(short[] samples)
     {
         // Simple hash of first few samples to detect changes
         var hash = 0;
@@ -316,7 +317,7 @@ public class VoiceActivityDetector : IDisposable
         }
     }
 
-    private double GetHammingWindow(int n, int size)
+    private static double GetHammingWindow(int n, int size)
     {
         // Pre-computed for common cases to avoid Math.Cos calls
         return 0.54 - 0.46 * Math.Cos(2.0 * Math.PI * n / (size - 1));
@@ -407,9 +408,10 @@ public class VoiceActivityDetector : IDisposable
     private void UpdateNoiseFloor(double energy)
     {
         // Exponential moving average for noise floor estimation
-        if (CurrentNoiseFloor == -60.0) // First measurement
+        if (_isFirstNoiseFloorMeasurement)
         {
             CurrentNoiseFloor = energy;
+            _isFirstNoiseFloorMeasurement = false;
         }
         else
         {

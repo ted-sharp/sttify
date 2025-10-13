@@ -146,11 +146,16 @@ public class ImeControllerTests
         var settings = new ImeSettings();
         var controller = new ImeController(settings);
 
-        // Act & Assert (should not throw)
-        controller.Dispose();
+        // Act
+        var exception = Record.Exception(() =>
+        {
+            controller.Dispose();
+            // Multiple disposes should also not throw
+            controller.Dispose();
+        });
 
-        // Multiple disposes should also not throw
-        controller.Dispose();
+        // Assert
+        Assert.Null(exception);
     }
 
     [Fact]

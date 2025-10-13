@@ -15,6 +15,7 @@ public abstract class CloudSttEngine : ISttEngine
     protected readonly ResponseCache<CloudRecognitionResult> _responseCache;
 
     protected readonly CloudEngineSettings _settings;
+    protected bool _httpClientConfigured;
     protected bool _isRunning;
     protected CancellationTokenSource? _processingCancellation;
     protected Task? _processingTask;
@@ -31,8 +32,6 @@ public abstract class CloudSttEngine : ISttEngine
 
         // Cache responses to reduce API calls and improve latency
         _responseCache = new ResponseCache<CloudRecognitionResult>(maxEntries: 500, ttl: TimeSpan.FromMinutes(15));
-
-        ConfigureHttpClient();
     }
 
     public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
@@ -43,6 +42,13 @@ public abstract class CloudSttEngine : ISttEngine
     {
         if (_isRunning)
             throw new InvalidOperationException("Engine is already running");
+
+        // Configure HTTP client on first start (not in constructor to avoid calling virtual method)
+        if (!_httpClientConfigured)
+        {
+            ConfigureHttpClient();
+            _httpClientConfigured = true;
+        }
 
         try
         {

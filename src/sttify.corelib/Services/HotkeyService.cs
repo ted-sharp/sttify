@@ -203,7 +203,7 @@ public class HotkeyService : IDisposable
     [SupportedOSPlatform("windows")]
     public bool ValidateHotkeyString(string hotkeyString)
     {
-        return _hotkeyManager.ValidateHotkeyString(hotkeyString);
+        return HotkeyManager.ValidateHotkeyString(hotkeyString);
     }
 }
 

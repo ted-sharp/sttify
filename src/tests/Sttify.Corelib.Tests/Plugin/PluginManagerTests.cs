@@ -39,8 +39,11 @@ public class PluginManagerTests
         var serviceProvider = CreateServiceProvider();
         var pluginManager = new PluginManager(serviceProvider);
 
-        // Act & Assert
-        await pluginManager.LoadAllPluginsAsync(); // Should not throw
+        // Act
+        var exception = await Record.ExceptionAsync(async () => await pluginManager.LoadAllPluginsAsync());
+
+        // Assert
+        Assert.Null(exception);
     }
 
     [Fact]
@@ -50,7 +53,10 @@ public class PluginManagerTests
         var serviceProvider = CreateServiceProvider();
         var pluginManager = new PluginManager(serviceProvider);
 
-        // Act & Assert
-        pluginManager.Dispose(); // Should not throw
+        // Act
+        var exception = Record.Exception(() => pluginManager.Dispose());
+
+        // Assert
+        Assert.Null(exception);
     }
 }

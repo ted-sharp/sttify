@@ -117,7 +117,10 @@ public class VoiceActivityDetectorTests
         // Arrange
         var detector = new VoiceActivityDetector();
 
-        // Act & Assert
-        detector.Dispose(); // Should not throw
+        // Act
+        var exception = Record.Exception(() => detector.Dispose());
+
+        // Assert
+        Assert.Null(exception);
     }
 }

@@ -191,7 +191,10 @@ public class ExternalProcessSinkTests
         };
         var sink = new ExternalProcessSink(settings);
 
-        // Act & Assert
-        await sink.SendAsync("test text"); // Should not throw
+        // Act
+        var exception = await Record.ExceptionAsync(async () => await sink.SendAsync("test text"));
+
+        // Assert
+        Assert.Null(exception);
     }
 }

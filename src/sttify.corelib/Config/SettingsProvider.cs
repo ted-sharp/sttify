@@ -7,7 +7,7 @@ using Sttify.Corelib.Output;
 
 namespace Sttify.Corelib.Config;
 
-public class SettingsProvider
+public class SettingsProvider : IDisposable
 {
     private const int DebounceMs = 250;
     private readonly string _configPath;
@@ -35,6 +35,11 @@ public class SettingsProvider
         };
 
         SetupFileWatcher();
+    }
+
+    public void Dispose()
+    {
+        _fileWatcher?.Dispose();
     }
 
     public async Task<SttifySettings> GetSettingsAsync()
@@ -385,11 +390,6 @@ public class SettingsProvider
             Telemetry.LogError("GetSettingsSyncFailed", ex, new { ConfigPath = _configPath });
             return CreateDefaultSettings();
         }
-    }
-
-    public void Dispose()
-    {
-        _fileWatcher?.Dispose();
     }
 }
 

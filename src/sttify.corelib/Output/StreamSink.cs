@@ -158,7 +158,7 @@ public class StreamSink : ITextOutputSink, IDisposable
         }
     }
 
-    private bool CanCreateDirectory(string directoryPath)
+    private static bool CanCreateDirectory(string directoryPath)
     {
         try
         {

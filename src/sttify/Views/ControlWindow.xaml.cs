@@ -45,15 +45,15 @@ public partial class ControlWindow
         {
             Debug.WriteLine("ControlWindow: Loaded event fired from parameterless constructor");
             SetupDragFunctionality();
-            RestoreWindowPosition();
+            _ = RestoreWindowPositionAsync();
 
             // Try to get ApplicationService and register events if not already done
             TryRegisterApplicationService();
         };
 
         // Save position when window is moved or closed
-        LocationChanged += (_, _) => SaveWindowPosition();
-        Closing += (_, _) => SaveWindowPosition();
+        LocationChanged += (_, _) => _ = SaveWindowPositionAsync();
+        Closing += (_, _) => _ = SaveWindowPositionAsync();
     }
 
     // Constructor for dependency injection
@@ -546,7 +546,7 @@ public partial class ControlWindow
             _ => (Colors.Gray, "❓")
         };
 
-    private async void SaveWindowPosition()
+    private async Task SaveWindowPositionAsync()
     {
         try
         {
@@ -574,7 +574,7 @@ public partial class ControlWindow
         }
     }
 
-    private async void RestoreWindowPosition()
+    private async Task RestoreWindowPositionAsync()
     {
         try
         {

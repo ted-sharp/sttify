@@ -113,7 +113,7 @@ public class AudioCapture : IDisposable
         }, nameof(OnWasapiError));
     }
 
-    private bool IsTransientAudioError(Exception exception)
+    private static bool IsTransientAudioError(Exception exception)
     {
         // Check for known transient error patterns
         if (exception == null)

@@ -277,7 +277,7 @@ public class HotkeyManager : IDisposable
         return _registeredHotkeys.Values.ToDictionary(h => h.Name, h => h.HotkeyString);
     }
 
-    public bool ValidateHotkeyString(string hotkeyString)
+    public static bool ValidateHotkeyString(string hotkeyString)
     {
         return ParseHotkeyString(hotkeyString, out _, out _);
     }

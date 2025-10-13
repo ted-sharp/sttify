@@ -86,7 +86,10 @@ public class RecognitionSessionTests
             mockSinkProvider.Object,
             settings);
 
-        // Act & Assert (should not throw)
-        session.Dispose();
+        // Act
+        var exception = Record.Exception(() => session.Dispose());
+
+        // Assert
+        Assert.Null(exception);
     }
 }
