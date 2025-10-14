@@ -145,7 +145,7 @@ public class StreamSink : ITextOutputSink, IDisposable
         };
     }
 
-    private bool CanCreateFile(string filePath)
+    private static bool CanCreateFile(string filePath)
     {
         try
         {

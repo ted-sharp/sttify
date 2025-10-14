@@ -16,6 +16,7 @@ public class SettingsProvider : IDisposable
     private SttifySettings? _cachedSettings;
     private volatile bool _configChanged;
     private Timer? _debounceTimer;
+    private bool _disposed;
     private FileSystemWatcher? _fileWatcher;
 
     public SettingsProvider()
@@ -39,7 +40,21 @@ public class SettingsProvider : IDisposable
 
     public void Dispose()
     {
-        _fileWatcher?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                _fileWatcher?.Dispose();
+                _debounceTimer?.Dispose();
+            }
+            _disposed = true;
+        }
     }
 
     public async Task<SttifySettings> GetSettingsAsync()
@@ -193,7 +208,7 @@ public class SettingsProvider : IDisposable
                 _fileWatcher.Changed += OnConfigFileChanged;
                 _fileWatcher.Created += OnConfigFileChanged;
 
-                _debounceTimer = new Timer(_ =>
+                _debounceTimer = new Timer(state =>
                 {
                     lock (_lockObject)
                     { _configChanged = true; }

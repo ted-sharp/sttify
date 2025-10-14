@@ -44,7 +44,7 @@ public class WakeWordDetector
                IsPhoneticMatch(text, _wakeWord);
     }
 
-    private static bool IsPhoneticMatch(string text, string _)
+    private static bool IsPhoneticMatch(string text, string wakeWord)
     {
         var phoneticVariations = new[]
         {

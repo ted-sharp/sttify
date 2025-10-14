@@ -180,7 +180,7 @@ public class EndpointDetector : IDisposable
         // 5. Adaptive endpoint based on speech patterns
         if (_settings.EnableAdaptiveEndpoint && UtteranceCount > 0)
         {
-            var adaptiveEndpoint = DetectAdaptiveEndpoint(vadResult, timestamp);
+            var adaptiveEndpoint = DetectAdaptiveEndpoint(timestamp);
             if (adaptiveEndpoint.HasEndpoint && adaptiveEndpoint.Confidence > result.Confidence)
             {
                 result = adaptiveEndpoint;
@@ -219,7 +219,7 @@ public class EndpointDetector : IDisposable
         return result;
     }
 
-    private EndpointResult DetectAdaptiveEndpoint(VadResult _, DateTime timestamp)
+    private EndpointResult DetectAdaptiveEndpoint(DateTime timestamp)
     {
         var result = new EndpointResult { HasEndpoint = false };
 

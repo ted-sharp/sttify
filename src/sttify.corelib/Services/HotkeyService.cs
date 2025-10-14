@@ -168,7 +168,7 @@ public class HotkeyService : IDisposable
         }
     }
 
-    private void OnHotkeyRegistered(object? sender, HotkeyRegistrationEventArgs e)
+    private static void OnHotkeyRegistered(object? sender, HotkeyRegistrationEventArgs e)
     {
         Telemetry.LogEvent("HotkeyRegistrationChanged", new
         {
@@ -178,7 +178,7 @@ public class HotkeyService : IDisposable
         });
     }
 
-    private void OnHotkeyUnregistered(object? sender, HotkeyRegistrationEventArgs e)
+    private static void OnHotkeyUnregistered(object? sender, HotkeyRegistrationEventArgs e)
     {
         Telemetry.LogEvent("HotkeyRegistrationChanged", new
         {

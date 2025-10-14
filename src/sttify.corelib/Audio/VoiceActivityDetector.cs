@@ -124,7 +124,7 @@ public class VoiceActivityDetector : IDisposable
         UpdateNoiseFloor(energy);
 
         // Update adaptive threshold
-        UpdateAdaptiveThreshold(energy);
+        UpdateAdaptiveThreshold();
 
         // Store in history for temporal analysis
         _energyHistory[_historyIndex] = energy;
@@ -132,7 +132,7 @@ public class VoiceActivityDetector : IDisposable
         _historyIndex = (_historyIndex + 1) % _settings.HistoryBufferSize;
 
         // Multi-feature voice activity detection
-        var result = DetectVoiceActivity(energy, zcr, spectralCentroid, spectralRolloff);
+        var result = DetectVoiceActivity(energy, zcr, spectralCentroid);
 
         result.Timestamp = frame.Timestamp;
         result.Energy = energy;
@@ -420,7 +420,7 @@ public class VoiceActivityDetector : IDisposable
         }
     }
 
-    private void UpdateAdaptiveThreshold(double _)
+    private void UpdateAdaptiveThreshold()
     {
         // Adaptive threshold based on noise floor and recent energy history
         var margin = _settings.AdaptiveMarginDb;
@@ -439,7 +439,7 @@ public class VoiceActivityDetector : IDisposable
         }
     }
 
-    private VadResult DetectVoiceActivity(double energy, double zcr, double spectralCentroid, double _)
+    private VadResult DetectVoiceActivity(double energy, double zcr, double spectralCentroid)
     {
         var confidence = 0.0;
 

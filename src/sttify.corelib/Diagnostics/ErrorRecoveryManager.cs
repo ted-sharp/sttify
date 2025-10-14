@@ -35,7 +35,7 @@ public class ErrorRecoveryManager : IDisposable
     {
         lock (_lockObject)
         {
-            var state = _componentStates.GetOrAdd(componentName, _ => new ErrorState(componentName));
+            var state = _componentStates.GetOrAdd(componentName, name => new ErrorState(name));
 
             state.LastError = exception;
             state.LastErrorTime = DateTime.UtcNow;
@@ -224,11 +224,11 @@ public class ErrorRecoveryManager : IDisposable
 
             bool success = action.ActionType switch
             {
-                RecoveryActionType.Restart => await RestartComponentAsync(action.ComponentName),
-                RecoveryActionType.Reset => await ResetComponentAsync(action.ComponentName),
-                RecoveryActionType.Reinitialize => await ReinitializeComponentAsync(action.ComponentName),
-                RecoveryActionType.ForceRestart => await ForceRestartComponentAsync(action.ComponentName),
-                RecoveryActionType.Fallback => await EnableFallbackAsync(action.ComponentName),
+                RecoveryActionType.Restart => await RestartComponentAsync(),
+                RecoveryActionType.Reset => await ResetComponentAsync(),
+                RecoveryActionType.Reinitialize => await ReinitializeComponentAsync(),
+                RecoveryActionType.ForceRestart => await ForceRestartComponentAsync(),
+                RecoveryActionType.Fallback => await EnableFallbackAsync(),
                 _ => false
             };
 
@@ -273,35 +273,35 @@ public class ErrorRecoveryManager : IDisposable
         }
     }
 
-    private async Task<bool> RestartComponentAsync(string _)
+    private static async Task<bool> RestartComponentAsync()
     {
         // Implementation would depend on the specific component
         await Task.Delay(100); // Simulate restart time
         return true;
     }
 
-    private async Task<bool> ResetComponentAsync(string _)
+    private static async Task<bool> ResetComponentAsync()
     {
         // Implementation would depend on the specific component
         await Task.Delay(50); // Simulate reset time
         return true;
     }
 
-    private async Task<bool> ReinitializeComponentAsync(string _)
+    private static async Task<bool> ReinitializeComponentAsync()
     {
         // Implementation would depend on the specific component
         await Task.Delay(200); // Simulate reinitialize time
         return true;
     }
 
-    private async Task<bool> ForceRestartComponentAsync(string _)
+    private static async Task<bool> ForceRestartComponentAsync()
     {
         // Implementation would depend on the specific component
         await Task.Delay(500); // Simulate force restart time
         return true;
     }
 
-    private async Task<bool> EnableFallbackAsync(string _)
+    private static async Task<bool> EnableFallbackAsync()
     {
         // Implementation would enable fallback mechanisms
         await Task.Delay(10); // Simulate fallback enablement

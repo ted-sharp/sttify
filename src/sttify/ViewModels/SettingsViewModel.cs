@@ -60,13 +60,13 @@ public partial class SettingsViewModel : ObservableObject
         _ = InitializeAsync();
     }
 
-    public bool IsVibeEngine => Settings.Engine.Profile.ToLowerInvariant() == "vibe";
-    public bool IsVoskSelected => Settings.Engine.Profile.ToLowerInvariant() == "vosk";
+    public bool IsVibeEngine => Settings.Engine.Profile.Equals("vibe", StringComparison.OrdinalIgnoreCase);
+    public bool IsVoskSelected => Settings.Engine.Profile.Equals("vosk", StringComparison.OrdinalIgnoreCase);
 
-    public bool IsCloudEngine => Settings.Engine.Profile.ToLowerInvariant().Contains("cloud") ||
-                                 Settings.Engine.Profile.ToLowerInvariant() == "azure" ||
-                                 Settings.Engine.Profile.ToLowerInvariant() == "google" ||
-                                 Settings.Engine.Profile.ToLowerInvariant() == "aws";
+    public bool IsCloudEngine => Settings.Engine.Profile.Contains("cloud", StringComparison.OrdinalIgnoreCase) ||
+                                 Settings.Engine.Profile.Equals("azure", StringComparison.OrdinalIgnoreCase) ||
+                                 Settings.Engine.Profile.Equals("google", StringComparison.OrdinalIgnoreCase) ||
+                                 Settings.Engine.Profile.Equals("aws", StringComparison.OrdinalIgnoreCase);
 
     public bool IsSendInputSelected => Settings.Output.PrimaryOutputIndex == 0;
 

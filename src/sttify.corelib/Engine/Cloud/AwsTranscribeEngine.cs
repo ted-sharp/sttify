@@ -78,7 +78,7 @@ public class AwsTranscribeEngine : CloudSttEngine
 
         var endpoint = $"https://{bucketName}.s3.{_region}.amazonaws.com/{objectKey}.wav";
         var timestamp = DateTimeOffset.UtcNow;
-        var headers = CreateAwsHeaders("PUT", endpoint, audioData, timestamp);
+        var headers = CreateAwsHeaders(endpoint, timestamp);
 
         using var request = new HttpRequestMessage(HttpMethod.Put, endpoint);
         foreach (var header in headers)
@@ -117,7 +117,7 @@ public class AwsTranscribeEngine : CloudSttEngine
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
 
-        var headers = CreateAwsHeaders("POST", endpoint, Encoding.UTF8.GetBytes(json), timestamp);
+        var headers = CreateAwsHeaders(endpoint, timestamp);
         headers["X-Amz-Target"] = "Transcribe.StartTranscriptionJob";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
@@ -156,7 +156,7 @@ public class AwsTranscribeEngine : CloudSttEngine
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            var headers = CreateAwsHeaders("POST", endpoint, Encoding.UTF8.GetBytes(json), timestamp);
+            var headers = CreateAwsHeaders(endpoint, timestamp);
             headers["X-Amz-Target"] = "Transcribe.GetTranscriptionJob";
 
             using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
@@ -227,7 +227,7 @@ public class AwsTranscribeEngine : CloudSttEngine
         {
             var endpoint = $"https://{bucketName}.s3.{_region}.amazonaws.com/{objectKey}.wav";
             var timestamp = DateTimeOffset.UtcNow;
-            var headers = CreateAwsHeaders("DELETE", endpoint, Array.Empty<byte>(), timestamp);
+            var headers = CreateAwsHeaders(endpoint, timestamp);
 
             using var request = new HttpRequestMessage(HttpMethod.Delete, endpoint);
             foreach (var header in headers)
@@ -243,7 +243,7 @@ public class AwsTranscribeEngine : CloudSttEngine
         }
     }
 
-    private Dictionary<string, string> CreateAwsHeaders(string _, string endpoint, byte[] __, DateTimeOffset timestamp)
+    private Dictionary<string, string> CreateAwsHeaders(string endpoint, DateTimeOffset timestamp)
     {
         // Simplified AWS signature v4 implementation
         // In production, use AWS SDK which handles this automatically
@@ -280,7 +280,7 @@ public class AwsTranscribeEngine : CloudSttEngine
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             });
 
-            var headers = CreateAwsHeaders("POST", endpoint, Encoding.UTF8.GetBytes(json), timestamp);
+            var headers = CreateAwsHeaders(endpoint, timestamp);
             headers["X-Amz-Target"] = "Transcribe.ListTranscriptionJobs";
 
             using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);

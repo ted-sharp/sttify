@@ -273,7 +273,7 @@ public class RecognitionSession : IDisposable
         }
     }
 
-    private Task InitializeModeAsync(CancellationToken _)
+    private Task InitializeModeAsync(CancellationToken cancellationToken)
     {
         switch (CurrentMode)
         {
