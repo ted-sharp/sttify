@@ -20,12 +20,23 @@ public class ErrorRecoveryManager : IDisposable
 
     public void Dispose()
     {
-        _recoveryTimer?.Dispose();
-        _componentStates.Clear();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        // Clear remaining recovery queue
-        while (_recoveryQueue.TryDequeue(out _))
-        { }
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _recoveryTimer?.Dispose();
+            _componentStates.Clear();
+
+            // Clear remaining recovery queue
+            while (_recoveryQueue.TryDequeue(out _))
+            {
+                // Intentionally empty - clearing queue
+            }
+        }
     }
 
     public event EventHandler<ErrorRecoveredEventArgs>? OnErrorRecovered;
@@ -323,7 +334,7 @@ public class ErrorRecoveryManager : IDisposable
         return timeSinceLastRecovery.TotalMinutes >= _settings.MinRecoveryIntervalMinutes;
     }
 
-    private ErrorRecoveryAction? DetermineRecoveryAction(ErrorState state)
+    private static ErrorRecoveryAction? DetermineRecoveryAction(ErrorState state)
     {
         var actionType = state.ConsecutiveFailures switch
         {

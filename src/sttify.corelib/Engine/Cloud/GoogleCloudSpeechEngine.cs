@@ -8,6 +8,11 @@ namespace Sttify.Corelib.Engine.Cloud;
 
 public class GoogleCloudSpeechEngine : CloudSttEngine
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public GoogleCloudSpeechEngine(CloudEngineSettings settings) : base(settings)
     {
     }
@@ -44,10 +49,7 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
                 }
             };
 
-            var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var json = JsonSerializer.Serialize(request, JsonOptions);
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
@@ -63,15 +65,12 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
             }
 
             var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            var googleResponse = JsonSerializer.Deserialize<GoogleSpeechResponse>(responseContent, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var googleResponse = JsonSerializer.Deserialize<GoogleSpeechResponse>(responseContent, JsonOptions);
 
-            if (googleResponse?.Results?.Any() == true)
+            if (googleResponse?.Results?.Length > 0)
             {
                 var bestResult = googleResponse.Results[0];
-                if (bestResult.Alternatives?.Any() == true)
+                if (bestResult.Alternatives?.Length > 0)
                 {
                     var transcript = bestResult.Alternatives[0].Transcript;
                     var confidence = bestResult.Alternatives[0].Confidence ?? 0.0f;

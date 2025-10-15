@@ -29,7 +29,16 @@ public class BoundedQueue<T> : IDisposable
 
     public void Dispose()
     {
-        Clear();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Clear();
+        }
     }
 
     /// <summary>

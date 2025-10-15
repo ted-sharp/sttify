@@ -607,7 +607,9 @@ public class VoiceActivityDetector : IDisposable
         Array.Clear(_spectralHistory);
 
         while (_frameBuffer.TryDequeue(out _))
-        { }
+        {
+            // Intentionally empty - clearing queue
+        }
 
         Telemetry.LogEvent("VADReset");
     }

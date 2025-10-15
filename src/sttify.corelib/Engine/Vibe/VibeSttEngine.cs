@@ -43,8 +43,7 @@ public class VibeSttEngine : ISttEngine
 
         try
         {
-            // Skip health check for now since /health endpoint may not exist
-            // await ValidateConnectionAsync(cancellationToken);
+            // Note: Skip health check for now since /health endpoint may not exist in all Vibe deployments
             System.Diagnostics.Debug.WriteLine("*** VibeSttEngine.StartAsync - Skipping health check, proceeding with startup ***");
 
             lock (_lockObject)
@@ -75,13 +74,20 @@ public class VibeSttEngine : ISttEngine
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
+        CancellationTokenSource? cancellationToDispose = null;
+
         lock (_lockObject)
         {
             if (!_isRunning)
                 return;
 
             _isRunning = false;
-            _processingCancellation?.Cancel();
+            cancellationToDispose = _processingCancellation;
+        }
+
+        if (cancellationToDispose != null)
+        {
+            await cancellationToDispose.CancelAsync();
         }
 
         if (_processingTask != null)
@@ -92,6 +98,7 @@ public class VibeSttEngine : ISttEngine
             }
             catch (OperationCanceledException)
             {
+                // Expected when processing is cancelled
             }
         }
 
@@ -108,7 +115,7 @@ public class VibeSttEngine : ISttEngine
             }
         }
 
-        _processingCancellation?.Dispose();
+        cancellationToDispose?.Dispose();
         _processingCancellation = null;
         _processingTask = null;
         _audioBuffer.SetLength(0);
@@ -136,9 +143,18 @@ public class VibeSttEngine : ISttEngine
 
     public void Dispose()
     {
-        StopAsync().GetAwaiter().GetResult();
-        _httpClient?.Dispose();
-        _audioBuffer?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            StopAsync().GetAwaiter().GetResult();
+            _httpClient?.Dispose();
+            _audioBuffer?.Dispose();
+        }
     }
 
     private async Task ProcessAudioLoop(CancellationToken cancellationToken)

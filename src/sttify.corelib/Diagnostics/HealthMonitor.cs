@@ -22,11 +22,21 @@ public class HealthMonitor : IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
         {
             _healthCheckTimer?.Dispose();
-            _disposed = true;
         }
+
+        _disposed = true;
     }
 
     public event EventHandler<HealthStatusChangedEventArgs>? OnHealthStatusChanged;

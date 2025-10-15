@@ -1,13 +1,19 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Sttify.Corelib.Config;
 
 namespace Sttify.Corelib.Engine.Cloud;
 
 [ExcludeFromCodeCoverage] // External AWS API integration, network dependent, difficult to mock effectively
-public class AwsTranscribeEngine : CloudSttEngine
+public partial class AwsTranscribeEngine : CloudSttEngine
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly string _accessKeyId;
     private readonly string _region;
 
@@ -112,10 +118,7 @@ public class AwsTranscribeEngine : CloudSttEngine
             }
         };
 
-        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        var json = JsonSerializer.Serialize(requestBody, JsonOptions);
 
         var headers = CreateAwsHeaders(endpoint, timestamp);
         headers["X-Amz-Target"] = "Transcribe.StartTranscriptionJob";
@@ -257,13 +260,16 @@ public class AwsTranscribeEngine : CloudSttEngine
         return headers;
     }
 
+    [GeneratedRegex(@"transcribe\.([^.]+)\.amazonaws\.com", RegexOptions.None)]
+    private static partial Regex AwsRegionRegex();
+
     private static string? ExtractRegionFromEndpoint(string endpoint)
     {
         if (string.IsNullOrEmpty(endpoint))
             return null;
 
         // Extract region from endpoints like "https://transcribe.us-west-2.amazonaws.com/"
-        var match = System.Text.RegularExpressions.Regex.Match(endpoint, @"transcribe\.([^.]+)\.amazonaws\.com");
+        var match = AwsRegionRegex().Match(endpoint);
         return match.Success ? match.Groups[1].Value : null;
     }
 

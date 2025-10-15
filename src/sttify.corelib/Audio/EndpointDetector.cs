@@ -134,7 +134,7 @@ public class EndpointDetector : IDisposable
         result = CheckEnergyEndpoint(vadResult, result);
 
         // 3. Maximum utterance length
-        result = CheckUtteranceTimeout(timestamp, result);
+        result = CheckUtteranceTimeout(result);
 
         // 4. Session timeout
         result = CheckSessionTimeout(timestamp, result);
@@ -183,7 +183,7 @@ public class EndpointDetector : IDisposable
         return currentResult;
     }
 
-    private EndpointResult CheckUtteranceTimeout(DateTime timestamp, EndpointResult currentResult)
+    private EndpointResult CheckUtteranceTimeout(EndpointResult currentResult)
     {
         if (IsInUtterance && _settings.MaxUtteranceDurationMs > 0)
         {

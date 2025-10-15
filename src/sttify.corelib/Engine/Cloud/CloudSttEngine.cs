@@ -80,13 +80,20 @@ public abstract class CloudSttEngine : ISttEngine
 
     public virtual async Task StopAsync(CancellationToken cancellationToken = default)
     {
+        CancellationTokenSource? cancellationToDispose = null;
+
         lock (_lockObject)
         {
             if (!_isRunning)
                 return;
 
             _isRunning = false;
-            _processingCancellation?.Cancel();
+            cancellationToDispose = _processingCancellation;
+        }
+
+        if (cancellationToDispose != null)
+        {
+            await cancellationToDispose.CancelAsync();
         }
 
         if (_processingTask != null)
@@ -97,10 +104,11 @@ public abstract class CloudSttEngine : ISttEngine
             }
             catch (OperationCanceledException)
             {
+                // Expected when cancellation is requested
             }
         }
 
-        _processingCancellation?.Dispose();
+        cancellationToDispose?.Dispose();
         _processingCancellation = null;
         _processingTask = null;
 
@@ -120,11 +128,21 @@ public abstract class CloudSttEngine : ISttEngine
         }
     }
 
-    public virtual void Dispose()
+    public void Dispose()
     {
-        StopAsync().Wait();
-        _httpClient?.Dispose();
-        _responseCache?.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            StopAsync().Wait();
+            _httpClient?.Dispose();
+            _responseCache?.Dispose();
+            _audioQueue?.Dispose();
+        }
     }
 
     protected abstract void ConfigureHttpClient();
@@ -143,7 +161,7 @@ public abstract class CloudSttEngine : ISttEngine
 
                 if (_audioQueue.TryDequeue(out audioChunk))
                 {
-                    // Got audio chunk
+                    // Got audio chunk - audioChunk is already set
                 }
                 else
                 {
@@ -199,6 +217,7 @@ public abstract class CloudSttEngine : ISttEngine
         }
         catch (OperationCanceledException)
         {
+            // Expected when processing is cancelled
         }
         catch (Exception ex)
         {
@@ -383,15 +402,15 @@ public class AzureSpeechEngine : CloudSttEngine
 
     protected override string GetProviderName() => "Azure Speech Services";
 
-    private class AzureRecognitionResponse
+    private sealed class AzureRecognitionResponse
     {
-        public string? RecognitionStatus { get; set; }
-        public AzureNBestResult[]? NBest { get; set; }
+        public string RecognitionStatus { get; set; } = string.Empty;
+        public AzureNBestResult[] NBest { get; set; } = [];
     }
 
-    private class AzureNBestResult
+    private sealed class AzureNBestResult
     {
-        public double Confidence { get; set; }
-        public string? Display { get; set; }
+        public double Confidence { get; init; }
+        public string Display { get; init; } = string.Empty;
     }
 }

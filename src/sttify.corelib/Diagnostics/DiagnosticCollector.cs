@@ -7,6 +7,7 @@ namespace Sttify.Corelib.Diagnostics;
 
 public class DiagnosticCollector : IDisposable
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly Timer _collectionTimer;
     private readonly Process _currentProcess;
     private readonly ConcurrentDictionary<string, DiagnosticData> _diagnostics = new();
@@ -27,9 +28,18 @@ public class DiagnosticCollector : IDisposable
 
     public void Dispose()
     {
-        _collectionTimer?.Dispose();
-        _currentProcess?.Dispose();
-        _diagnostics.Clear();
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _collectionTimer?.Dispose();
+            _currentProcess?.Dispose();
+            _diagnostics.Clear();
+        }
     }
 
     public event EventHandler<DiagnosticDataCollectedEventArgs>? OnDataCollected;
@@ -48,7 +58,7 @@ public class DiagnosticCollector : IDisposable
             CollectApplicationDiagnostics(timestamp);
 
             // Collect custom diagnostics
-            CollectCustomDiagnostics(timestamp);
+            CollectCustomDiagnostics();
 
             // Check thresholds
             CheckThresholds(timestamp);
@@ -144,7 +154,7 @@ public class DiagnosticCollector : IDisposable
         }
     }
 
-    private void CollectCustomDiagnostics(DateTime _)
+    private static void CollectCustomDiagnostics()
     {
         // This method can be extended by specific components to add their own diagnostics
         // For now, we'll add some basic counters that can be incremented by other parts of the system
@@ -288,7 +298,7 @@ public class DiagnosticCollector : IDisposable
     public string ExportToJson()
     {
         var snapshot = GetCurrentSnapshot();
-        return JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(snapshot, JsonOptions);
     }
 
     public void ClearDiagnostics()

@@ -374,7 +374,7 @@ public class ApplicationService : IDisposable
         });
     }
 
-    private void OnRecoveryFailed(object? sender, ErrorRecoveryEventArgs e)
+    private static void OnRecoveryFailed(object? sender, ErrorRecoveryEventArgs e)
     {
         HandleRecoveryFailure(e);
     }

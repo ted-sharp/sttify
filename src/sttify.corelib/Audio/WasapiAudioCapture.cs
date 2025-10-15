@@ -31,35 +31,44 @@ public class WasapiAudioCapture : IDisposable
 
     public void Dispose()
     {
-        // Avoid sync wait on UI thread; best-effort async stop
-        try
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            _ = Task.Run(async () =>
+            // Avoid sync wait on UI thread; best-effort async stop
+            try
             {
-                try
-                { await StopAsync(); }
-                catch (Exception ex)
+                _ = Task.Run(async () =>
                 {
-                    System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture StopAsync in Dispose failed: {ex.Message} ***");
-                }
+                    try
+                    { await StopAsync(); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture StopAsync in Dispose failed: {ex.Message} ***");
+                    }
+                    try
+                    { _wasapiCapture?.Dispose(); }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture inner Dispose failed: {ex.Message} ***");
+                    }
+                    _wasapiCapture = null;
+                });
+            }
+            catch
+            {
                 try
                 { _wasapiCapture?.Dispose(); }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture inner Dispose failed: {ex.Message} ***");
+                    System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture outer Dispose failed: {ex.Message} ***");
                 }
                 _wasapiCapture = null;
-            });
-        }
-        catch
-        {
-            try
-            { _wasapiCapture?.Dispose(); }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture outer Dispose failed: {ex.Message} ***");
             }
-            _wasapiCapture = null;
         }
     }
 

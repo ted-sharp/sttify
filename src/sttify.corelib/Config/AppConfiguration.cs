@@ -10,6 +10,11 @@ public class AppConfiguration
     private static IConfiguration? _configuration;
     private static readonly object _lock = new();
 
+    // Prevent instantiation
+    private AppConfiguration()
+    {
+    }
+
     public static IConfiguration Configuration
     {
         get

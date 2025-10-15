@@ -16,14 +16,9 @@ public static class Telemetry
 
     // Batching for better I/O performance
     private static readonly ConcurrentQueue<LogEntry> _logQueue = new();
-    private static readonly Timer _batchTimer;
+    private static readonly Timer _batchTimer = new(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
     private static readonly object _batchLock = new();
     private static volatile bool _isShuttingDown;
-
-    static Telemetry()
-    {
-        _batchTimer = new Timer(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
-    }
 
     public static void Initialize(TelemetrySettings? settings = null)
     {

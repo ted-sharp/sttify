@@ -8,20 +8,25 @@ namespace Sttify.Corelib.Engine;
 
 public static class SttEngineFactory
 {
+    private const string AzureProvider = "azure";
+    private const string GoogleProvider = "google";
+    private const string AwsProvider = "aws";
+    private const string VoskProvider = "vosk";
+
     public static ISttEngine CreateEngine(EngineSettings engineSettings)
     {
-        var profile = engineSettings.Profile?.ToLowerInvariant() ?? "vosk";
+        var profile = engineSettings.Profile?.ToLowerInvariant() ?? VoskProvider;
         System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Profile: {profile} ***");
         var engine = profile switch
         {
-            "vosk" => CreateVoskEngine(engineSettings.Vosk),
+            VoskProvider => CreateVoskEngine(engineSettings.Vosk),
             "vosk-multi" => new MultiLanguageVoskAdapter(engineSettings.Vosk),
             "vosk-real" => new RealVoskEngineAdapter(engineSettings.Vosk),
             "vosk-mock" => new VoskEngineAdapter(engineSettings.Vosk),
             "vibe" => new VibeSttEngine(engineSettings.Vibe),
-            "azure" => new AzureSpeechEngine(engineSettings.Cloud),
+            AzureProvider => new AzureSpeechEngine(engineSettings.Cloud),
             "cloud" => CreateCloudEngine(engineSettings.Cloud),
-            "google" or "aws" => CreateCloudEngine(engineSettings.Cloud),
+            GoogleProvider or AwsProvider => CreateCloudEngine(engineSettings.Cloud),
             _ => FallbackToDefault(engineSettings, profile)
         };
         System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Created: {engine.GetType().Name} ***");
@@ -33,9 +38,9 @@ public static class SttEngineFactory
         var provider = settings.Provider?.ToLowerInvariant();
         return provider switch
         {
-            "azure" => new AzureSpeechEngine(settings),
-            "google" => new GoogleCloudSpeechEngine(settings),
-            "aws" => new AwsTranscribeEngine(settings),
+            AzureProvider => new AzureSpeechEngine(settings),
+            GoogleProvider => new GoogleCloudSpeechEngine(settings),
+            AwsProvider => new AwsTranscribeEngine(settings),
             _ => throw new ArgumentException($"Unsupported cloud provider: {settings.Provider}")
         };
     }
@@ -88,29 +93,29 @@ public static class SttEngineFactory
 
     public static string[] GetAvailableEngines()
     {
-        return new[]
-        {
-            "vosk",
+        return
+        [
+            VoskProvider,
             "vosk-multi",
             "vosk-real",
             "vosk-mock",
-            "azure",
+            AzureProvider,
             "cloud",
             "vibe"
-        };
+        ];
     }
 
     public static string GetEngineDescription(string engineProfile)
     {
         return engineProfile.ToLowerInvariant() switch
         {
-            "vosk" => "Vosk (Auto-detect real/mock)",
+            VoskProvider => "Vosk (Auto-detect real/mock)",
             "vosk-multi" => "Vosk (Multi-language adapter)",
             "vosk-real" => "Vosk (Real implementation)",
             "vosk-mock" => "Vosk (Mock implementation for testing)",
-            "google" => "Google Cloud Speech (via Cloud settings)",
-            "aws" => "AWS Transcribe (via Cloud settings)",
-            "azure" => "Azure Cognitive Services (Cloud)",
+            GoogleProvider => "Google Cloud Speech (via Cloud settings)",
+            AwsProvider => "AWS Transcribe (via Cloud settings)",
+            AzureProvider => "Azure Cognitive Services (Cloud)",
             "cloud" => "Cloud (Azure/Google/AWS via settings)",
             "vibe" => "Vibe (HTTP API-based speech recognition)",
             _ => "Unknown engine"

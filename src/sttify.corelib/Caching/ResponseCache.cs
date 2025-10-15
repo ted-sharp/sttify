@@ -36,12 +36,21 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
 
     public void Dispose()
     {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
         if (_disposed)
             return;
 
-        _disposed = true;
-        _cleanupTimer.Dispose();
-        Clear();
+        if (disposing)
+        {
+            _disposed = true;
+            _cleanupTimer.Dispose();
+            Clear();
+        }
     }
 
     /// <summary>
@@ -52,8 +61,7 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
     /// <returns>A cache key string</returns>
     public static string GenerateKey(ReadOnlySpan<byte> audioData, string? prefix = null)
     {
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(audioData.ToArray());
+        var hash = SHA256.HashData(audioData);
         var hashString = Convert.ToHexString(hash);
 
         return string.IsNullOrEmpty(prefix) ? hashString : $"{prefix}:{hashString}";
@@ -170,7 +178,9 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
 
         // Clear access order queue
         while (_accessOrder.TryDequeue(out _))
-        { }
+        {
+            // Intentionally empty - clearing queue
+        }
 
         Telemetry.LogEvent("CacheClear", new { Type = typeof(TResponse).Name, ClearedCount = count });
     }
@@ -227,12 +237,9 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
             }
 
             // Add any missing keys with their last accessed time
-            foreach (var kvp in _cache)
+            foreach (var kvp in _cache.Where(kvp => !keysByAccess.ContainsKey(kvp.Key)))
             {
-                if (!keysByAccess.ContainsKey(kvp.Key))
-                {
-                    keysByAccess[kvp.Key] = kvp.Value.LastAccessed;
-                }
+                keysByAccess[kvp.Key] = kvp.Value.LastAccessed;
             }
 
             // Remove least recently used entries
