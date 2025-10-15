@@ -20,6 +20,7 @@ public class VoiceActivityDetector : IDisposable
     private readonly object _twiddleCacheLock = new();
     private double[]? _cachedSpectrum;
     private int _cachedSpectrumHash;
+    private bool _disposed;
     private int _historyIndex;
     private bool _isFirstNoiseFloorMeasurement = true;
     private DateTime _lastSilenceTime;
@@ -46,15 +47,31 @@ public class VoiceActivityDetector : IDisposable
 
     public void Dispose()
     {
-        while (_frameBuffer.TryDequeue(out _))
-        { }
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
 
-        // Clear caches
-        lock (_twiddleCacheLock)
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
         {
-            _twiddleCache.Clear();
+            while (_frameBuffer.TryDequeue(out _))
+            {
+                // Intentionally empty - clearing queue
+            }
+
+            // Clear caches
+            lock (_twiddleCacheLock)
+            {
+                _twiddleCache.Clear();
+            }
+            _cachedSpectrum = null;
         }
-        _cachedSpectrum = null;
+
+        _disposed = true;
     }
 
     public event EventHandler<VoiceActivityEventArgs>? OnVoiceActivityChanged;

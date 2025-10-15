@@ -10,6 +10,7 @@ public class EndpointDetector : IDisposable
     private readonly EndpointSettings _settings;
     private readonly Timer _timeoutTimer;
     private readonly VoiceActivityDetector _vad;
+    private bool _disposed;
     private DateTime _lastActivityTime;
 
     private DateTime _sessionStartTime;
@@ -42,10 +43,26 @@ public class EndpointDetector : IDisposable
 
     public void Dispose()
     {
-        _timeoutTimer?.Dispose();
-        _vad?.Dispose();
-        while (_eventHistory.TryDequeue(out _))
-        { }
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            _timeoutTimer?.Dispose();
+            _vad?.Dispose();
+            while (_eventHistory.TryDequeue(out _))
+            {
+                // Intentionally empty - clearing queue
+            }
+        }
+
+        _disposed = true;
     }
 
     public event EventHandler<UtteranceStartedEventArgs>? OnUtteranceStarted;
@@ -111,45 +128,72 @@ public class EndpointDetector : IDisposable
         };
 
         // 1. Silence-based endpoint detection
+        result = CheckSilenceEndpoint(vadResult, timestamp, result);
+
+        // 2. Energy-based endpoint detection
+        result = CheckEnergyEndpoint(vadResult, result);
+
+        // 3. Maximum utterance length
+        result = CheckUtteranceTimeout(timestamp, result);
+
+        // 4. Session timeout
+        result = CheckSessionTimeout(timestamp, result);
+
+        // 5. Adaptive endpoint based on speech patterns
+        result = CheckAdaptiveEndpoint(timestamp, result);
+
+        return result;
+    }
+
+    private EndpointResult CheckSilenceEndpoint(VadResult vadResult, DateTime timestamp, EndpointResult currentResult)
+    {
         if (!vadResult.IsVoice && IsInUtterance)
         {
             var silenceDuration = timestamp - _lastActivityTime;
 
             if (silenceDuration.TotalMilliseconds >= _settings.SilenceTimeoutMs)
             {
-                result.HasEndpoint = true;
-                result.EndpointType = EndpointType.SilenceBased;
-                result.Confidence = CalculateSilenceConfidence(silenceDuration);
-                result.SilenceDuration = silenceDuration;
+                currentResult.HasEndpoint = true;
+                currentResult.EndpointType = EndpointType.SilenceBased;
+                currentResult.Confidence = CalculateSilenceConfidence(silenceDuration);
+                currentResult.SilenceDuration = silenceDuration;
 
                 Telemetry.LogEvent("SilenceEndpointDetected", new
                 {
                     SilenceDuration = silenceDuration.TotalMilliseconds,
-                    result.Confidence
+                    currentResult.Confidence
                 });
             }
         }
 
-        // 2. Energy-based endpoint detection
+        return currentResult;
+    }
+
+    private EndpointResult CheckEnergyEndpoint(VadResult vadResult, EndpointResult currentResult)
+    {
         if (_settings.EnableEnergyEndpoint)
         {
             var energyEndpoint = DetectEnergyEndpoint(vadResult);
-            if (energyEndpoint.HasEndpoint && energyEndpoint.Confidence > result.Confidence)
+            if (energyEndpoint.HasEndpoint && energyEndpoint.Confidence > currentResult.Confidence)
             {
-                result = energyEndpoint;
+                return energyEndpoint;
             }
         }
 
-        // 3. Maximum utterance length
+        return currentResult;
+    }
+
+    private EndpointResult CheckUtteranceTimeout(DateTime timestamp, EndpointResult currentResult)
+    {
         if (IsInUtterance && _settings.MaxUtteranceDurationMs > 0)
         {
             var utteranceDuration = GetCurrentUtteranceDuration();
             if (utteranceDuration.TotalMilliseconds >= _settings.MaxUtteranceDurationMs)
             {
-                result.HasEndpoint = true;
-                result.EndpointType = EndpointType.Timeout;
-                result.Confidence = 1.0;
-                result.UtteranceDuration = utteranceDuration;
+                currentResult.HasEndpoint = true;
+                currentResult.EndpointType = EndpointType.Timeout;
+                currentResult.Confidence = 1.0;
+                currentResult.UtteranceDuration = utteranceDuration;
 
                 Telemetry.LogEvent("TimeoutEndpointDetected", new
                 {
@@ -158,17 +202,21 @@ public class EndpointDetector : IDisposable
             }
         }
 
-        // 4. Session timeout
+        return currentResult;
+    }
+
+    private EndpointResult CheckSessionTimeout(DateTime timestamp, EndpointResult currentResult)
+    {
         if (_settings.MaxSessionDurationMs > 0)
         {
             var sessionDuration = timestamp - _sessionStartTime;
             if (sessionDuration.TotalMilliseconds >= _settings.MaxSessionDurationMs)
             {
-                result.HasEndpoint = true;
-                result.EndpointType = EndpointType.Timeout;
-                result.Confidence = 1.0;
-                result.SessionDuration = sessionDuration;
-                result.IsSessionTimeout = true;
+                currentResult.HasEndpoint = true;
+                currentResult.EndpointType = EndpointType.Timeout;
+                currentResult.Confidence = 1.0;
+                currentResult.SessionDuration = sessionDuration;
+                currentResult.IsSessionTimeout = true;
 
                 Telemetry.LogEvent("SessionTimeoutDetected", new
                 {
@@ -177,17 +225,21 @@ public class EndpointDetector : IDisposable
             }
         }
 
-        // 5. Adaptive endpoint based on speech patterns
+        return currentResult;
+    }
+
+    private EndpointResult CheckAdaptiveEndpoint(DateTime timestamp, EndpointResult currentResult)
+    {
         if (_settings.EnableAdaptiveEndpoint && UtteranceCount > 0)
         {
             var adaptiveEndpoint = DetectAdaptiveEndpoint(timestamp);
-            if (adaptiveEndpoint.HasEndpoint && adaptiveEndpoint.Confidence > result.Confidence)
+            if (adaptiveEndpoint.HasEndpoint && adaptiveEndpoint.Confidence > currentResult.Confidence)
             {
-                result = adaptiveEndpoint;
+                return adaptiveEndpoint;
             }
         }
 
-        return result;
+        return currentResult;
     }
 
     private EndpointResult DetectEnergyEndpoint(VadResult vadResult)
@@ -383,19 +435,16 @@ public class EndpointDetector : IDisposable
         if (_settings.InactivityTimeoutMs > 0)
         {
             var inactivityDuration = now - _lastActivityTime;
-            if (inactivityDuration.TotalMilliseconds >= _settings.InactivityTimeoutMs)
+            if (inactivityDuration.TotalMilliseconds >= _settings.InactivityTimeoutMs && IsInUtterance)
             {
-                if (IsInUtterance)
+                TriggerEndpoint(new EndpointResult
                 {
-                    TriggerEndpoint(new EndpointResult
-                    {
-                        HasEndpoint = true,
-                        EndpointType = EndpointType.Timeout,
-                        Confidence = 0.9,
-                        SilenceDuration = inactivityDuration,
-                        Timestamp = now
-                    });
-                }
+                    HasEndpoint = true,
+                    EndpointType = EndpointType.Timeout,
+                    Confidence = 0.9,
+                    SilenceDuration = inactivityDuration,
+                    Timestamp = now
+                });
             }
         }
     }
@@ -502,7 +551,9 @@ public class EndpointDetector : IDisposable
         UtteranceCount = 0;
 
         while (_eventHistory.TryDequeue(out _))
-        { }
+        {
+            // Intentionally empty - clearing queue
+        }
 
         _vad.Reset();
 
@@ -634,3 +685,4 @@ public class SessionTimeoutEventArgs : EventArgs
 
     public TimeSpan SessionDuration { get; }
 }
+

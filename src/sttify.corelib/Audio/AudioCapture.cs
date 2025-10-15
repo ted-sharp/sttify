@@ -6,8 +6,10 @@ namespace Sttify.Corelib.Audio;
 [ExcludeFromCodeCoverage] // WASAPI hardware dependent wrapper, difficult to mock effectively
 public class AudioCapture : IDisposable
 {
+    private const string ComponentName = "AudioCapture";
     private const int MaxRestartAttempts = 1; // simple lightweight recovery
     private readonly object _lockObject = new();
+    private bool _disposed;
     private bool _isCapturing;
     private AudioCaptureSettings? _lastSettings;
     private int _restartAttempts;
@@ -27,8 +29,22 @@ public class AudioCapture : IDisposable
 
     public void Dispose()
     {
-        // Avoid blocking the calling thread (UI) on dispose
-        AsyncHelper.FireAndForget(() => StopAsync(), nameof(AudioCapture) + ".Dispose");
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            // Avoid blocking the calling thread (UI) on dispose
+            AsyncHelper.FireAndForget(() => StopAsync(), ComponentName + ".Dispose");
+        }
+
+        _disposed = true;
     }
 
     public event EventHandler<AudioFrameEventArgs>? OnFrame;
@@ -100,7 +116,7 @@ public class AudioCapture : IDisposable
 
             Telemetry.LogError("WasapiAudioError", e.Exception, new
             {
-                Component = "AudioCapture",
+                Component = ComponentName,
                 e.Message
             });
 
@@ -138,7 +154,7 @@ public class AudioCapture : IDisposable
 
             // Try to get available devices to see if any are accessible
             var availableDevices = GetAvailableDevices();
-            if (availableDevices.Any())
+            if (availableDevices.Count > 0)
             {
                 // Try one-time restart using last known settings if we have them
                 if (_lastSettings != null && _restartAttempts < MaxRestartAttempts)
@@ -160,7 +176,7 @@ public class AudioCapture : IDisposable
                 var recoveryDuration = DateTime.UtcNow - recoveryStartTime;
                 Telemetry.LogEvent("AudioDeviceRecoverySuccessful", new
                 {
-                    Component = "AudioCapture",
+                    Component = ComponentName,
                     ErrorCode = "AUDIO_DEVICE_FAILURE",
                     RecoveryDurationMs = recoveryDuration.TotalMilliseconds,
                     RecoveryAction = "Device became available after wait"
@@ -177,7 +193,7 @@ public class AudioCapture : IDisposable
                 var recoveryDuration = DateTime.UtcNow - recoveryStartTime;
                 Telemetry.LogEvent("AudioDeviceRecoveryFailed", new
                 {
-                    Component = "AudioCapture",
+                    Component = ComponentName,
                     ErrorCode = "AUDIO_DEVICE_FAILURE",
                     RecoveryDurationMs = recoveryDuration.TotalMilliseconds,
                     RecoveryAction = "No devices available after recovery attempt"
@@ -189,7 +205,7 @@ public class AudioCapture : IDisposable
             var recoveryDuration = DateTime.UtcNow - recoveryStartTime;
             Telemetry.LogEvent("AudioDeviceRecoveryException", new
             {
-                Component = "AudioCapture",
+                Component = ComponentName,
                 ErrorCode = "AUDIO_DEVICE_FAILURE",
                 RecoveryDurationMs = recoveryDuration.TotalMilliseconds,
                 RecoveryAction = $"Recovery failed: {ex.Message}",

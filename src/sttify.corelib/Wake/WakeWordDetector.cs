@@ -41,10 +41,10 @@ public class WakeWordDetector
             return false;
 
         return text.Contains(_wakeWord, StringComparison.OrdinalIgnoreCase) ||
-               IsPhoneticMatch(text, _wakeWord);
+               IsPhoneticMatch(text);
     }
 
-    private static bool IsPhoneticMatch(string text, string wakeWord)
+    private static bool IsPhoneticMatch(string text)
     {
         var phoneticVariations = new[]
         {

@@ -376,6 +376,11 @@ public class ApplicationService : IDisposable
 
     private void OnRecoveryFailed(object? sender, ErrorRecoveryEventArgs e)
     {
+        HandleRecoveryFailure(e);
+    }
+
+    private static void HandleRecoveryFailure(ErrorRecoveryEventArgs e)
+    {
         Telemetry.LogError("RecoveryFailed", e.Exception, new
         {
             e.OperationName,
