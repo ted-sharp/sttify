@@ -5,9 +5,9 @@ namespace Sttify.Corelib.Localization;
 
 public static class LocalizationManager
 {
-    private static readonly Dictionary<string, Dictionary<string, string>> _translations = new();
+    private static readonly Dictionary<string, Dictionary<string, string>> Translations = new();
     private static string _currentLanguage = "en";
-    private static readonly object _lockObject = new();
+    private static readonly object LockObject = new();
 
     static LocalizationManager()
     {
@@ -15,7 +15,7 @@ public static class LocalizationManager
 
         // Set default language based on system culture
         var systemLanguage = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        if (_translations.ContainsKey(systemLanguage))
+        if (Translations.ContainsKey(systemLanguage))
         {
             _currentLanguage = systemLanguage;
         }
@@ -26,9 +26,9 @@ public static class LocalizationManager
         get => _currentLanguage;
         set
         {
-            lock (_lockObject)
+            lock (LockObject)
             {
-                if (_translations.ContainsKey(value))
+                if (Translations.ContainsKey(value))
                 {
                     _currentLanguage = value;
                     OnLanguageChanged?.Invoke(null, new LanguageChangedEventArgs(value));
@@ -41,7 +41,7 @@ public static class LocalizationManager
 
     public static string GetString(string key, params object[] args)
     {
-        lock (_lockObject)
+        lock (LockObject)
         {
             var translation = GetTranslation(key);
 
@@ -69,7 +69,7 @@ public static class LocalizationManager
 
     private static string GetTranslation(string key)
     {
-        if (_translations.TryGetValue(_currentLanguage, out var languageDict))
+        if (Translations.TryGetValue(_currentLanguage, out var languageDict))
         {
             if (languageDict.TryGetValue(key, out var translation))
             {
@@ -78,7 +78,7 @@ public static class LocalizationManager
         }
 
         // Fallback to English
-        if (_currentLanguage != "en" && _translations.TryGetValue("en", out var englishDict))
+        if (_currentLanguage != "en" && Translations.TryGetValue("en", out var englishDict))
         {
             if (englishDict.TryGetValue(key, out var englishTranslation))
             {
@@ -92,9 +92,9 @@ public static class LocalizationManager
 
     public static string[] GetAvailableLanguages()
     {
-        lock (_lockObject)
+        lock (LockObject)
         {
-            return _translations.Keys.ToArray();
+            return Translations.Keys.ToArray();
         }
     }
 
@@ -126,11 +126,11 @@ public static class LocalizationManager
 
             if (translations != null)
             {
-                lock (_lockObject)
+                lock (LockObject)
                 {
                     foreach (var language in translations)
                     {
-                        _translations[language.Key] = language.Value;
+                        Translations[language.Key] = language.Value;
                     }
                 }
             }
@@ -144,7 +144,7 @@ public static class LocalizationManager
     private static void LoadBuiltInTranslations()
     {
         // English (default)
-        _translations["en"] = new Dictionary<string, string>
+        Translations["en"] = new Dictionary<string, string>
         {
             // Application
             ["app.title"] = "Sttify - Speech to Text",
@@ -201,7 +201,6 @@ public static class LocalizationManager
             ["menu.hide"] = "Hide",
             ["menu.exit"] = "Exit",
             ["menu.service_unavailable"] = "Service Not Available",
-            ["settings.channels"] = "Channels:",
 
             // Engine Settings
             ["settings.engine_type"] = "Engine Type:",
@@ -249,7 +248,7 @@ public static class LocalizationManager
         };
 
         // Japanese
-        _translations["ja"] = new Dictionary<string, string>
+        Translations["ja"] = new Dictionary<string, string>
         {
             ["app.title"] = "Sttify - 音声認識",
             ["app.ready"] = "準備完了",
@@ -304,10 +303,6 @@ public static class LocalizationManager
             ["menu.exit"] = "終了",
             ["menu.service_unavailable"] = "サービス利用不可",
 
-            ["settings.audio_device"] = "音声入力デバイス",
-            ["settings.sample_rate"] = "サンプルレート:",
-            ["settings.channels"] = "チャンネル:",
-
             ["settings.engine_type"] = "エンジンタイプ:",
             ["settings.model_path"] = "モデルパス:",
             ["settings.browse"] = "参照...",
@@ -338,7 +333,7 @@ public static class LocalizationManager
         };
 
         // Chinese Simplified
-        _translations["zh"] = new Dictionary<string, string>
+        Translations["zh"] = new Dictionary<string, string>
         {
             ["app.title"] = "Sttify - 语音识别",
             ["app.ready"] = "就绪",

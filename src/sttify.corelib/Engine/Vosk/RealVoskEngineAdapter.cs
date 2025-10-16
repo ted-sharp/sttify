@@ -87,7 +87,7 @@ public class RealVoskEngineAdapter : ISttEngine
         }
 
         // Stop VAD timer
-        _silenceTimer?.Stop();
+        _silenceTimer.Stop();
 
         // Flush any pending result
         ForceFinalizeRecognition();
@@ -175,10 +175,14 @@ public class RealVoskEngineAdapter : ISttEngine
             // Avoid potential deadlock by running stop without capturing context and with a short timeout
             Task.Run(async () => await StopAsync().ConfigureAwait(false)).Wait(TimeSpan.FromSeconds(3));
         }
-        catch { }
+        catch (Exception ex)
+        {
+            // Suppress exceptions during dispose but log them for diagnostics
+            System.Diagnostics.Debug.WriteLine($"*** RealVoskEngineAdapter Dispose StopAsync failed: {ex.Message} ***");
+        }
 
-        _silenceTimer?.Stop();
-        _silenceTimer?.Dispose();
+        _silenceTimer.Stop();
+        _silenceTimer.Dispose();
         _recognizer?.Dispose();
         _model?.Dispose();
     }
@@ -397,13 +401,14 @@ public class RealVoskEngineAdapter : ISttEngine
 
     private static bool IsJapaneseChar(int codePoint)
     {
-        // Hiragana: 3040–309F, Katakana: 30A0–30FF, Katakana Phonetic Extensions: 31F0–31FF
-        // CJK Unified Ideographs: 4E00–9FFF, Halfwidth Katakana: FF61–FF9F, prolonged sound mark: 30FC/FF70
+        // Hiragana: 3040–309F, Katakana: 30A0–30FF (includes prolonged sound mark 30FC)
+        // Katakana Phonetic Extensions: 31F0–31FF
+        // CJK Unified Ideographs: 4E00–9FFF
+        // Halfwidth Katakana: FF61–FF9F (includes prolonged sound mark FF70)
         return (codePoint >= 0x3040 && codePoint <= 0x30FF) ||
                (codePoint >= 0x31F0 && codePoint <= 0x31FF) ||
                (codePoint >= 0x4E00 && codePoint <= 0x9FFF) ||
-               (codePoint >= 0xFF61 && codePoint <= 0xFF9F) ||
-               codePoint == 0x30FC || codePoint == 0xFF70;
+               (codePoint >= 0xFF61 && codePoint <= 0xFF9F);
     }
 
     private static string NormalizeJapaneseSpacing(string input)
@@ -454,8 +459,9 @@ public class RealVoskEngineAdapter : ISttEngine
                 return p.GetString() ?? string.Empty;
             }
         }
-        catch
+        catch (JsonException)
         {
+            // Invalid JSON, return empty string
         }
         return string.Empty;
     }

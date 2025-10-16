@@ -30,7 +30,7 @@ public static class RecognitionSessionExtensions
         if (session.CurrentMode != RecognitionMode.Ptt)
             return Task.CompletedTask;
 
-        // This would be implemented in the main class  
+        // This would be implemented in the main class
         Telemetry.LogEvent("PttStopped");
         return Task.CompletedTask;
     }
@@ -72,7 +72,7 @@ public static class RecognitionSessionExtensions
             }
         }
 
-        var rms = Math.Sqrt(sum / (audioData.Length / 2));
+        var rms = Math.Sqrt(sum / (audioData.Length / 2.0));
         var normalizedRms = rms / 32768.0; // Normalize to 0-1 range
 
         return normalizedRms > threshold;

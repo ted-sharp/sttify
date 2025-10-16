@@ -74,7 +74,7 @@ public class VibeSttEngine : ISttEngine
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        CancellationTokenSource? cancellationToDispose = null;
+        CancellationTokenSource? cancellationToDispose;
 
         lock (_lockObject)
         {
@@ -152,8 +152,8 @@ public class VibeSttEngine : ISttEngine
         if (disposing)
         {
             StopAsync().GetAwaiter().GetResult();
-            _httpClient?.Dispose();
-            _audioBuffer?.Dispose();
+            _httpClient.Dispose();
+            _audioBuffer.Dispose();
         }
     }
 

@@ -208,7 +208,7 @@ public class SettingsProvider : IDisposable
                 _fileWatcher.Changed += OnConfigFileChanged;
                 _fileWatcher.Created += OnConfigFileChanged;
 
-                _debounceTimer = new Timer(state =>
+                _debounceTimer = new Timer(_ =>
                 {
                     lock (_lockObject)
                     { _configChanged = true; }

@@ -70,10 +70,16 @@ public class PluginManager : IDisposable
                 await LoadPluginFromDirectoryAsync(pluginDir);
             }
 
+            int loadedCount;
+            lock (_lockObject)
+            {
+                loadedCount = _loadedPlugins.Count;
+            }
+
             Telemetry.LogEvent("AllPluginsLoaded", new
             {
                 PluginsDirectory = _pluginsDirectory,
-                LoadedCount = _loadedPlugins.Count
+                LoadedCount = loadedCount
             });
         }
         catch (Exception ex)
@@ -103,10 +109,13 @@ public class PluginManager : IDisposable
                 return false;
             }
 
-            if (_loadedPlugins.ContainsKey(metadata.Name))
+            lock (_lockObject)
             {
-                Telemetry.LogWarning("PluginAlreadyLoaded", $"Plugin {metadata.Name} is already loaded");
-                return false;
+                if (_loadedPlugins.ContainsKey(metadata.Name))
+                {
+                    Telemetry.LogWarning("PluginAlreadyLoaded", $"Plugin {metadata.Name} is already loaded");
+                    return false;
+                }
             }
 
             var assemblyPath = Path.Combine(pluginDirectory, metadata.AssemblyPath);
@@ -271,7 +280,11 @@ public class PluginManager : IDisposable
 
     public async Task StartAllPluginsAsync()
     {
-        var plugins = _loadedPlugins.Values.ToArray();
+        IPlugin[] plugins;
+        lock (_lockObject)
+        {
+            plugins = _loadedPlugins.Values.ToArray();
+        }
 
         foreach (var plugin in plugins)
         {
@@ -292,7 +305,11 @@ public class PluginManager : IDisposable
 
     public async Task StopAllPluginsAsync()
     {
-        var plugins = _loadedPlugins.Values.ToArray();
+        IPlugin[] plugins;
+        lock (_lockObject)
+        {
+            plugins = _loadedPlugins.Values.ToArray();
+        }
 
         foreach (var plugin in plugins)
         {

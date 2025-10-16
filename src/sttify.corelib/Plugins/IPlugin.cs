@@ -27,7 +27,7 @@ public enum PluginCapabilities
     TextOutputSink = 1 << 1,
     AudioProcessor = 1 << 2,
     TextProcessor = 1 << 3,
-    UIExtension = 1 << 4,
+    UiExtension = 1 << 4,
     NotificationProvider = 1 << 5
 }
 

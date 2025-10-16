@@ -94,7 +94,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
         request.Content = new ByteArrayContent(audioData);
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await HttpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
         return $"s3://{bucketName}/{objectKey}.wav";
@@ -108,7 +108,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
         var requestBody = new AwsTranscribeJobRequest
         {
             TranscriptionJobName = jobName,
-            LanguageCode = _settings.Language ?? "ja-JP",
+            LanguageCode = Settings.Language,
             MediaFormat = "wav",
             Media = new AwsTranscribeMedia { MediaFileUri = s3Uri },
             Settings = new AwsTranscribeSettings
@@ -130,7 +130,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
         }
         request.Content = new StringContent(json, Encoding.UTF8, "application/x-amz-json-1.1");
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await HttpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -169,7 +169,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
             }
             request.Content = new StringContent(json, Encoding.UTF8, "application/x-amz-json-1.1");
 
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var response = await HttpClient.SendAsync(request, cancellationToken);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -216,7 +216,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
         if (string.IsNullOrEmpty(transcriptUri))
             return "";
 
-        var response = await _httpClient.GetAsync(transcriptUri, cancellationToken);
+        var response = await HttpClient.GetAsync(transcriptUri, cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
         // Parse AWS transcript JSON format
@@ -238,7 +238,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
                 request.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 
-            await _httpClient.SendAsync(request, cancellationToken);
+            await HttpClient.SendAsync(request, cancellationToken);
         }
         catch
         {
@@ -296,7 +296,7 @@ public partial class AwsTranscribeEngine : CloudSttEngine
             }
             request.Content = new StringContent(json, Encoding.UTF8, "application/x-amz-json-1.1");
 
-            var response = await _httpClient.SendAsync(request, cancellationToken);
+            var response = await HttpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 throw new InvalidOperationException($"AWS Transcribe API validation failed: {response.StatusCode}");

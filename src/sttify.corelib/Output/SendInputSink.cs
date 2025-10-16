@@ -20,7 +20,7 @@ namespace Sttify.Corelib.Output;
 [ExcludeFromCodeCoverage] // Win32 SendInput API integration, difficult to mock effectively
 public class SendInputSink : ITextOutputSink
 {
-    private const uint CF_UNICODETEXT = 13;
+    private const uint CfUnicodetext = 13;
     private readonly ImeController _imeController;
 
     private readonly SendInputSettings _settings;
@@ -477,10 +477,10 @@ public class SendInputSink : ITextOutputSink
                 IntPtr currentWindow = (IntPtr)GetForegroundWindow();
                 if (currentWindow != IntPtr.Zero)
                 {
-                    const uint WM_PASTE = 0x0302;
+                    const uint wmPaste = 0x0302;
                     var lres = SendMessage(
                         new HWND(currentWindow),
-                        WM_PASTE,
+                        wmPaste,
                         new IntPtr(0),
                         new IntPtr(0));
                     System.Diagnostics.Debug.WriteLine($"*** WM_PASTE result: {lres} to window {currentWindow} ***");
@@ -519,7 +519,7 @@ public class SendInputSink : ITextOutputSink
             if (!OpenClipboard(HWND.NULL))
                 return null;
 
-            IntPtr handle = GetClipboardData(CF_UNICODETEXT);
+            IntPtr handle = GetClipboardData(CfUnicodetext);
             if (handle == IntPtr.Zero)
             {
                 CloseClipboard();
@@ -567,7 +567,7 @@ public class SendInputSink : ITextOutputSink
                 return false;
             }
 
-            if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+            if (SetClipboardData(CfUnicodetext, hGlobal) == IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(hGlobal);
                 CloseClipboard();
@@ -602,8 +602,8 @@ public class SendInputSink : ITextOutputSink
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                const int WM_CHAR = 0x0102;
-                IntPtr result = SendMessage(new HWND(targetWindow), WM_CHAR, new IntPtr(c), IntPtr.Zero);
+                const int wmChar = 0x0102;
+                IntPtr result = SendMessage(new HWND(targetWindow), wmChar, new IntPtr(c), IntPtr.Zero);
 
                 if (result != IntPtr.Zero)
                 {
@@ -662,13 +662,13 @@ public class SendInputSink : ITextOutputSink
             }
 
             // Query TokenElevation (20) to determine if the target process is elevated
-            const int TokenElevation = 20;
-            int elevationSize = Marshal.SizeOf<TOKEN_ELEVATION>();
+            const int tokenElevation = 20;
+            int elevationSize = Marshal.SizeOf<TokenElevation>();
             IntPtr elevationPtr = Marshal.AllocHGlobal(elevationSize);
             try
             {
-                bool gotInfo = GetTokenInformation(tokenHandle, TokenElevation, elevationPtr, (uint)elevationSize, out uint _);
-                var elevation = gotInfo ? Marshal.PtrToStructure<TOKEN_ELEVATION>(elevationPtr) : default;
+                bool gotInfo = GetTokenInformation(tokenHandle, tokenElevation, elevationPtr, (uint)elevationSize, out uint _);
+                var elevation = gotInfo ? Marshal.PtrToStructure<TokenElevation>(elevationPtr) : default;
 
                 CloseHandle(tokenHandle);
 
@@ -718,13 +718,13 @@ public class SendInputSink : ITextOutputSink
     // OpenProcessToken and GetTokenInformation require AdvApi32 which is not available in Vanara
 
     [DllImport("advapi32.dll", SetLastError = true)]
-    private static extern bool OpenProcessToken(SafeHandle ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+    private static extern bool OpenProcessToken(SafeHandle processHandle, uint desiredAccess, out IntPtr tokenHandle);
 
     [DllImport("advapi32.dll")]
-    private static extern bool GetTokenInformation(IntPtr TokenHandle, int TokenInformationClass, IntPtr TokenInformation, uint TokenInformationLength, out uint ReturnLength);
+    private static extern bool GetTokenInformation(IntPtr tokenHandle, int tokenInformationClass, IntPtr tokenInformation, uint tokenInformationLength, out uint returnLength);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct TOKEN_ELEVATION
+    private struct TokenElevation
     {
         public int TokenIsElevated;
     }

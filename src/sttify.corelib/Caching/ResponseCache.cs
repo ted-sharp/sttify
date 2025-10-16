@@ -126,7 +126,7 @@ public class ResponseCache<TResponse> : IDisposable where TResponse : class
     /// <param name="response">The response to cache</param>
     public void Set(string key, TResponse response)
     {
-        if (_disposed || response == null)
+        if (_disposed)
             return;
 
         var entry = new CacheEntry<TResponse>

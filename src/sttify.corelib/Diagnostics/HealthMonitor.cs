@@ -33,7 +33,7 @@ public class HealthMonitor : IDisposable
 
         if (disposing)
         {
-            _healthCheckTimer?.Dispose();
+            _healthCheckTimer.Dispose();
         }
 
         _disposed = true;
@@ -143,13 +143,13 @@ public class HealthMonitor : IDisposable
             var process = Process.GetCurrentProcess();
             var memoryMb = process.WorkingSet64 / (1024 * 1024);
 
-            if (memoryMb > 1024) // Over 1GB
-            {
-                return Task.FromResult(HealthCheckResult.Degraded($"High memory usage: {memoryMb} MB"));
-            }
-            else if (memoryMb > 2048) // Over 2GB
+            if (memoryMb > 2048) // Over 2GB
             {
                 return Task.FromResult(HealthCheckResult.Unhealthy($"Very high memory usage: {memoryMb} MB"));
+            }
+            else if (memoryMb > 1024) // Over 1GB
+            {
+                return Task.FromResult(HealthCheckResult.Degraded($"High memory usage: {memoryMb} MB"));
             }
 
             return Task.FromResult(HealthCheckResult.Healthy($"Memory usage: {memoryMb} MB"));

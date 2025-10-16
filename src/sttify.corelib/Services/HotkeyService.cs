@@ -113,9 +113,9 @@ public class HotkeyService : IDisposable
         // Register UI toggle hotkey
         if (!string.IsNullOrEmpty(_currentSettings.Hotkeys.ToggleUi))
         {
-            if (_hotkeyManager.RegisterHotkey(_currentSettings.Hotkeys.ToggleUi, "ToggleUI"))
+            if (_hotkeyManager.RegisterHotkey(_currentSettings.Hotkeys.ToggleUi, "ToggleUi"))
             {
-                Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "ToggleUI", Hotkey = _currentSettings.Hotkeys.ToggleUi });
+                Telemetry.LogEvent("ApplicationHotkeyRegistered", new { Type = "ToggleUi", Hotkey = _currentSettings.Hotkeys.ToggleUi });
             }
         }
 
@@ -146,7 +146,7 @@ public class HotkeyService : IDisposable
         {
             var action = e.Name switch
             {
-                "ToggleUI" => HotkeyAction.ToggleUI,
+                "ToggleUi" => HotkeyAction.ToggleUi,
                 "ToggleMic" => HotkeyAction.ToggleMicrophone,
                 "StopMic" => HotkeyAction.StopMicrophone,
                 _ => HotkeyAction.Unknown
@@ -210,7 +210,7 @@ public class HotkeyService : IDisposable
 public enum HotkeyAction
 {
     Unknown,
-    ToggleUI,
+    ToggleUi,
     ToggleMicrophone,
     StopMicrophone
 }

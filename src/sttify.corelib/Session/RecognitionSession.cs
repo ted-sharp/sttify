@@ -58,7 +58,7 @@ public class RecognitionSession : IDisposable
             SilenceTimeoutMs = _settings.EndpointSilenceMs
         });
         _endpointDetector.OnEndpointTriggered += OnEndpointTriggered;
-        _endpointDetector.OnUtteranceStarted += (_, __) =>
+        _endpointDetector.OnUtteranceStarted += (_, _) =>
         {
             Telemetry.LogEvent("SessionUtteranceStarted");
         };
@@ -70,7 +70,7 @@ public class RecognitionSession : IDisposable
         // No session-level silence/finalize timers
 
         // Add wake words from settings if provided
-        if (_settings.WakeWords?.Length > 0)
+        if (_settings.WakeWords.Length > 0)
         {
             _wakeWords.AddRange(_settings.WakeWords);
         }
@@ -158,7 +158,7 @@ public class RecognitionSession : IDisposable
             _continuousModeCts?.Dispose();
 
             // Dispose endpoint detector
-            _endpointDetector?.Dispose();
+            _endpointDetector.Dispose();
 
             // Unsubscribe events to prevent memory leaks
             _audioCapture.OnFrame -= OnAudioFrame;
@@ -273,7 +273,7 @@ public class RecognitionSession : IDisposable
         }
     }
 
-    private Task InitializeModeAsync(CancellationToken cancellationToken)
+    private Task InitializeModeAsync(CancellationToken _)
     {
         switch (CurrentMode)
         {
@@ -446,30 +446,10 @@ public class RecognitionSession : IDisposable
         return false;
     }
 
-    // Wake word detection
-    private bool DetectWakeWord(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return false;
-
-        var lowerText = text.ToLowerInvariant();
-
-        foreach (var wakeWord in _wakeWords)
-        {
-            if (lowerText.Contains(wakeWord.ToLowerInvariant()))
-            {
-                Telemetry.LogEvent("WakeWordDetected", new { WakeWord = wakeWord, Text = text });
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private async Task SendTextToOutputSinksAsync(string text)
     {
-        var sinks = _outputSinkProvider.GetSinks();
-        System.Diagnostics.Debug.WriteLine($"*** SendTextToOutputSinksAsync - Text: '{text}', Sinks Count: {sinks.Count()} ***");
+        var sinks = _outputSinkProvider.GetSinks().ToList();
+        System.Diagnostics.Debug.WriteLine($"*** SendTextToOutputSinksAsync - Text: '{text}', Sinks Count: {sinks.Count} ***");
 
         bool textSentSuccessfully = false;
         var failedSinks = new List<string>();

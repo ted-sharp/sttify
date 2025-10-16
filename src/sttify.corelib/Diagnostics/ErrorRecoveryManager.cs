@@ -28,7 +28,7 @@ public class ErrorRecoveryManager : IDisposable
     {
         if (disposing)
         {
-            _recoveryTimer?.Dispose();
+            _recoveryTimer.Dispose();
             _componentStates.Clear();
 
             // Clear remaining recovery queue
@@ -208,7 +208,8 @@ public class ErrorRecoveryManager : IDisposable
         {
             try
             {
-                _ = Task.Run(() => ExecuteRecoveryActionAsync(action));
+                var actionToExecute = action;
+                _ = Task.Run(() => ExecuteRecoveryActionAsync(actionToExecute));
                 actionsProcessed++;
             }
             catch (Exception ex)
@@ -334,7 +335,7 @@ public class ErrorRecoveryManager : IDisposable
         return timeSinceLastRecovery.TotalMinutes >= _settings.MinRecoveryIntervalMinutes;
     }
 
-    private static ErrorRecoveryAction? DetermineRecoveryAction(ErrorState state)
+    private static ErrorRecoveryAction DetermineRecoveryAction(ErrorState state)
     {
         var actionType = state.ConsecutiveFailures switch
         {

@@ -70,7 +70,7 @@ public class ExternalProcessSink : ITextOutputSink
             }
 
             // Set environment variables if specified
-            if (_settings.EnvironmentVariables?.Count > 0)
+            if (_settings.EnvironmentVariables.Count > 0)
             {
                 foreach (var kvp in _settings.EnvironmentVariables)
                 {
@@ -98,8 +98,8 @@ public class ExternalProcessSink : ITextOutputSink
 
                 if (process.ExitCode != 0)
                 {
-                    var error = await process.StandardError.ReadToEndAsync(cancellationToken);
-                    var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+                    var error = await process.StandardError.ReadToEndAsync(combinedCts.Token);
+                    var output = await process.StandardOutput.ReadToEndAsync(combinedCts.Token);
 
                     Telemetry.LogEvent("ExternalProcessFailed", new
                     {
@@ -113,7 +113,7 @@ public class ExternalProcessSink : ITextOutputSink
 
                 if (_settings.LogOutput)
                 {
-                    var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+                    var output = await process.StandardOutput.ReadToEndAsync(combinedCts.Token);
                     if (!string.IsNullOrEmpty(output))
                     {
                         Telemetry.LogEvent("ExternalProcessOutput", new { Output = output });

@@ -65,7 +65,7 @@ public class NotifyIconHost : IDisposable
         {
             Console.WriteLine("Creating microphone icon...");
             var icon = CreateMicrophoneIcon();
-            Console.WriteLine($"Icon created successfully: {icon != null}");
+            Console.WriteLine("Icon created successfully");
 
             _notifyIcon = new NotifyIcon
             {

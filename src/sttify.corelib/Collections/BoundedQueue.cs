@@ -55,11 +55,11 @@ public class BoundedQueue<T> : IDisposable
             // Drop oldest items if at capacity
             while (_count >= MaxCapacity && _queue.TryDequeue(out _))
             {
-                _count--;
+                Interlocked.Decrement(ref _count);
             }
 
             _queue.Enqueue(item);
-            _count++;
+            Interlocked.Increment(ref _count);
 
             return !wasAtCapacity;
         }
@@ -76,7 +76,7 @@ public class BoundedQueue<T> : IDisposable
         {
             if (_queue.TryDequeue(out item))
             {
-                _count--;
+                Interlocked.Decrement(ref _count);
                 return true;
             }
 
@@ -92,7 +92,10 @@ public class BoundedQueue<T> : IDisposable
     /// <returns>True if an item was peeked, false if the queue is empty</returns>
     public bool TryPeek([MaybeNullWhen(false)] out T item)
     {
-        return _queue.TryPeek(out item);
+        lock (_lockObject)
+        {
+            return _queue.TryPeek(out item);
+        }
     }
 
     /// <summary>
@@ -104,9 +107,9 @@ public class BoundedQueue<T> : IDisposable
         {
             while (_queue.TryDequeue(out _))
             {
-                _count--;
+                Interlocked.Decrement(ref _count);
             }
-            _count = 0;
+            Interlocked.Exchange(ref _count, 0);
         }
     }
 
@@ -138,7 +141,7 @@ public class BoundedQueue<T> : IDisposable
             while (drained < maxItems && _queue.TryDequeue(out var item))
             {
                 result.Add(item);
-                _count--;
+                Interlocked.Decrement(ref _count);
                 drained++;
             }
         }

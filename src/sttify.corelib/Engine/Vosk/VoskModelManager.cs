@@ -7,7 +7,7 @@ namespace Sttify.Corelib.Engine.Vosk;
 [ExcludeFromCodeCoverage] // File system and network I/O for model management, difficult to mock effectively
 public class VoskModelManager
 {
-    private static readonly HttpClient _httpClient = new();
+    private static readonly HttpClient HttpClient = new();
 
     public static readonly VoskModelInfo[] AvailableModels = new[]
     {
@@ -73,7 +73,7 @@ public class VoskModelManager
             Telemetry.LogEvent("VoskModelDownloadStarted", new { modelInfo.Name, modelInfo.Size });
 
             // Download the model
-            using var response = await _httpClient.GetAsync(modelInfo.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            using var response = await HttpClient.GetAsync(modelInfo.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? 0;

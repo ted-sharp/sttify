@@ -18,7 +18,6 @@ public partial class ControlWindow
 {
     private const double DragThreshold = 5.0;
     private readonly IServiceProvider? _serviceProvider;
-    private readonly MainViewModel? _viewModel;
     private ApplicationService? _applicationService;
     private System.Threading.Timer? _audioLevelTimer;
     private Storyboard? _currentAudioLevelAnimation;
@@ -61,11 +60,11 @@ public partial class ControlWindow
     {
         Debug.WriteLine("ControlWindow: DI constructor called");
         _applicationService = applicationService ?? throw new ArgumentNullException(nameof(applicationService));
-        _viewModel = viewModel ?? throw new ArgumentNullException(nameof(viewModel));
+        ArgumentNullException.ThrowIfNull(viewModel);
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
         Debug.WriteLine("ControlWindow: Setting DataContext");
-        DataContext = _viewModel;
+        DataContext = viewModel;
 
         Debug.WriteLine("ControlWindow: Subscribing to events");
         _applicationService.SessionStateChanged += OnSessionStateChanged;
@@ -195,7 +194,7 @@ public partial class ControlWindow
         }
     }
 
-    private void OnMicrophoneClick(object _, MouseButtonEventArgs __)
+    private void OnMicrophoneClick(object _, MouseButtonEventArgs _1)
     {
         Debug.WriteLine("OnMicrophoneClick: Click detected");
 

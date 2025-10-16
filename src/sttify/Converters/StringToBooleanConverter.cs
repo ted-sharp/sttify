@@ -5,7 +5,7 @@ namespace Sttify.Converters;
 
 public class StringToBooleanConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is string stringValue && parameter is string parameterValue)
         {
@@ -14,7 +14,7 @@ public class StringToBooleanConverter : IValueConverter
         return false;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is bool boolValue && boolValue && parameter is string parameterValue)
         {

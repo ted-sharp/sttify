@@ -54,8 +54,8 @@ public class EndpointDetector : IDisposable
 
         if (disposing)
         {
-            _timeoutTimer?.Dispose();
-            _vad?.Dispose();
+            _timeoutTimer.Dispose();
+            _vad.Dispose();
             while (_eventHistory.TryDequeue(out _))
             {
                 // Intentionally empty - clearing queue
@@ -123,8 +123,7 @@ public class EndpointDetector : IDisposable
         var result = new EndpointResult
         {
             HasEndpoint = false,
-            Timestamp = timestamp,
-            VadConfidence = vadResult.Confidence
+            Timestamp = timestamp
         };
 
         // 1. Silence-based endpoint detection
@@ -263,7 +262,6 @@ public class EndpointDetector : IDisposable
                     result.HasEndpoint = true;
                     result.EndpointType = EndpointType.EnergyBased;
                     result.Confidence = CalculateEnergyConfidence(avgRecentEnergy);
-                    result.AverageEnergy = avgRecentEnergy;
                 }
             }
         }
@@ -583,13 +581,9 @@ public class EndpointResult
     public EndpointType EndpointType { get; set; }
     public double Confidence { get; set; }
     public DateTime Timestamp { get; set; }
-
-    // Additional context
-    public double VadConfidence { get; set; }
     public TimeSpan? SilenceDuration { get; set; }
     public TimeSpan? UtteranceDuration { get; set; }
     public TimeSpan? SessionDuration { get; set; }
-    public double? AverageEnergy { get; set; }
     public bool IsSessionTimeout { get; set; }
 }
 
@@ -609,6 +603,7 @@ public class UtteranceStats
     public TimeSpan EndSilence { get; set; }
 }
 
+[ExcludeFromCodeCoverage] // Diagnostic data container class
 public class EndpointStatistics
 {
     public TimeSpan SessionDuration { get; set; }

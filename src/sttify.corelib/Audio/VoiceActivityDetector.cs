@@ -314,7 +314,7 @@ public class VoiceActivityDetector : IDisposable
             }
 
             // Perform optimized FFT with cached twiddle factors
-            OptimizedFFT(complex, fftSize);
+            OptimizedFft(complex, fftSize);
 
             // Calculate magnitude spectrum (only first half due to symmetry)
             for (int i = 0; i < fftSize / 2; i++)
@@ -351,7 +351,7 @@ public class VoiceActivityDetector : IDisposable
         return n + 1;
     }
 
-    private void OptimizedFFT(Complex[] buffer, int n)
+    private void OptimizedFft(Complex[] buffer, int n)
     {
         if (n <= 1)
             return;
@@ -458,8 +458,6 @@ public class VoiceActivityDetector : IDisposable
 
     private VadResult DetectVoiceActivity(double energy, double zcr, double spectralCentroid)
     {
-        var confidence = 0.0;
-
         // Energy-based detection
         var energyScore = energy > CurrentThreshold ? 1.0 : 0.0;
         if (energy > CurrentThreshold)
@@ -486,7 +484,7 @@ public class VoiceActivityDetector : IDisposable
         var temporalScore = CalculateTemporalConsistency();
 
         // Weighted combination
-        confidence = (_settings.EnergyWeight * energyScore +
+        var confidence = (_settings.EnergyWeight * energyScore +
                      _settings.ZcrWeight * zcrScore +
                      _settings.SpectralWeight * spectralScore +
                      _settings.TemporalWeight * temporalScore) /

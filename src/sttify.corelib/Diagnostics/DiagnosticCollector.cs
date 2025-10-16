@@ -36,8 +36,8 @@ public class DiagnosticCollector : IDisposable
     {
         if (disposing)
         {
-            _collectionTimer?.Dispose();
-            _currentProcess?.Dispose();
+            _collectionTimer.Dispose();
+            _currentProcess.Dispose();
             _diagnostics.Clear();
         }
     }

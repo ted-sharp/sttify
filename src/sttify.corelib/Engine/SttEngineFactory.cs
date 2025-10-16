@@ -15,7 +15,7 @@ public static class SttEngineFactory
 
     public static ISttEngine CreateEngine(EngineSettings engineSettings)
     {
-        var profile = engineSettings.Profile?.ToLowerInvariant() ?? VoskProvider;
+        var profile = engineSettings.Profile.ToLowerInvariant() ?? VoskProvider;
         System.Diagnostics.Debug.WriteLine($"*** SttEngineFactory.CreateEngine - Profile: {profile} ***");
         var engine = profile switch
         {
@@ -35,7 +35,7 @@ public static class SttEngineFactory
 
     private static ISttEngine CreateCloudEngine(CloudEngineSettings settings)
     {
-        var provider = settings.Provider?.ToLowerInvariant();
+        var provider = settings.Provider.ToLowerInvariant();
         return provider switch
         {
             AzureProvider => new AzureSpeechEngine(settings),

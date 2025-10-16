@@ -132,10 +132,7 @@ public class AudioCapture : IDisposable
     private static bool IsTransientAudioError(Exception exception)
     {
         // Check for known transient error patterns
-        if (exception == null)
-            return false;
-
-        var message = exception.Message?.ToLowerInvariant() ?? "";
+        var message = exception.Message.ToLowerInvariant();
         return message.Contains("device in use") ||
                message.Contains("device not available") ||
                message.Contains("access denied") ||
@@ -228,7 +225,7 @@ public class AudioCaptureSettings
     public int BitsPerSample { get; set; } = 16;
     public int BufferSize { get; set; } = 3200;
     public int FrameIntervalMs { get; set; } = 100;
-    public string? DeviceId { get; set; }
+    public string? DeviceId { get; init; }
 }
 
 [ExcludeFromCodeCoverage] // Simple data container EventArgs class

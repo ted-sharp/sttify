@@ -17,11 +17,8 @@ public static class AsyncHelper
         {
             try
             {
-                var task = taskFactory?.Invoke();
-                if (task is not null)
-                {
-                    await task.ConfigureAwait(false);
-                }
+                var task = taskFactory.Invoke();
+                await task.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -40,9 +37,6 @@ public static class AsyncHelper
     /// </summary>
     public static void FireAndForget(Task task, string operationName, object? context = null)
     {
-        if (task == null)
-            return;
-
         _ = Task.Run(async () =>
         {
             try

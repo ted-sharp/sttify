@@ -13,7 +13,7 @@ public class MultiLanguageVoskAdapter : ISttEngine
     private readonly Dictionary<string, VoskRecognizer> _recognizers = new();
 
     private readonly VoskEngineSettings _settings;
-    private string _currentLanguage = "ja";
+    private string _currentLanguage;
     private string _currentPartialText = "";
     private bool _isRunning;
     private CancellationTokenSource? _processingCancellation;
@@ -23,7 +23,7 @@ public class MultiLanguageVoskAdapter : ISttEngine
     public MultiLanguageVoskAdapter(VoskEngineSettings settings)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _currentLanguage = _settings.Language ?? "ja";
+        _currentLanguage = _settings.Language;
     }
 
     public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
@@ -131,13 +131,13 @@ public class MultiLanguageVoskAdapter : ISttEngine
 
         foreach (var recognizer in _recognizers.Values)
         {
-            recognizer?.Dispose();
+            recognizer.Dispose();
         }
         _recognizers.Clear();
 
         foreach (var model in _loadedModels.Values)
         {
-            model?.Dispose();
+            model.Dispose();
         }
         _loadedModels.Clear();
     }
@@ -298,7 +298,7 @@ public class MultiLanguageVoskAdapter : ISttEngine
             return "ru";
 
         // Default to the configured language or 'unknown'
-        return _settings.Language ?? "unknown";
+        return _settings.Language;
     }
 
     private async Task ProcessAudioLoop(CancellationToken cancellationToken)

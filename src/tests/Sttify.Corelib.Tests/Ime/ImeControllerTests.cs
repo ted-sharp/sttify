@@ -133,7 +133,7 @@ public class ImeControllerTests
         Assert.True(status.IsFullShape);
 
         // Test combined modes
-        status.ConversionMode = IME_CMODE.IME_CMODE_NATIVE | IME_CMODE.IME_CMODE_FULLSHAPE;
+        status.ConversionMode = (IME_CMODE)((int)IME_CMODE.IME_CMODE_NATIVE | (int)IME_CMODE.IME_CMODE_FULLSHAPE);
         Assert.False(status.IsAlphanumericMode);
         Assert.True(status.IsNativeMode);
         Assert.True(status.IsFullShape);

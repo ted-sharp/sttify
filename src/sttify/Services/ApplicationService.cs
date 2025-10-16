@@ -55,12 +55,9 @@ public class ApplicationService : IDisposable
             ComponentDispatcher.ThreadPreprocessMessage -= _hotkeyThreadHandler;
             _hotkeyThreadHandler = null;
         }
-        if (_hotkeyService is not null)
-        {
-            _hotkeyService.OnHotkeyTriggered -= OnHotkeyTriggered;
-            _hotkeyService.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
-            _hotkeyService.Dispose();
-        }
+        _hotkeyService.OnHotkeyTriggered -= OnHotkeyTriggered;
+        _hotkeyService.OnHotkeyRegistrationFailed -= OnHotkeyRegistrationFailed;
+        _hotkeyService.Dispose();
         _recognitionSession.Dispose();
         _overlayService.Dispose();
     }
@@ -288,7 +285,7 @@ public class ApplicationService : IDisposable
             {
                 switch (e.Action)
                 {
-                    case HotkeyAction.ToggleUI:
+                    case HotkeyAction.ToggleUi:
                         System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         {
                             var controlWindow = System.Windows.Application.Current.Windows.OfType<Views.ControlWindow>().FirstOrDefault();

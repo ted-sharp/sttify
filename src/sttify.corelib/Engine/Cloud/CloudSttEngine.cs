@@ -9,29 +9,29 @@ namespace Sttify.Corelib.Engine.Cloud;
 
 public abstract class CloudSttEngine : ISttEngine
 {
-    protected readonly BoundedQueue<byte[]> _audioQueue;
-    protected readonly HttpClient _httpClient;
-    protected readonly object _lockObject = new();
-    protected readonly ResponseCache<CloudRecognitionResult> _responseCache;
+    protected readonly BoundedQueue<byte[]> AudioQueue;
+    protected readonly HttpClient HttpClient;
+    protected readonly object LockObject = new();
+    protected readonly ResponseCache<CloudRecognitionResult> ResponseCache;
 
-    protected readonly CloudEngineSettings _settings;
-    protected bool _httpClientConfigured;
-    protected bool _isRunning;
-    protected CancellationTokenSource? _processingCancellation;
-    protected Task? _processingTask;
-    protected DateTime _recognitionStartTime;
+    protected readonly CloudEngineSettings Settings;
+    protected bool HttpClientConfigured;
+    protected bool IsRunning;
+    protected CancellationTokenSource? ProcessingCancellation;
+    protected Task? ProcessingTask;
+    protected DateTime RecognitionStartTime;
 
     protected CloudSttEngine(CloudEngineSettings settings)
     {
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        HttpClient = new HttpClient();
+        HttpClient.Timeout = TimeSpan.FromSeconds(30);
 
         // Use bounded queue to prevent memory bloat
-        _audioQueue = new BoundedQueue<byte[]>(50); // Smaller queue for cloud processing
+        AudioQueue = new BoundedQueue<byte[]>(50); // Smaller queue for cloud processing
 
         // Cache responses to reduce API calls and improve latency
-        _responseCache = new ResponseCache<CloudRecognitionResult>(maxEntries: 500, ttl: TimeSpan.FromMinutes(15));
+        ResponseCache = new ResponseCache<CloudRecognitionResult>(maxEntries: 500, ttl: TimeSpan.FromMinutes(15));
     }
 
     public event EventHandler<PartialRecognitionEventArgs>? OnPartial;
@@ -40,34 +40,34 @@ public abstract class CloudSttEngine : ISttEngine
 
     public virtual async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        if (_isRunning)
+        if (IsRunning)
             throw new InvalidOperationException("Engine is already running");
 
         // Configure HTTP client on first start (not in constructor to avoid calling virtual method)
-        if (!_httpClientConfigured)
+        if (!HttpClientConfigured)
         {
             ConfigureHttpClient();
-            _httpClientConfigured = true;
+            HttpClientConfigured = true;
         }
 
         try
         {
             await ValidateConnectionAsync(cancellationToken);
 
-            lock (_lockObject)
+            lock (LockObject)
             {
-                _isRunning = true;
-                _processingCancellation = new CancellationTokenSource();
-                _recognitionStartTime = DateTime.UtcNow;
+                IsRunning = true;
+                ProcessingCancellation = new CancellationTokenSource();
+                RecognitionStartTime = DateTime.UtcNow;
             }
 
-            _processingTask = Task.Run(() => ProcessAudioLoop(_processingCancellation.Token), cancellationToken);
+            ProcessingTask = Task.Run(() => ProcessAudioLoop(ProcessingCancellation.Token), cancellationToken);
 
             Telemetry.LogEvent("CloudEngineStarted", new
             {
                 Provider = GetProviderName(),
-                _settings.Language,
-                _settings.Endpoint
+                Settings.Language,
+                Settings.Endpoint
             });
         }
         catch (Exception ex)
@@ -80,15 +80,15 @@ public abstract class CloudSttEngine : ISttEngine
 
     public virtual async Task StopAsync(CancellationToken cancellationToken = default)
     {
-        CancellationTokenSource? cancellationToDispose = null;
+        CancellationTokenSource? cancellationToDispose;
 
-        lock (_lockObject)
+        lock (LockObject)
         {
-            if (!_isRunning)
+            if (!IsRunning)
                 return;
 
-            _isRunning = false;
-            cancellationToDispose = _processingCancellation;
+            IsRunning = false;
+            cancellationToDispose = ProcessingCancellation;
         }
 
         if (cancellationToDispose != null)
@@ -96,11 +96,11 @@ public abstract class CloudSttEngine : ISttEngine
             await cancellationToDispose.CancelAsync();
         }
 
-        if (_processingTask != null)
+        if (ProcessingTask != null)
         {
             try
             {
-                await _processingTask;
+                await ProcessingTask;
             }
             catch (OperationCanceledException)
             {
@@ -109,22 +109,22 @@ public abstract class CloudSttEngine : ISttEngine
         }
 
         cancellationToDispose?.Dispose();
-        _processingCancellation = null;
-        _processingTask = null;
+        ProcessingCancellation = null;
+        ProcessingTask = null;
 
         Telemetry.LogEvent("CloudEngineStopped", new { Provider = GetProviderName() });
     }
 
     public void PushAudio(ReadOnlySpan<byte> audioData)
     {
-        if (!_isRunning || audioData.IsEmpty)
+        if (!IsRunning || audioData.IsEmpty)
             return;
 
         var buffer = audioData.ToArray();
-        if (!_audioQueue.TryEnqueue(buffer))
+        if (!AudioQueue.TryEnqueue(buffer))
         {
             // Queue full - drop oldest data
-            Telemetry.LogWarning("CloudAudioQueueFull", "Audio queue full, dropping oldest data", new { QueueSize = _audioQueue.Count });
+            Telemetry.LogWarning("CloudAudioQueueFull", "Audio queue full, dropping oldest data", new { QueueSize = AudioQueue.Count });
         }
     }
 
@@ -139,9 +139,9 @@ public abstract class CloudSttEngine : ISttEngine
         if (disposing)
         {
             StopAsync().Wait();
-            _httpClient?.Dispose();
-            _responseCache?.Dispose();
-            _audioQueue?.Dispose();
+            HttpClient.Dispose();
+            ResponseCache.Dispose();
+            AudioQueue.Dispose();
         }
     }
 
@@ -155,15 +155,9 @@ public abstract class CloudSttEngine : ISttEngine
 
         try
         {
-            while (!cancellationToken.IsCancellationRequested && _isRunning)
+            while (!cancellationToken.IsCancellationRequested && IsRunning)
             {
-                byte[]? audioChunk = null;
-
-                if (_audioQueue.TryDequeue(out audioChunk))
-                {
-                    // Got audio chunk - audioChunk is already set
-                }
-                else
+                if (!AudioQueue.TryDequeue(out var audioChunk))
                 {
                     audioChunk = null;
                 }
@@ -183,7 +177,7 @@ public abstract class CloudSttEngine : ISttEngine
                         var cacheKey = ResponseCache<CloudRecognitionResult>.GenerateKey(audioArray, GetProviderName());
 
                         CloudRecognitionResult result;
-                        if (_responseCache.TryGet(cacheKey, out var cachedResult))
+                        if (ResponseCache.TryGet(cacheKey, out var cachedResult))
                         {
                             result = cachedResult;
                             Telemetry.LogEvent("CloudCacheHit", new { Provider = GetProviderName(), AudioSize = audioArray.Length });
@@ -193,7 +187,7 @@ public abstract class CloudSttEngine : ISttEngine
                             result = await ProcessAudioChunkAsync(audioArray, cancellationToken);
                             if (result.Success)
                             {
-                                _responseCache.Set(cacheKey, result);
+                                ResponseCache.Set(cacheKey, result);
                             }
                         }
 
@@ -228,14 +222,14 @@ public abstract class CloudSttEngine : ISttEngine
 
     protected virtual void ProcessCloudResult(CloudRecognitionResult result)
     {
-        if (result == null || string.IsNullOrWhiteSpace(result.Text))
+        if (string.IsNullOrWhiteSpace(result.Text))
             return;
 
         if (result.IsFinal)
         {
-            var duration = DateTime.UtcNow - _recognitionStartTime;
+            var duration = DateTime.UtcNow - RecognitionStartTime;
             OnFinal?.Invoke(this, new FinalRecognitionEventArgs(result.Text, result.Confidence, duration));
-            _recognitionStartTime = DateTime.UtcNow;
+            RecognitionStartTime = DateTime.UtcNow;
         }
         else
         {
@@ -257,7 +251,7 @@ public abstract class CloudSttEngine : ISttEngine
         // RIFF header size = 44 bytes
         int byteRate = sampleRate * channels * (bitsPerSample / 8);
         short blockAlign = (short)(channels * (bitsPerSample / 8));
-        int dataSize = pcmLittleEndian?.Length ?? 0;
+        int dataSize = pcmLittleEndian.Length;
         int riffChunkSize = 36 + dataSize;
 
         var buffer = new byte[44 + dataSize];
@@ -266,14 +260,14 @@ public abstract class CloudSttEngine : ISttEngine
             for (int i = 0; i < s.Length; i++)
                 buffer[offset + i] = (byte)s[i];
         }
-        void WriteInt32LE(int offset, int value)
+        void WriteInt32Le(int offset, int value)
         {
             buffer[offset + 0] = (byte)(value & 0xFF);
             buffer[offset + 1] = (byte)((value >> 8) & 0xFF);
             buffer[offset + 2] = (byte)((value >> 16) & 0xFF);
             buffer[offset + 3] = (byte)((value >> 24) & 0xFF);
         }
-        void WriteInt16LE(int offset, short value)
+        void WriteInt16Le(int offset, short value)
         {
             buffer[offset + 0] = (byte)(value & 0xFF);
             buffer[offset + 1] = (byte)((value >> 8) & 0xFF);
@@ -281,24 +275,24 @@ public abstract class CloudSttEngine : ISttEngine
 
         // RIFF chunk descriptor
         WriteString(0, "RIFF");
-        WriteInt32LE(4, riffChunkSize);
+        WriteInt32Le(4, riffChunkSize);
         WriteString(8, "WAVE");
 
         // fmt sub-chunk
         WriteString(12, "fmt ");
-        WriteInt32LE(16, 16);                 // Subchunk1Size for PCM
-        WriteInt16LE(20, 1);                   // PCM format = 1
-        WriteInt16LE(22, channels);
-        WriteInt32LE(24, sampleRate);
-        WriteInt32LE(28, byteRate);
-        WriteInt16LE(32, blockAlign);
-        WriteInt16LE(34, bitsPerSample);
+        WriteInt32Le(16, 16);                 // Subchunk1Size for PCM
+        WriteInt16Le(20, 1);                   // PCM format = 1
+        WriteInt16Le(22, channels);
+        WriteInt32Le(24, sampleRate);
+        WriteInt32Le(28, byteRate);
+        WriteInt16Le(32, blockAlign);
+        WriteInt16Le(34, bitsPerSample);
 
         // data sub-chunk
         WriteString(36, "data");
-        WriteInt32LE(40, dataSize);
+        WriteInt32Le(40, dataSize);
 
-        if (dataSize > 0 && pcmLittleEndian != null)
+        if (dataSize > 0)
         {
             Buffer.BlockCopy(pcmLittleEndian, 0, buffer, 44, dataSize);
         }
@@ -328,9 +322,9 @@ public class AzureSpeechEngine : CloudSttEngine
 
     protected override void ConfigureHttpClient()
     {
-        if (!string.IsNullOrEmpty(_settings.ApiKey))
+        if (!string.IsNullOrEmpty(Settings.ApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _settings.ApiKey);
+            HttpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", Settings.ApiKey);
         }
     }
 
@@ -338,26 +332,26 @@ public class AzureSpeechEngine : CloudSttEngine
     {
         try
         {
-            var endpoint = $"{_settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
-            var uri = $"{endpoint}?language={_settings.Language}&format=detailed";
+            var endpoint = $"{Settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
+            var uri = $"{endpoint}?language={Settings.Language}&format=detailed";
 
             // Ensure we send a proper WAV container (16kHz, mono, 16-bit PCM by default)
             var wavBytes = WrapAsWav(audioData);
             using var content = new ByteArrayContent(wavBytes);
             content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
 
-            var response = await _httpClient.PostAsync(uri, content, cancellationToken);
+            var response = await HttpClient.PostAsync(uri, content, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var jsonResponse = await response.Content.ReadAsStringAsync(cancellationToken);
             var azureResult = JsonSerializer.Deserialize<AzureRecognitionResponse>(jsonResponse);
 
-            if (azureResult?.NBest?.Length > 0)
+            if (azureResult?.NBest is { Length: > 0 })
             {
                 var best = azureResult.NBest[0];
                 return new CloudRecognitionResult
                 {
-                    Text = best.Display ?? "",
+                    Text = best.Display,
                     Confidence = best.Confidence,
                     IsFinal = true
                 };
@@ -375,17 +369,19 @@ public class AzureSpeechEngine : CloudSttEngine
     protected override async Task ValidateConnectionAsync(CancellationToken cancellationToken)
     {
         // Perform a lightweight POST with a short silent WAV to validate endpoint + key
-        var endpoint = $"{_settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
-        var uri = $"{endpoint}?language={_settings.Language}&format=detailed";
+        var endpoint = $"{Settings.Endpoint}/speech/recognition/conversation/cognitiveservices/v1";
+        var uri = $"{endpoint}?language={Settings.Language}&format=detailed";
 
         // 100ms of silence @16kHz mono 16-bit
         var silentPcm = new byte[1600 * 2]; // 1600 samples * 2 bytes
         var probe = WrapAsWav(silentPcm);
-        using var content = new ByteArrayContent(probe);
-        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+        using var content = new ByteArrayContent(probe)
+        {
+            Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav") }
+        };
 
         using var request = new HttpRequestMessage(HttpMethod.Post, uri) { Content = content };
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await HttpClient.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
         {
@@ -410,7 +406,7 @@ public class AzureSpeechEngine : CloudSttEngine
 
     private sealed class AzureNBestResult
     {
-        public double Confidence { get; init; }
-        public string Display { get; init; } = string.Empty;
+        public double Confidence { get; set; }
+        public string Display { get; set; } = string.Empty;
     }
 }

@@ -15,9 +15,9 @@ public static class Telemetry
     private static bool _isInitialized;
 
     // Batching for better I/O performance
-    private static readonly ConcurrentQueue<LogEntry> _logQueue = new();
-    private static readonly Timer _batchTimer = new(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
-    private static readonly object _batchLock = new();
+    private static readonly ConcurrentQueue<LogEntry> LogQueue = new();
+    private static readonly Timer BatchTimer = new(FlushBatch, null, BatchIntervalMs, BatchIntervalMs);
+    private static readonly object BatchLock = new();
     private static volatile bool _isShuttingDown;
 
     public static void Initialize(TelemetrySettings? settings = null)
@@ -160,18 +160,18 @@ public static class Telemetry
     private static void EnqueueLogEntry(LogEntry entry)
     {
         // Backpressure: drop oldest when exceeding max size
-        _logQueue.Enqueue(entry);
-        if (_logQueue.Count > MaxQueueSize)
+        LogQueue.Enqueue(entry);
+        if (LogQueue.Count > MaxQueueSize)
         {
             // Drain a small batch to keep memory bounded
             var drop = 0;
-            while (_logQueue.Count > MaxQueueSize && drop < BatchSize && _logQueue.TryDequeue(out _))
+            while (LogQueue.Count > MaxQueueSize && drop < BatchSize && LogQueue.TryDequeue(out _))
             {
                 drop++;
             }
         }
         // If queue is getting large, force flush
-        if (_logQueue.Count >= BatchSize * 2)
+        if (LogQueue.Count >= BatchSize * 2)
         {
             Task.Run(() => FlushBatch(null));
         }
@@ -182,12 +182,12 @@ public static class Telemetry
         if (_isShuttingDown || !_isInitialized || _logger == null)
             return;
 
-        lock (_batchLock)
+        lock (BatchLock)
         {
             var entries = new List<LogEntry>();
 
             // Drain up to BatchSize entries
-            while (entries.Count < BatchSize && _logQueue.TryDequeue(out var entry))
+            while (entries.Count < BatchSize && LogQueue.TryDequeue(out var entry))
             {
                 entries.Add(entry);
             }
@@ -230,7 +230,7 @@ public static class Telemetry
         for (int i = 0; i < 20; i++) // up to ~2s
         {
             FlushBatch(null);
-            if (_logQueue.IsEmpty)
+            if (LogQueue.IsEmpty)
                 break;
             Thread.Sleep(BatchIntervalMs);
         }
@@ -238,12 +238,12 @@ public static class Telemetry
         if (_isInitialized && _logger is IDisposable disposableLogger)
         {
             // Log shutdown directly (bypass batching since we're shutting down)
-            _logger?.Information("[TelemetryShutdown]");
+            _logger.Information("[TelemetryShutdown]");
             disposableLogger.Dispose();
             _isInitialized = false;
         }
 
-        _batchTimer.Dispose();
+        BatchTimer.Dispose();
     }
 }
 

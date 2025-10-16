@@ -42,6 +42,7 @@ public class WasapiAudioCapture : IDisposable
             // Avoid sync wait on UI thread; best-effort async stop
             try
             {
+                var capture = _wasapiCapture;
                 _ = Task.Run(async () =>
                 {
                     try
@@ -51,13 +52,13 @@ public class WasapiAudioCapture : IDisposable
                         System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture StopAsync in Dispose failed: {ex.Message} ***");
                     }
                     try
-                    { _wasapiCapture?.Dispose(); }
+                    { capture?.Dispose(); }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"*** WasapiAudioCapture inner Dispose failed: {ex.Message} ***");
                     }
-                    _wasapiCapture = null;
                 });
+                _wasapiCapture = null;
             }
             catch
             {
@@ -151,7 +152,7 @@ public class WasapiAudioCapture : IDisposable
 
     private void InitializeCapture()
     {
-        MMDevice? captureDevice = null;
+        MMDevice? captureDevice;
 
         if (!string.IsNullOrEmpty(_settings.DeviceId))
         {
@@ -220,29 +221,23 @@ public class WasapiAudioCapture : IDisposable
                     Array.Copy(e.Buffer, 0, rentedBuffer, 0, e.BytesRecorded);
                     var audioSpan = rentedBuffer.AsSpan(0, e.BytesRecorded);
 
-                    byte[]? processedData = null;
-                    try
+                    // Convert to Vosk-compatible format if necessary
+                    byte[] processedData;
+                    if (!AudioConverter.IsVoskCompatible(CurrentWaveFormat))
                     {
-                        // Convert to Vosk-compatible format if necessary
-                        if (!AudioConverter.IsVoskCompatible(CurrentWaveFormat))
-                        {
-                            processedData = AudioConverter.ConvertToVoskFormat(audioSpan, CurrentWaveFormat);
-                        }
-                        else
-                        {
-                            // Create a copy for the event since we need to return the rented buffer
-                            processedData = audioSpan.ToArray();
-                        }
-
-                        var level = AudioConverter.CalculateAudioLevel(processedData, AudioConverter.GetVoskTargetFormat());
-
-                        Telemetry.LogAudioCapture(e.BytesRecorded, level);
-                        OnFrame?.Invoke(this, new AudioFrameEventArgs(processedData));
+                        processedData = AudioConverter.ConvertToVoskFormat(audioSpan, CurrentWaveFormat);
                     }
-                    finally
+                    else
                     {
-                        // processedData will be handled by the event handler
+                        // Create a copy for the event since we need to return the rented buffer
+                        processedData = audioSpan.ToArray();
                     }
+
+                    var level = AudioConverter.CalculateAudioLevel(processedData, AudioConverter.GetVoskTargetFormat());
+
+                    Telemetry.LogAudioCapture(e.BytesRecorded, level);
+                    // processedData will be handled by the event handler
+                    OnFrame?.Invoke(this, new AudioFrameEventArgs(processedData));
                 }
                 finally
                 {

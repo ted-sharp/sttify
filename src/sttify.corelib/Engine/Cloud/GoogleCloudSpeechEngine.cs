@@ -19,18 +19,18 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
 
     protected override void ConfigureHttpClient()
     {
-        if (!string.IsNullOrEmpty(_settings.ApiKey))
+        if (!string.IsNullOrEmpty(Settings.ApiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_settings.ApiKey}");
+            HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {Settings.ApiKey}");
         }
-        _httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
+        HttpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
     }
 
     protected override async Task<CloudRecognitionResult> ProcessAudioChunkAsync(byte[] audioData, CancellationToken cancellationToken)
     {
         try
         {
-            var endpoint = $"{_settings.Endpoint}/v1/speech:recognize";
+            var endpoint = $"{Settings.Endpoint}/v1/speech:recognize";
 
             var request = new GoogleSpeechRequest
             {
@@ -38,7 +38,7 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
                 {
                     Encoding = "LINEAR16",
                     SampleRateHertz = 16000,
-                    LanguageCode = _settings.Language ?? "ja-JP",
+                    LanguageCode = Settings.Language,
                     EnableWordTimeOffsets = true,
                     EnableAutomaticPunctuation = true,
                     Model = "latest_long"
@@ -52,7 +52,7 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
             var json = JsonSerializer.Serialize(request, JsonOptions);
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(endpoint, content, cancellationToken);
+            var response = await HttpClient.PostAsync(endpoint, content, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -108,8 +108,8 @@ public class GoogleCloudSpeechEngine : CloudSttEngine
         try
         {
             // Test connection with a minimal request
-            var endpoint = $"{_settings.Endpoint}/v1/operations";
-            var response = await _httpClient.GetAsync(endpoint, cancellationToken);
+            var endpoint = $"{Settings.Endpoint}/v1/operations";
+            var response = await HttpClient.GetAsync(endpoint, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {

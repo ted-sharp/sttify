@@ -11,8 +11,8 @@ namespace Sttify.Corelib.Hotkey;
 [ExcludeFromCodeCoverage] // Win32 API integration, system dependent, difficult to mock effectively
 public class HotkeyManager : IDisposable
 {
-    private const int WM_HOTKEY = 0x0312;
-    private const int ERROR_HOTKEY_ALREADY_REGISTERED = 1409;
+    private const int WmHotkey = 0x0312;
+    private const int ErrorHotkeyAlreadyRegistered = 1409;
     private readonly Dictionary<string, int> _hotkeyNameToId = new();
     private readonly Random _random = new();
 
@@ -99,7 +99,7 @@ public class HotkeyManager : IDisposable
             else
             {
                 var lastError = GetLastError();
-                var errorMessage = lastError == ERROR_HOTKEY_ALREADY_REGISTERED
+                var errorMessage = lastError == ErrorHotkeyAlreadyRegistered
                     ? "Hotkey combination already in use by another application"
                     : $"Failed to register hotkey (Win32 Error: {lastError})";
 
@@ -210,7 +210,7 @@ public class HotkeyManager : IDisposable
 
     public bool ProcessWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam)
     {
-        if (msg == WM_HOTKEY)
+        if (msg == WmHotkey)
         {
             var id = wParam.ToInt32();
             if (_registeredHotkeys.TryGetValue(id, out var hotkeyInfo))
@@ -258,7 +258,7 @@ public class HotkeyManager : IDisposable
         }
 
         var keyString = parts[^1].Trim().ToUpper();
-        if (!Enum.TryParse<VirtualKey>(keyString, out key))
+        if (!Enum.TryParse(keyString, out key))
             return false;
 
         return true;

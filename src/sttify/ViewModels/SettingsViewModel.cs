@@ -725,7 +725,7 @@ public partial class SettingsViewModel : ObservableObject
                     LogArguments = Settings.Output.ExternalProcess.LogArguments,
                     LogOutput = Settings.Output.ExternalProcess.LogOutput,
                     WorkingDirectory = Settings.Output.ExternalProcess.WorkingDirectory,
-                    EnvironmentVariables = new Dictionary<string, string>(Settings.Output.ExternalProcess.EnvironmentVariables ?? new())
+                    EnvironmentVariables = new Dictionary<string, string>(Settings.Output.ExternalProcess.EnvironmentVariables)
                 }), // External Process
                 2 => new StreamSink(new StreamSinkSettings
                 {

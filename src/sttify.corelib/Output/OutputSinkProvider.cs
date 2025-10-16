@@ -14,7 +14,7 @@ public class OutputSinkProvider : IOutputSinkProvider
 {
     private readonly object _lock = new();
     private readonly SettingsProvider _settingsProvider;
-    private List<ITextOutputSink> _current = new();
+    private List<ITextOutputSink> _current;
 
     public OutputSinkProvider(SettingsProvider settingsProvider)
     {
@@ -37,13 +37,15 @@ public class OutputSinkProvider : IOutputSinkProvider
             var settings = await _settingsProvider.GetSettingsAsync();
             var sinks = BuildSinks(settings);
 
+            int sinkCount;
             lock (_lock)
             {
                 _current.ForEach(s => (s as IDisposable)?.Dispose());
                 _current = sinks;
+                sinkCount = _current.Count;
             }
 
-            Telemetry.LogEvent("OutputSinksRefreshed", new { Count = _current.Count });
+            Telemetry.LogEvent("OutputSinksRefreshed", new { Count = sinkCount });
         }
         catch (Exception ex)
         {
@@ -87,7 +89,7 @@ public class OutputSinkProvider : IOutputSinkProvider
                         LogArguments = settings.Output.ExternalProcess.LogArguments,
                         LogOutput = settings.Output.ExternalProcess.LogOutput,
                         WorkingDirectory = settings.Output.ExternalProcess.WorkingDirectory,
-                        EnvironmentVariables = new Dictionary<string, string>(settings.Output.ExternalProcess.EnvironmentVariables ?? new())
+                        EnvironmentVariables = new Dictionary<string, string>(settings.Output.ExternalProcess.EnvironmentVariables)
                     }));
                     break;
                 case "stream":
@@ -108,10 +110,10 @@ public class OutputSinkProvider : IOutputSinkProvider
             }
         }
 
-        var primary = settings.Output.Primary?.ToLowerInvariant() ?? "sendinput";
+        var primary = settings.Output.Primary.ToLowerInvariant();
         AddSinkByName(primary);
 
-        foreach (var fb in settings.Output.Fallbacks ?? Array.Empty<string>())
+        foreach (var fb in settings.Output.Fallbacks)
         {
             var lname = fb.ToLowerInvariant();
             if (!sinks.Any(s => string.Equals(s.Id, lname, StringComparison.OrdinalIgnoreCase)))

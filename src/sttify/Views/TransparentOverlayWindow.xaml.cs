@@ -21,7 +21,7 @@ public partial class TransparentOverlayWindow
 
     public void SetText(string text)
     {
-        OverlayText.Text = text ?? string.Empty;
+        OverlayText.Text = text;
     }
 
     public void ApplyAppearance(string fontFamily, double fontSize, string fg, string bg,
@@ -89,15 +89,15 @@ public partial class TransparentOverlayWindow
         };
     }
 
-    private IEasingFunction? CreateEase(string name, string mode)
+    private IEasingFunction CreateEase(string name, string mode)
     {
-        EasingMode em = mode?.ToLowerInvariant() switch
+        EasingMode em = mode.ToLowerInvariant() switch
         {
             "in" => EasingMode.EaseIn,
             "inout" => EasingMode.EaseInOut,
             _ => EasingMode.EaseOut
         };
-        return name?.ToLowerInvariant() switch
+        return name.ToLowerInvariant() switch
         {
             "quadratic" => new QuadraticEase { EasingMode = em },
             "sine" => new SineEase { EasingMode = em },

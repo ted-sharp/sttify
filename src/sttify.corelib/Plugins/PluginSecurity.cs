@@ -154,7 +154,7 @@ public class PluginSecurity
             var types = assembly.GetTypes();
             foreach (var type in types)
             {
-                CheckForDangerousAPIs(type, result);
+                CheckForDangerousApis(type, result);
             }
 
             // Check assembly references
@@ -177,7 +177,7 @@ public class PluginSecurity
         await Task.CompletedTask;
     }
 
-    private void CheckForDangerousAPIs(Type type, AssemblySecurityResult result)
+    private void CheckForDangerousApis(Type type, AssemblySecurityResult result)
     {
         var dangerousNamespaces = new[]
         {
@@ -243,7 +243,7 @@ public class PluginSecurity
             issues.Add("Plugin has both speech input and text output capabilities - potential privacy risk");
         }
 
-        if (capabilities.HasFlag(PluginCapabilities.UIExtension) &&
+        if (capabilities.HasFlag(PluginCapabilities.UiExtension) &&
             capabilities.HasFlag(PluginCapabilities.TextProcessor))
         {
             issues.Add("Plugin can modify UI and process text - potential security risk");

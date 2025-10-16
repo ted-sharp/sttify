@@ -8,7 +8,7 @@ namespace Sttify.Corelib.Config;
 public class AppConfiguration
 {
     private static IConfiguration? _configuration;
-    private static readonly object _lock = new();
+    private static readonly object Lock = new();
 
     // Prevent instantiation
     private AppConfiguration()
@@ -21,7 +21,7 @@ public class AppConfiguration
         {
             if (_configuration == null)
             {
-                lock (_lock)
+                lock (Lock)
                 {
                     _configuration ??= BuildConfiguration();
                 }
