@@ -265,23 +265,21 @@ public class VoskEngineAdapter : ISttEngine
             return new VoskResult
             {
                 Text = text,
-                IsPartial = true,
-                IsFinal = false,
                 Confidence = 0.5 // Partial results typically have lower confidence
             };
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"*** Error parsing Vosk partial result JSON: {ex.Message} ***");
-            return new VoskResult { Text = "", IsPartial = true, IsFinal = false, Confidence = 0.0 };
+            return new VoskResult { Text = "", Confidence = 0.0 };
         }
     }
 
     private class VoskResult
     {
         public string Text { get; set; } = "";
+        public double Confidence { get; set; }
         public bool IsPartial { get; set; }
         public bool IsFinal { get; set; }
-        public double Confidence { get; set; }
     }
 }
